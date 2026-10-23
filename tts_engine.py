@@ -21,6 +21,19 @@ VOICE_DEMO_TEXTS = {
     "en_aria": "Hi there! I am Aria — your warm, engaging, and expressive voice."
 }
 
+MODE_DEMO_TEXTS = {
+    "vodiy_viral": "Qani, do'stlar, buni qarang! Bugun sizlar bilan eng zo'r va viral sirlarni birgalikda kashf qilamiz!",
+    "toshkent_adabiy": "Assalomu alaykum, aziz tomoshabinlar. Bugungi ko'rsatuvimizda eng muhim va dolzarb haqiqatlar haqida so'z yuritamiz.",
+    "samarqand_epik": "Qadimiy rivoyatlarda aytilishicha, har bir buyuk g'alaba yuksak sabr va cheksiz matonat mevasi bo'lgan.",
+    "city_podcast": "Salom hammaga! Bugun zamonaviy biznes, startaplar va katta maqsadlarga erishish sirlari haqida ochiq gaplashamiz.",
+    "koinot_mystic": "Koinotning cheksiz qa'rida insoniyat hali bilmagan, tasavvurga sig'mas sirli jumboqlar yashiringan...",
+    "trailer_power": "Hech qachon taslim bo'lma! Bugun o'z kelajaging uchun harakat qiladigan yagona kun!",
+    "reels_fast": "Qani, do'stlar, buni qarang! Bugun eng sara viral sirlarni ko'rib chiqamiz!",
+    "cinematic_deep": "Koinotning cheksiz qa'rida insoniyat bilmagan sirlar yashiringan...",
+    "natural_clean": "Assalomu alaykum! Bugungi ko'rsatuvimizda eng muhim ma'lumotlar bilan tanishamiz.",
+    "energetic": "Tezkor va shiddatli uslubda yangi kashfiyotlar bilan tanishing!"
+}
+
 class TTSEngine:
     def __init__(self, voice_key: str = DEFAULT_VOICE, mode_key: str = DEFAULT_VOICE_MODE, effect_key: str = DEFAULT_AUDIO_EFFECT):
         if voice_key not in VOICES:
@@ -34,9 +47,14 @@ class TTSEngine:
         self.pitch = mode_data.get("pitch", "+2Hz")
         self.cadence = mode_data.get("cadence", "viral_hook")
 
-        if effect_key not in AUDIO_EFFECTS:
-            effect_key = DEFAULT_AUDIO_EFFECT
-        self.effect_key = effect_key
+        # Aqlli Avtomatika: Agar foydalanuvchi alohida DSP tanlamagan bo'lsa (default), ohangga mos eng yaxshi studiya effektini ulaymiz
+        if effect_key == DEFAULT_AUDIO_EFFECT:
+            if self.cadence in ["epic_story", "mystic_doku", "power_action"]:
+                self.effect_key = "deep_trailer"
+            else:
+                self.effect_key = "studio_warmth"
+        else:
+            self.effect_key = effect_key if effect_key in AUDIO_EFFECTS else DEFAULT_AUDIO_EFFECT
         self.dsp_filter = AUDIO_EFFECTS[self.effect_key]["filter"]
 
     @classmethod
@@ -52,6 +70,53 @@ class TTSEngine:
         clean_text = phonetic_uzbek_normalize(demo_text) if voice_data.get("lang") == "uz" else demo_text
         temp_raw = output_path + ".demo.raw.mp3"
         comm = edge_tts.Communicate(clean_text, voice_id, rate="+8%", pitch="0Hz")
+        await comm.save(temp_raw)
+
+        dsp_filter = (
+            "highpass=f=80,"
+            "equalizer=f=220:t=q:w=1.2:g=2.5,"
+            "equalizer=f=3600:t=q:w=1.0:g=3.0,"
+            "compand=attacks=0.02:decays=0.1:points=-80/-80|-25/-15|-10/-5|0/0:soft-knee=6,"
+            "loudnorm=I=-16:TP=-1.5:LRA=11"
+        )
+        cmd = [
+            "ffmpeg", "-nostdin", "-y",
+            "-i", temp_raw,
+            "-af", dsp_filter,
+            "-c:a", "libmp3lame",
+            "-b:a", "128k",
+            output_path
+        ]
+        try:
+            subprocess.run(cmd, capture_output=True, check=True, timeout=20)
+        except Exception:
+            cmd_fb = ["ffmpeg", "-nostdin", "-y", "-i", temp_raw, "-c:a", "libmp3lame", "-b:a", "128k", output_path]
+            subprocess.run(cmd_fb, capture_output=True, check=True, timeout=20)
+        finally:
+            if os.path.exists(temp_raw):
+                try: os.remove(temp_raw)
+                except Exception: pass
+
+        return output_path
+
+    @classmethod
+    async def generate_mode_demo(cls, voice_key: str, mode_key: str, output_path: str) -> str:
+        """Tanlangan diktor va ohang rejimi uchun 2-3 soniyalik jonli audio namuna yaratish."""
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
+            return output_path
+
+        voice_data = VOICES.get(voice_key, VOICES[DEFAULT_VOICE])
+        voice_id = voice_data["id"]
+        mode_data = VOICE_MODES.get(mode_key, VOICE_MODES[DEFAULT_VOICE_MODE])
+
+        demo_text = MODE_DEMO_TEXTS.get(mode_key, MODE_DEMO_TEXTS["vodiy_viral"])
+        clean_text = phonetic_uzbek_normalize(demo_text) if voice_data.get("lang") == "uz" else demo_text
+
+        rate_val = mode_data.get("rate", "+12%")
+        pitch_val = mode_data.get("pitch", "0Hz")
+
+        temp_raw = output_path + ".mode.raw.mp3"
+        comm = edge_tts.Communicate(clean_text, voice_id, rate=rate_val, pitch=pitch_val)
         await comm.save(temp_raw)
 
         dsp_filter = (

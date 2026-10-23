@@ -96,7 +96,7 @@ class VideoPipeline:
         if custom_scenes:
             scenes = custom_scenes
         else:
-            scenes = await asyncio.to_thread(self.script_gen.generate, topic, lang, style_key, duration_key)
+            scenes = await asyncio.to_thread(self.script_gen.generate, topic, lang, style_key, duration_key, voice_mode)
         seo_data = await asyncio.to_thread(self.script_gen.generate_viral_seo_package, topic, lang, scenes)
 
         # 2-Bosqich: Ovozlashtirish & Studiya DSP

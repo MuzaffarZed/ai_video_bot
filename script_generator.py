@@ -10,7 +10,10 @@ import random
 import urllib.request
 import urllib.parse
 from typing import List, Dict, Optional
-from config import GEMINI_API_KEY, VIDEO_STYLES, DEFAULT_VIDEO_STYLE, DURATIONS, DEFAULT_DURATION
+from config import (
+    GEMINI_API_KEY, VIDEO_STYLES, DEFAULT_VIDEO_STYLE, DURATIONS, DEFAULT_DURATION,
+    VOICE_MODES, DEFAULT_VOICE_MODE
+)
 
 def transliterate_uzbek(text: str) -> str:
     """O'zbekcha kirill yozuvini fonetik jihatdan benuqson lotin yozuviga o'girish."""
@@ -126,6 +129,39 @@ def phonetic_uzbek_normalize(text: str) -> str:
     # Oraliq sonlar: 5-10
     t = re.sub(r'\b(\d+)\s*-\s*(\d+)\b', lambda m: f"{uzbek_number_to_words(int(m.group(1)))} dan {uzbek_number_to_words(int(m.group(2)))} gacha", t)
 
+    # Kasr sonlar (2.5 -> ikki butun o'ndan besh, 3.14 -> uch butun yuzdan o'n to'rt)
+    def _repl_decimal(m):
+        whole = int(m.group(1))
+        dec = m.group(2)
+        dec_len = len(dec)
+        dec_val = int(dec)
+        scale = "o'ndan" if dec_len == 1 else ("yuzdan" if dec_len == 2 else "mingdan")
+        return f"{uzbek_number_to_words(whole)} butun {scale} {uzbek_number_to_words(dec_val)}"
+    t = re.sub(r'\b(\d+)[.,](\d{1,3})\b', _repl_decimal, t)
+
+    # Vaqt formatlari (14:30 -> o'n to'rt o'ttiz, 08:45 -> sakkiz qirq besh)
+    t = re.sub(
+        r'\b(\d{1,2}):(\d{2})\b',
+        lambda m: f"{uzbek_number_to_words(int(m.group(1)))} {uzbek_number_to_words(int(m.group(2)))}",
+        t
+    )
+
+    # O'lchov birliklari, tezlik va maydon
+    t = re.sub(r'(\d+)\s*km/s(?:oat)?\b', lambda m: f"{uzbek_number_to_words(int(m.group(1)))} kilometr soatiga", t)
+    t = re.sub(r'(\d+)\s*(?:m²|kv\.?\s*m)\b', lambda m: f"{uzbek_number_to_words(int(m.group(1)))} kvadrat metr", t)
+    t = re.sub(r'(\d+)\s*(?:m³|kub\s*m)\b', lambda m: f"{uzbek_number_to_words(int(m.group(1)))} kub metr", t)
+    t = re.sub(r'(\d+)\s*°C\b', lambda m: f"{uzbek_number_to_words(int(m.group(1)))} gradus selsiy", t)
+    t = re.sub(r'(\d+)\s*so[\'\u02bb]?m\b', lambda m: f"{uzbek_number_to_words(int(m.group(1)))} so'm", t)
+
+    # Tashkilot, davlat va format qisqartmalari
+    t = re.sub(r'\bAQSH\b', "Amerika Qo'shma Shtatlari", t)
+    t = re.sub(r'\bBMT\b', 'Be-Em-Te', t)
+    t = re.sub(r'\bMDH\b', 'Em-De-Ha', t)
+    t = re.sub(r"\bO'zR\b", "O'zbekiston Respublikasi", t)
+    t = re.sub(r'\bVIP\b', 'vi-ay-pi', t)
+    t = re.sub(r'\bSMS\b', 'es-em-es', t)
+    t = re.sub(r'\bPDF\b', 'pe-de-ef', t)
+
     # Zamonaviy texnologik va platforma atamalari
     t = re.sub(r'\bAI\b', 'ey-ay', t)
     t = re.sub(r'\bIT\b', 'ay-ti', t)
@@ -145,6 +181,16 @@ def phonetic_uzbek_normalize(text: str) -> str:
 
     t = re.sub(r'\s+', ' ', t).strip()
     return t
+
+# Ssenariy generatori uchun mintaqaviy ohang va shevaviy drayv ko'rsatmalari
+CADENCE_DIALECT_PROMPTS = {
+    "vodiy_viral": "Nutq ohangi: Vodiy jonli va chaqqon Reels drayvi. Jo'shqin, qiziqarli va hissiyotli jumlalar (masalan: 'Qani, do'stlar, buni qarang!', 'Ajoyib-a!', 'Hozirroq sinab ko'ring!').",
+    "toshkent_adabiy": "Nutq ohangi: Toshkent adabiy tili me'yori, televideniye va madaniyatli diksiya. Jiddiy, vazmin, sof adabiy va aniq mantiqiy jumlalar (masalan: 'Hurmatli tomoshabinlar...', 'Qayd etish joizki...', 'Xulosa o'rnida...').",
+    "samarqand_epik": "Nutq ohangi: Samarqand va Buxoro epik hikoyachilik salobati, qadimiy Sharqona donishmandlik. Vazminlik, falsafiy teranlik va ibratli jumlalar (masalan: 'Qadim zamonlardan buyon...', 'Donolar aytganidek...', 'Tafakkur qiling...').",
+    "city_podcast": "Nutq ohangi: Toshkent City zamonaviy biznes va erkin IT podkast suhbati. Samimiy, do'stona, professional va hayotiy iboralar (masalan: 'Keling, ochiqchasiga gaplashamiz', 'Aslida esa...', 'Ko'rib turganingizdek...').",
+    "koinot_mystic": "Nutq ohangi: Koinot sirlari, mistik chuqurlik va hayratlantiruvchi doku intonatsiyasi. Tasavvurni uyg'otuvchi, sirli va ehtiromli jumlalar (masalan: 'Tasavvur qilib ko'ring...', 'Koinotning cheksiz qa'rida...', 'Insoniyat hali yecholmagan jumboq...').",
+    "trailer_power": "Nutq ohangi: Gollivudcha jangovar shijoat va qudratli motivatsiya. Qisqa, zarbali, kuchli va qat'iy chaqiriqlar (masalan: 'To'xtama!', 'Bugun sening kuning!', 'G'alaba faqat harakatda!')."
+}
 
 class ScriptGenerator:
     def __init__(self):
@@ -227,7 +273,8 @@ class ScriptGenerator:
         topic: str,
         lang: str = "uz",
         style: str = DEFAULT_VIDEO_STYLE,
-        duration_key: str = DEFAULT_DURATION
+        duration_key: str = DEFAULT_DURATION,
+        voice_mode: str = DEFAULT_VOICE_MODE
     ) -> List[Dict]:
         detected_lang = self.detect_language(topic)
         final_lang = lang if lang in ["uz", "ru", "en"] else detected_lang
@@ -239,20 +286,20 @@ class ScriptGenerator:
         # 1-Bosqich: Gemini 2.0 Flash (agar API kalit mavjud bo'lsa)
         if self.has_gemini:
             try:
-                return self._generate_with_gemini(final_topic, final_lang, style, scene_count)
+                return self._generate_with_gemini(final_topic, final_lang, style, scene_count, voice_mode)
             except Exception as e:
                 print(f"[Gemini Error] {e}. Pollinations AI ga o'tilmoqda.")
 
         # 2-Bosqich: Pollinations AI Text (bepul, onlayn sun'iy intellekt)
         try:
-            return self._generate_with_pollinations(final_topic, final_lang, style, scene_count)
+            return self._generate_with_pollinations(final_topic, final_lang, style, scene_count, voice_mode)
         except Exception as e:
             print(f"[Pollinations Text Error] {e}. Procedural generatorga o'tilmoqda.")
 
         # 3-Bosqich: Oflayn protsedural generator (100% ishonchli zaxira)
-        return self._generate_procedural(final_topic, final_lang, style, scene_count)
+        return self._generate_procedural(final_topic, final_lang, style, scene_count, voice_mode)
 
-    def _generate_with_pollinations(self, topic: str, lang: str, style: str, scene_count: int) -> List[Dict]:
+    def _generate_with_pollinations(self, topic: str, lang: str, style: str, scene_count: int, voice_mode: str = DEFAULT_VOICE_MODE) -> List[Dict]:
         """Pollinations bepul ochiq AI matn modeli orqali ssenariy yaratish."""
         lang_instruction = {
             "uz": "O'zbek tilida, nihoyatda hayajonli va viral Reels uslubida",
@@ -260,8 +307,11 @@ class ScriptGenerator:
             "en": "In English, high-retention viral hook and engaging storytelling"
         }.get(lang, "O'zbek tilida")
 
+        cadence_guide = CADENCE_DIALECT_PROMPTS.get(voice_mode, "")
+
         prompt = (
             f"Siz professional video ssenaristisiz. Mavzu: '{topic}'. Til: {lang_instruction}. Uslub: {style}. "
+            f"{cadence_guide} "
             f"AYNAN {scene_count} ta kadr yozing. 1-kadr: kuchli hook. O'rta: shok faktlar. Oxirgi: CTA. "
             f"Javobni FAQAT quyidagi JSON massivida qaytaring (hech qanday markdown yoki tushuntirishsiz): "
             f"[{{\"scene_num\": 1, \"text\": \"1-kadr matni\", \"visual_prompt\": \"cinematic vertical 8k visual prompt in english\"}}]"
@@ -289,18 +339,21 @@ class ScriptGenerator:
                     return result
         raise ValueError("Pollinations AI noto'g'ri JSON qaytardi")
 
-    def _generate_with_gemini(self, topic: str, lang: str, style: str, scene_count: int) -> List[Dict]:
+    def _generate_with_gemini(self, topic: str, lang: str, style: str, scene_count: int, voice_mode: str = DEFAULT_VOICE_MODE) -> List[Dict]:
         lang_prompt = {
             "uz": "O'zbek tilida, nihoyatda hayajonli va viral Reels uslubida",
             "ru": "На русском языке, мощно и динамично для TikTok/Reels",
             "en": "In English, high-retention viral hook and engaging storytelling"
         }.get(lang, "O'zbek tilida")
 
+        cadence_guide = CADENCE_DIALECT_PROMPTS.get(voice_mode, "")
+
         prompt = f"""
 Siz jahon darajasidagi video produserisiz (MrBeast va Alex Hormozi darajasida).
 Mavzu: "{topic}"
 Til: {lang_prompt}
 Uslub: {style}
+{cadence_guide}
 Kadrlar soni: AYNAN {scene_count} ta ketma-ket kadr!
 
 Har bir kadr 1-2 jumlali lo'nda, ta'sirli va tez o'qiladigan bo'lsin.
@@ -335,7 +388,7 @@ Javobni FAQAT quyidagi JSON massivida qaytaring, ortiqcha hech qanday matn qo'sh
             text = text[:-3]
         return json.loads(text.strip())
 
-    def _generate_procedural(self, topic: str, lang: str, style: str, scene_count: int) -> List[Dict]:
+    def _generate_procedural(self, topic: str, lang: str, style: str, scene_count: int, voice_mode: str = DEFAULT_VOICE_MODE) -> List[Dict]:
         clean_topic = transliterate_uzbek(topic.strip()) if lang == "uz" else topic.strip()
 
         if lang == "uz":
@@ -359,8 +412,24 @@ Javobni FAQAT quyidagi JSON massivida qaytaring, ortiqcha hech qanday matn qo'sh
                 return scenes
 
             elif style == "top_facts":
+                # Ohang va mintaqaviy shevaga mos ochilish ilgagi (Cadence-specific Hook)
+                if voice_mode == "samarqand_epik":
+                    hook_fact = f"Qadim zamonlardan buyon insoniyat {clean_topic} sirlari ustida bosh qotirib kelgan..."
+                elif voice_mode == "vodiy_viral":
+                    hook_fact = f"Qani, do'stlar, buni qarang! {clean_topic} haqidagi bu sirni 99% insonlar bilmaydi!"
+                elif voice_mode == "city_podcast":
+                    hook_fact = f"Keling, {clean_topic} haqida ochiqchasiga gaplashamiz. Asl haqiqat mutlaqo boshqacha!"
+                elif voice_mode == "koinot_mystic":
+                    hook_fact = f"Tasavvur qilib ko'ring... {clean_topic} qa'rida insoniyat hali yecholmagan buyuk sir yashiringan..."
+                elif voice_mode == "trailer_power":
+                    hook_fact = f"To'xtang! {clean_topic} sizning butun kelajagingizni o'zgartirishi mumkin!"
+                elif voice_mode == "toshkent_adabiy":
+                    hook_fact = f"Hurmatli tomoshabinlar, bugun {clean_topic} haqidagi eng muhim va ishonchli faktlarni tahlil qilamiz."
+                else:
+                    hook_fact = f"99% insonlar {clean_topic} haqidagi bu sirni bilishmaydi! Birinchisi: uning kuchi tasavvur qilinganidan 10 barobar ortiq!"
+
                 templates = [
-                    f"99% insonlar {clean_topic} haqidagi bu sirni bilishmaydi! Birinchisi: uning kuchi tasavvur qilinganidan 10 barobar ortiq!",
+                    hook_fact,
                     f"Ikkinchi sir: tadqiqotlarga ko'ra, {clean_topic} zamonaviy dunyoda eng buyuk o'zgarishlar kalitiga aylanmoqda.",
                     f"Uchinchi hayratlanarli fakt: olimlar {clean_topic} ning asl qudratini endigina to'liq anglab yetmoqdalar.",
                     f"To'rtinchi haqiqat: kimki {clean_topic} qonuniyatlarini bilsa, u har qanday vaziyatda ustunlikka erishadi.",

@@ -264,6 +264,7 @@ def get_modes_keyboard(current: str) -> InlineKeyboardMarkup:
     for key, m in VOICE_MODES.items():
         if key not in primary_keys and key == current:
             builder.row(InlineKeyboardButton(text=f"✅ {m['name']}", callback_data=f"set_mode:{key}"))
+    builder.row(InlineKeyboardButton(text="🎧 Tanlangan ohang namunasini tinglash", callback_data=f"listen_mode:{current}"))
     builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
     return builder.as_markup()
 
@@ -788,6 +789,29 @@ async def cb_set_mode(callback: types.CallbackQuery):
     m_name = VOICE_MODES[key]["name"]
     await callback.answer(f"Rejim: {m_name}")
     await callback.message.edit_text(f"✅ Rejim o'rnatildi: <b>{m_name}</b>", reply_markup=get_modes_keyboard(key), parse_mode="HTML")
+
+# --- Ohang va Sheva namunasini tinglash (Cadence Demo Preview) ---
+@dp.callback_query(F.data.startswith("listen_mode:"))
+async def cb_listen_mode(callback: types.CallbackQuery):
+    mode_key = callback.data.split(":")[1]
+    user_voice = get_user_pref(callback.from_user.id, "voice", DEFAULT_VOICE)
+    m_data = VOICE_MODES.get(mode_key, VOICE_MODES[DEFAULT_VOICE_MODE])
+    await callback.answer(f"🎭 {m_data['name']} namunasi tayyorlanmoqda...")
+    demo_path = str(TEMP_DIR / f"mode_demo_{user_voice}_{mode_key}.mp3")
+    try:
+        await TTSEngine.generate_mode_demo(user_voice, mode_key, demo_path)
+        if os.path.exists(demo_path):
+            voice_file = FSInputFile(demo_path)
+            await callback.message.answer_voice(
+                voice=voice_file,
+                caption=f"🎭 <b>{m_data['name']}</b> ohangi namunasi.\n<i>{m_data.get('desc', '')}</i>\n\n<i>{WATERMARK_TEXT}</i>",
+                parse_mode="HTML"
+            )
+        else:
+            await callback.answer("⚠️ Ohang namunasi tayyorlanmadi, qaytadan urinib ko'ring.", show_alert=True)
+    except Exception as e:
+        logger.error(f"Generate mode demo error: {e}")
+        await callback.answer("⚠️ Ohang namunasini tayyorlashda xatolik yuz berdi.", show_alert=True)
 
 # --- Uslub menyusi ---
 @dp.callback_query(F.data == "menu_styles")

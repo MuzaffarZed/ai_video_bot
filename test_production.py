@@ -438,5 +438,45 @@ class TestSingularity10(unittest.TestCase):
         tts_sam = TTSEngine(voice_key="uz_sardor", mode_key="samarqand_epik")
         self.assertEqual(tts_sam.cadence, "epic_story")
 
+    def test_phonetic_uzbek_advanced(self):
+        text1 = "Bahosi 2.5 million so'm va uning maydoni 50 m² atrofida."
+        norm1 = phonetic_uzbek_normalize(text1)
+        self.assertIn("ikki butun o'ndan besh million so'm", norm1)
+        self.assertIn("ellik kvadrat metr", norm1)
+
+        text2 = "Poyezd soat 14:30 da yo'lga chiqadi va tezligi 120 km/soat."
+        norm2 = phonetic_uzbek_normalize(text2)
+        self.assertIn("o'n to'rt o'ttiz", norm2)
+        self.assertIn("bir yuz yigirma kilometr soatiga", norm2)
+
+        text3 = "AQSH va BMT vakillari 2026-yilda uchrashadi."
+        norm3 = phonetic_uzbek_normalize(text3)
+        self.assertIn("Amerika Qo'shma Shtatlari", norm3)
+        self.assertIn("Be-Em-Te", norm3)
+
+    def test_cadence_dialect_procedural_generation(self):
+        sg = ScriptGenerator()
+        sc_sam = sg._generate_procedural("Koinot", "uz", "top_facts", 3, voice_mode="samarqand_epik")
+        self.assertIn("Qadim zamonlardan", sc_sam[0]["text"])
+
+        sc_vodiy = sg._generate_procedural("Koinot", "uz", "top_facts", 3, voice_mode="vodiy_viral")
+        self.assertIn("Qani, do'stlar", sc_vodiy[0]["text"])
+
+        sc_city = sg._generate_procedural("Koinot", "uz", "top_facts", 3, voice_mode="city_podcast")
+        self.assertIn("Keling", sc_city[0]["text"])
+
+    def test_smart_dsp_synergy(self):
+        tts_sam = TTSEngine(voice_key="uz_sardor", mode_key="samarqand_epik")
+        self.assertEqual(tts_sam.effect_key, "deep_trailer")
+
+        tts_vodiy = TTSEngine(voice_key="uz_sardor", mode_key="vodiy_viral")
+        self.assertEqual(tts_vodiy.effect_key, "studio_warmth")
+
+        tts_city = TTSEngine(voice_key="uz_sardor", mode_key="city_podcast")
+        self.assertEqual(tts_city.effect_key, "studio_warmth")
+
+        tts_mystic = TTSEngine(voice_key="uz_sardor", mode_key="koinot_mystic")
+        self.assertEqual(tts_mystic.effect_key, "deep_trailer")
+
 if __name__ == "__main__":
     unittest.main()
