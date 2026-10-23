@@ -1,6 +1,6 @@
 """
-MuzaffarZed AI Video Bot - Kengaytirilgan Vizual Kadrlar Dvigateli (Visual Studio 4.0 Titanium)
-Ko'p formatli (9:16, 16:9, 1:1), foydalanuvchi rasmini qabul qilish, 12 toifali 4K kutubxona va vinyetka.
+MuzaffarZed AI Video Bot - Kengaytirilgan Vizual Kadrlar Dvigateli (Visual Studio 5.0 Infinity)
+Haqiqiy Real-Time AI rasm generatsiyasi (Pollinations AI), 12 toifali 4K kutubxona va foydalanuvchi rasmlari.
 Muallif: MuzaffarZed
 """
 import os
@@ -125,7 +125,7 @@ class VisualEngine:
             return "ambient_chill"
 
     def process_custom_user_image(self, input_image_path: str, output_path: str) -> str:
-        """Foydalanuvchi yuborgan rasmni video o'lchamiga moslab kinoviy qayta ishlash."""
+        """Foydalanuvchi yuborgan rasmni video formatiga moslab qayta ishlash."""
         try:
             with Image.open(input_image_path) as im:
                 im_ratio = im.width / im.height
@@ -151,38 +151,54 @@ class VisualEngine:
             return input_image_path
 
     def get_scene_visual(self, prompt: str, output_path: str, seed: int = None, scene_num: int = 1) -> str:
-        """Kadr uchun mavzuga mos sifatli kadrni yuklaydi yoki chizadi."""
+        """
+        1-Bosqich: Real-Time AI Generation (Pollinations AI)
+        2-Bosqich (Failover): Curated 4K Unsplash/Picsum kutubxonasi
+        3-Bosqich (Failover): Oflayn kinoviy grafika
+        """
         if seed is None:
             seed = random.randint(10000, 999999)
 
         cat = self.detect_category(prompt)
-        curated_urls = self.CURATED_THEMES.get(cat, self.CURATED_THEMES["space"])
-        
-        target_url = curated_urls[(scene_num - 1 + seed) % len(curated_urls)]
 
-        success = self._download_image(target_url, output_path)
-        if not success or not os.path.exists(output_path) or os.path.getsize(output_path) < 2000:
+        # 1-Urinish: Real-Time Pollinations AI Generator
+        ai_success = False
+        try:
+            encoded_prompt = urllib.parse.quote(f"{prompt}, 8k resolution, cinematic lighting, photorealistic, dramatic vertical shot")
+            pollinations_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={self.width}&height={self.height}&nologo=true&seed={seed}"
+            ai_success = self._download_image(pollinations_url, output_path, timeout=8)
+        except Exception as e:
+            ai_success = False
+
+        # 2-Urinish: Curated 4K fotolar bazasi
+        if not ai_success or not os.path.exists(output_path) or os.path.getsize(output_path) < 3000:
+            curated_urls = self.CURATED_THEMES.get(cat, self.CURATED_THEMES["space"])
+            target_url = curated_urls[(scene_num - 1 + seed) % len(curated_urls)]
+            ai_success = self._download_image(target_url, output_path, timeout=10)
+
+        # 3-Urinish: Picsum Seed
+        if not ai_success or not os.path.exists(output_path) or os.path.getsize(output_path) < 3000:
             clean_seed = f"v_{cat}_{seed}_{scene_num}"
             picsum_url = f"https://picsum.photos/seed/{clean_seed}/{self.width}/{self.height}"
-            success = self._download_image(picsum_url, output_path)
+            ai_success = self._download_image(picsum_url, output_path, timeout=10)
 
-        if not success or not os.path.exists(output_path) or os.path.getsize(output_path) < 2000:
+        # 4-Urinish: 100% Oflayn badiiy grafika
+        if not ai_success or not os.path.exists(output_path) or os.path.getsize(output_path) < 3000:
             self._generate_fallback_graphic(cat, output_path)
 
         self._apply_cinematic_grade(output_path)
         return output_path
 
-    def _download_image(self, url: str, output_path: str) -> bool:
+    def _download_image(self, url: str, output_path: str, timeout: int = 10) -> bool:
         try:
             req = urllib.request.Request(
                 url,
                 headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
             )
-            with urllib.request.urlopen(req, timeout=10) as response, open(output_path, "wb") as out_file:
+            with urllib.request.urlopen(req, timeout=timeout) as response, open(output_path, "wb") as out_file:
                 out_file.write(response.read())
             return True
-        except Exception as e:
-            print(f"[Visual Download] {e}")
+        except Exception:
             return False
 
     def _generate_fallback_graphic(self, category: str, output_path: str):

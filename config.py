@@ -1,5 +1,5 @@
 """
-MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Titanium 4.0 Supreme)
+MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Infinity 5.0 Ultra Studio)
 Muallif: MuzaffarZed
 """
 import os
@@ -186,3 +186,4 @@ MUSIC_GENRES = {
 DEFAULT_MUSIC_GENRE = "auto"
 
 WATERMARK_TEXT = "Dasturchi: MuzaffarZed"
+BRAND_NAME = "MuzaffarZed AI Studios"

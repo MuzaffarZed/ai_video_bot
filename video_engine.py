@@ -1,12 +1,12 @@
 """
-MuzaffarZed AI Video Bot - Kengaytirilgan Video Montaj Dvigateli (Version 4.0 Titanium Multi-Format)
-Ko'p formatli (9:16, 16:9, 1:1), Dynamic Zoom & Pan va Oltin progress-bar.
+MuzaffarZed AI Video Bot - Kengaytirilgan Video Montaj Dvigateli (Version 5.0 Infinity)
+Ko'p formatli (9:16, 16:9, 1:1), Dynamic Zoom & Pan, Oltin progress-bar va Branded Outro.
 Muallif: MuzaffarZed
 """
 import os
 import subprocess
 from typing import List, Dict
-from config import BASE_DIR, TEMP_DIR, OUTPUT_DIR, FPS, FORMATS, DEFAULT_FORMAT, SUBTITLE_THEMES, DEFAULT_SUBTITLE_THEME
+from config import BASE_DIR, TEMP_DIR, OUTPUT_DIR, FPS, FORMATS, DEFAULT_FORMAT, SUBTITLE_THEMES, DEFAULT_SUBTITLE_THEME, BRAND_NAME, WATERMARK_TEXT
 
 class VideoEngine:
     def __init__(self, fps: int = FPS):
@@ -31,7 +31,6 @@ class VideoEngine:
         clean_img = os.path.relpath(image_path, BASE_DIR).replace("\\", "/")
         clean_out = os.path.relpath(output_clip_path, BASE_DIR).replace("\\", "/")
 
-        # Masshtab o'lchami (115% kattaroq qilib Ken Burns harakatiga zaxira)
         scaled_w = int(target_w * 1.15)
         scaled_h = int(target_h * 1.15)
 

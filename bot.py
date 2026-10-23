@@ -1,6 +1,6 @@
 """
-MuzaffarZed AI Video Bot - Telegram Bot Interfeysi (aiogram 3.x - Titanium 4.0 Supreme)
-Foydalanuvchi rasmlarini qabul qilish, ko'p formatlar (9:16, 16:9, 1:1), davomiylik tanlovi, MP3 eksport va statistika.
+MuzaffarZed AI Video Bot - Telegram Bot Interfeysi (aiogram 3.x - Infinity 5.0 Ultra Studio)
+Ovozli xabarlardan video yasash (Voice to Reels), 1-Click format konvertatsiya, Real-Time AI Art, MP3 va Statistika.
 Muallif: MuzaffarZed
 """
 import os
@@ -10,6 +10,7 @@ import json
 import asyncio
 import logging
 import html
+import subprocess
 from pathlib import Path
 
 if sys.platform == "win32":
@@ -26,6 +27,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from config import (
     BASE_DIR,
+    TEMP_DIR,
     TELEGRAM_BOT_TOKEN,
     USER_UPLOADS_DIR,
     VOICES,
@@ -42,14 +44,14 @@ from config import (
     DEFAULT_SUBTITLE_THEME,
     MUSIC_GENRES,
     DEFAULT_MUSIC_GENRE,
-    WATERMARK_TEXT
+    WATERMARK_TEXT,
+    BRAND_NAME
 )
 from pipeline import VideoPipeline
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-# Foydalanuvchilar sozlamalari bazasi (JSON)
 USER_DB_FILE = BASE_DIR / "user_db.json"
 STATS_FILE = BASE_DIR / "bot_stats.json"
 
@@ -198,12 +200,17 @@ def get_topics_keyboard() -> InlineKeyboardMarkup:
     builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
     return builder.as_markup()
 
-def get_post_video_keyboard(task_id: str) -> InlineKeyboardMarkup:
+def get_post_video_keyboard(task_id: str, current_fmt: str = "9:16") -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text="🎙 Audio MP3 yuklab olish", callback_data=f"dl_mp3:{task_id}"),
         InlineKeyboardButton(text="📝 Ssenariy matni", callback_data=f"view_script:{task_id}")
     )
+    if current_fmt == "9:16":
+        builder.row(InlineKeyboardButton(text="🖥 YouTube (16:9) ga o'girish", callback_data=f"re_render:{task_id}:16:9"))
+    else:
+        builder.row(InlineKeyboardButton(text="📱 Reels (9:16) ga o'girish", callback_data=f"re_render:{task_id}:9:16"))
+
     builder.row(
         InlineKeyboardButton(text="💡 Yangi mavzular", callback_data="menu_topics"),
         InlineKeyboardButton(text="⚙️ Sozlamalar", callback_data="menu_main")
@@ -212,7 +219,7 @@ def get_post_video_keyboard(task_id: str) -> InlineKeyboardMarkup:
 
 dp = Dispatcher()
 
-# ==================== HANDLERS ====================
+# ==================== BUYRUQLAR (COMMANDS) ====================
 
 @dp.message(CommandStart())
 async def cmd_start(message: types.Message):
@@ -229,16 +236,18 @@ async def cmd_start(message: types.Message):
 
     welcome_text = (
         f"👋 Assalomu alaykum, <b>{html.escape(message.from_user.full_name)}</b>!\n\n"
-        f"🎬 <b>MuzaffarZed Professional AI Video Bot 4.0 Titanium</b>ga xush kelibsiz!\n\n"
-        f"Men bir zumda yuqori sifatli video montaj qilib beraman:\n"
+        f"🎬 <b>{BRAND_NAME} (Infinity 5.0 Ultra)</b>ga xush kelibsiz!\n\n"
+        f"Men bir zumda jahon darajasidagi video montaj qilib beraman:\n"
         f"• 🎙 <b>Ovoz:</b> {v_name}\n"
         f"• 🎛 <b>Uslub:</b> {s_name}\n"
         f"• 📱 <b>Format:</b> {f_name}\n"
+        f"• 🎨 <b>AI Vizual:</b> <i>Real-Time Pollinations AI + 4K Unsplash</i>\n"
         f"• 🎚 <b>Studio DSP:</b> <i>EBU R128 + Sidechain Audio Ducking</i>\n"
         f"• 🎥 <b>Dinamika:</b> <i>Dynamic Zoom & Pan + Oltin progress chizig'i</i>\n\n"
         f"🚀 <b>Qanday ishlatiladi:</b>\n"
-        f"1. Shunchaki video mavzusini yozib yuboring;\n"
-        f"2. Yoki <b>o'z rasmingizni</b> yuboring — bot sizning rasmingiz bilan video montaj qiladi!\n\n"
+        f"1. ✍️ <b>Matn yozing:</b> Mavzuni yozing va video oling;\n"
+        f"2. 📸 <b>Rasm yuboring:</b> O'z suratingizdan Reels yasang;\n"
+        f"3. 🎙 <b>Ovozli xabar yuboring:</b> O'z ovozingizdan avtomatik video montaj oling!\n\n"
         f"<i>{WATERMARK_TEXT}</i>"
     )
     await message.answer(welcome_text, reply_markup=get_main_keyboard(), parse_mode="HTML")
@@ -246,10 +255,10 @@ async def cmd_start(message: types.Message):
 @dp.message(Command("help"))
 async def cmd_help(message: types.Message):
     help_text = (
-        "📖 <b>Botdan foydalanish qo'llanmasi:</b>\n\n"
-        "• <b>Matndan video:</b> Mavzuni yozing (masalan: <i>Qora tuynuklar siri</i>) — bot 1 daqiqada video tayyorlaydi.\n"
-        "• <b>Rasmdan video:</b> Botga ixtiyoriy fotosurat yuboring. Bot uni 1-kadr sifatida olib, ajoyib video montaj qiladi.\n"
-        "• <b>Podkast MP3:</b> Har bir video ostida ovoz va musiqali alohida MP3 yuklab olish imkoniyati mavjud.\n\n"
+        f"📖 <b>{BRAND_NAME} - Qo'llanma:</b>\n\n"
+        "1. <b>Matndan video:</b> Mavzuni yozing (masalan: <i>Qora tuynuklar siri</i>) — AI ssenariy tuzadi, chizadi va montaj qiladi.\n"
+        "2. <b>Rasmdan video:</b> Surat yuboring — bot uni 1-kadr sifatida kinoviy vinyetka bilan montaj qiladi.\n"
+        "3. <b>Ovozdan video:</b> Telegramda ovozli xabar yozib yuboring — bot ovozingizni tozalab, 4K video ulab beradi!\n\n"
         "Buyruqlar:\n"
         "/start - Bosh menyu\n"
         "/settings - Sozlamalar paneli\n"
@@ -268,11 +277,11 @@ async def cmd_stats(message: types.Message):
     total_u = bot_stats.get("total_users", len(bot_stats.get("users_list", [])))
     total_v = bot_stats.get("total_videos", 0)
     stats_text = (
-        "📊 <b>MuzaffarZed AI Video Bot Statistikasi:</b>\n\n"
+        f"📊 <b>{BRAND_NAME} - Tizim Statistikasi:</b>\n\n"
         f"👥 <b>Jami foydalanuvchilar:</b> {total_u} ta\n"
         f"🎬 <b>Yaratilgan videolar:</b> {total_v} ta\n"
-        f"☁️ <b>Server holati:</b> 24/7 Bulutda Faol (GitHub Actions)\n"
-        f"💎 <b>Dvigatel:</b> Titanium 4.0 Supreme\n\n"
+        f"☁️ <b>Bulut Serveri:</b> 24/7 Faol (GitHub Actions)\n"
+        f"💎 <b>Dvigatel:</b> Infinity 5.0 Ultra Studio\n\n"
         f"<i>{WATERMARK_TEXT}</i>"
     )
     await message.answer(stats_text, parse_mode="HTML")
@@ -282,7 +291,7 @@ async def cb_stats(callback: types.CallbackQuery):
     total_u = bot_stats.get("total_users", len(bot_stats.get("users_list", [])))
     total_v = bot_stats.get("total_videos", 0)
     stats_text = (
-        "📊 <b>Bot Statistikasi:</b>\n\n"
+        f"📊 <b>{BRAND_NAME} - Tizim Statistikasi:</b>\n\n"
         f"👥 <b>Foydalanuvchilar:</b> {total_u} ta\n"
         f"🎬 <b>Yaratilgan videolar:</b> {total_v} ta\n"
         f"☁️ <b>Server:</b> 24/7 Bulutda Faol\n\n"
@@ -406,13 +415,14 @@ async def cb_topics_menu(callback: types.CallbackQuery):
 @dp.callback_query(F.data == "menu_about")
 async def cb_about_menu(callback: types.CallbackQuery):
     about_text = (
-        "💎 <b>MuzaffarZed Professional AI Video Generator 4.0 Titanium</b>\n\n"
+        f"💎 <b>{BRAND_NAME} (Infinity 5.0 Ultra Studio)</b>\n\n"
+        "• <b>Real-Time AI:</b> Pollinations AI 8K + 4K Unsplash + Oflayn grafika\n"
         "• <b>Formatlar:</b> 9:16 Vertikal, 16:9 Gorizontal, 1:1 Kvadrat\n"
         "• <b>Ovoz:</b> Microsoft Neural + Studio Broadcast DSP (EBU R128, Warmth)\n"
         "• <b>Video Dvigateli:</b> Dynamic Zoom & Pan + Oltin progress chizig'i + Kinoviy vinyetka\n"
         "• <b>Subtitr:</b> Alex Hormozi Karaoke 2.0 (4 xil rang, 118% pop kattalashuv)\n"
         "• <b>Musiqa:</b> 4 ta janr + Sidechain Audio Ducking + Whoosh SFX\n"
-        "• <b>Qo'shimcha:</b> Foydalanuvchi rasmini qabul qilish, MP3 podkast audio va ssenariy eksporti\n\n"
+        "• <b>Qo'shimcha:</b> Foydalanuvchi ovozi va rasmini qabul qilish, 1-Click format o'zgartirish\n\n"
         f"<i>{WATERMARK_TEXT}</i>"
     )
     builder = InlineKeyboardBuilder()
@@ -441,7 +451,7 @@ async def cb_dl_mp3(callback: types.CallbackQuery):
             parse_mode="HTML"
         )
     else:
-        await callback.answer("⚠️ Audio fayl topilmadi yoki muddati o'tgan.", show_alert=True)
+        await callback.answer("⚠️ Audio fayl topilmadi.", show_alert=True)
 
 # --- Ssenariy matnini ko'rish ---
 @dp.callback_query(F.data.startswith("view_script:"))
@@ -459,14 +469,120 @@ async def cb_view_script(callback: types.CallbackQuery):
     else:
         await callback.answer("⚠️ Ssenariy topilmadi.", show_alert=True)
 
-# ==================== FOYDALANUVCHI RASMI (PHOTO) HANDLERI ====================
+# --- 1-Click Format Re-render ---
+@dp.callback_query(F.data.startswith("re_render:"))
+async def cb_re_render(callback: types.CallbackQuery):
+    parts = callback.data.split(":")
+    task_id = parts[1]
+    new_fmt = f"{parts[2]}:{parts[3]}"
+    job_info = job_cache.get(task_id)
+    if not job_info:
+        await callback.answer("⚠️ Ma'lumotlar eskirgan, yangi mavzu yozing.", show_alert=True)
+        return
+
+    topic = job_info["topic"]
+    set_user_pref(callback.from_user.id, "format", new_fmt)
+    await callback.answer(f"Format: {new_fmt} ga o'tkazilmoqda...")
+    await handle_video_creation(callback.message, topic, callback.from_user.id)
+
+# ==================== OVOZLI XABAR (VOICE NOTE) HANDLERI ====================
+
+@dp.message(F.voice | F.audio)
+async def msg_handle_voice(message: types.Message, bot: Bot):
+    user_id = message.from_user.id
+    record_user(user_id)
+
+    if user_id in user_active_requests:
+        await message.answer("⚠️ Hozirda sizning videongiz tayyorlanmoqda, iltimos u yakunlanishini kuting!")
+        return
+
+    user_active_requests.add(user_id)
+    status_msg = await message.answer("🎙 <b>Ovozli xabaringiz qabul qilindi!</b>\n\n🎧 Studiya DSP orqali tozalash va 4K video montaj boshlanmoqda...", parse_mode="HTML")
+
+    task_id = f"voice_{int(time.time())}"
+    raw_voice = TEMP_DIR / f"{task_id}_raw.ogg"
+    clean_wav = TEMP_DIR / f"{task_id}_clean.wav"
+    out_video = OUTPUT_DIR / f"{task_id}_final.mp4"
+
+    try:
+        voice_obj = message.voice or message.audio
+        file_info = await bot.get_file(voice_obj.file_id)
+        await bot.download_file(file_info.file_path, destination=raw_voice)
+
+        # OGG ni WAV ga o'girish va EBU R128 studiya DSP qo'llash
+        dsp_cmd = [
+            "ffmpeg", "-nostdin", "-y",
+            "-i", str(raw_voice),
+            "-af", "highpass=f=80,equalizer=f=220:t=q:w=1.2:g=2.8,equalizer=f=3600:t=q:w=1.0:g=3.2,compand=attacks=0.02:decays=0.1:points=-80/-80|-25/-15|-10/-5|0/0:soft-knee=6,loudnorm=I=-16:TP=-1.5:LRA=11",
+            "-c:a", "pcm_s16le",
+            "-ar", "44100",
+            str(clean_wav)
+        ]
+        await asyncio.to_thread(subprocess.run, dsp_cmd, capture_output=True, check=True)
+
+        dur_cmd = ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", str(clean_wav)]
+        res = await asyncio.to_thread(subprocess.run, dur_cmd, capture_output=True, text=True, check=True)
+        total_dur = float(res.stdout.strip())
+
+        cur_format = get_user_pref(user_id, "format", DEFAULT_FORMAT)
+        fmt_info = FORMATS.get(cur_format, FORMATS[DEFAULT_FORMAT])
+
+        # Fon musiqasi mikslari
+        master_audio = str(TEMP_DIR / f"{task_id}_master.wav")
+        await asyncio.to_thread(pipeline.audio_mixer.mix, [str(clean_wav)], master_audio, genre="ambient_chill")
+
+        # 4K rasm generatsiyasi
+        img_path = str(TEMP_DIR / f"{task_id}_img.jpg")
+        await asyncio.to_thread(pipeline.visual_eng.get_scene_visual, "voice podcast storytelling cinematic", img_path)
+
+        clip_path = str(TEMP_DIR / f"{task_id}_clip.mp4")
+        await asyncio.to_thread(pipeline.video_eng.render_scene_clip, img_path, total_dur, clip_path, 1, cur_format)
+
+        # Final video
+        await asyncio.to_thread(
+            pipeline.video_eng.assemble_final_video,
+            [clip_path],
+            master_audio,
+            "",
+            str(out_video),
+            total_dur,
+            "gold",
+            cur_format
+        )
+
+        record_video_generation()
+        video_file = FSInputFile(str(out_video))
+        caption_text = (
+            f"🎙 <b>Sizning Ovozli Xabaringizdan Video Reels</b>\n\n"
+            f"⏱ <b>Davomiyligi:</b> {total_dur:.1f}s | 📱 <b>Format:</b> {fmt_info['name']}\n"
+            f"💎 <b>Sifat:</b> Studio DSP Mastering + Dynamic Ambient\n\n"
+            f"<i>{WATERMARK_TEXT}</i>"
+        )
+
+        await message.answer_video(
+            video=video_file,
+            caption=caption_text,
+            width=fmt_info["width"],
+            height=fmt_info["height"],
+            supports_streaming=True,
+            parse_mode="HTML"
+        )
+        await status_msg.delete()
+
+    except Exception as e:
+        logger.exception("Ovozdan video yasashda xato")
+        await status_msg.edit_text(f"❌ Xatolik yuz berdi: <code>{html.escape(str(e)[:250])}</code>", parse_mode="HTML")
+    finally:
+        user_active_requests.discard(user_id)
+        pipeline.cleanup_task_files(task_id)
+
+# ==================== FOYDALANUVCHI RASMI HANDLERI ====================
 
 @dp.message(F.photo)
 async def msg_handle_photo(message: types.Message, bot: Bot):
     user_id = message.from_user.id
     record_user(user_id)
 
-    # Eng katta sifatdagi rasmni tanlab yuklab olish
     photo = message.photo[-1]
     file_info = await bot.get_file(photo.file_id)
     file_ext = os.path.splitext(file_info.file_path)[1] or ".jpg"
@@ -474,7 +590,6 @@ async def msg_handle_photo(message: types.Message, bot: Bot):
 
     await bot.download_file(file_info.file_path, destination=saved_path)
 
-    # Agar rasm ostida matn (caption) yozilgan bo'lsa darhol video yasash
     if message.caption and len(message.caption.strip()) >= 3:
         topic = message.caption.strip()
         await handle_video_creation(message, topic, user_id, custom_image_path=str(saved_path))
@@ -482,7 +597,7 @@ async def msg_handle_photo(message: types.Message, bot: Bot):
         user_pending_photos[user_id] = str(saved_path)
         await message.answer(
             "📸 <b>Ajoyib rasm qabul qilindi!</b>\n\n"
-            "Endi ushbu rasm asosida video yaratish uchun <b>mavzu yoki gap yozib yuboring</b> "
+            "Endi ushbu rasm ustiga yaratmoqchi bo'lgan video mavzusi yoki matnini yozib yuboring "
             "(masalan: <i>Muvaffaqiyat kaliti</i>):",
             parse_mode="HTML"
         )
@@ -506,7 +621,6 @@ async def msg_handle_text(message: types.Message):
         )
         return
 
-    # Agar avval rasm yuborilgan bo'lsa, o'sha rasm bilan yasash
     custom_img = user_pending_photos.pop(user_id, None)
     await handle_video_creation(message, topic, user_id, custom_image_path=custom_img)
 
@@ -590,7 +704,8 @@ async def handle_video_creation(message: types.Message, topic: str, user_id: int
             job_cache[task_id] = {
                 "topic": topic,
                 "mp3_path": mp3_path,
-                "script_text": script_text
+                "script_text": script_text,
+                "format_key": cur_format
             }
 
         try:
@@ -608,7 +723,7 @@ async def handle_video_creation(message: types.Message, topic: str, user_id: int
             f"🎛 <b>Uslub:</b> {VIDEO_STYLES[cur_style]['name']}\n"
             f"🎵 <b>Musiqa:</b> {genre_name} (Sidechain Ducking)\n"
             f"⏱ <b>Davomiyligi:</b> {dur:.1f}s | 📱 <b>Format:</b> {fmt_info['name']}\n"
-            f"💎 <b>Sifat:</b> Studio DSP + Hormozi Dynamic Karaoke 4.0\n\n"
+            f"💎 <b>Sifat:</b> Studio DSP + Alex Hormozi Karaoke 5.0\n\n"
             f"<i>{WATERMARK_TEXT}</i>"
         )
 
@@ -621,7 +736,7 @@ async def handle_video_creation(message: types.Message, topic: str, user_id: int
                     width=fmt_info["width"],
                     height=fmt_info["height"],
                     supports_streaming=True,
-                    reply_markup=get_post_video_keyboard(task_id),
+                    reply_markup=get_post_video_keyboard(task_id, cur_format),
                     parse_mode="HTML"
                 )
                 sent = True
@@ -663,8 +778,8 @@ async def main():
 
     bot = Bot(token=token)
     print("=" * 65)
-    print("🤖 MUZAFFARZED AI VIDEO BOT (TITANIUM 4.0 SUPREME) ISHGA TUSHDI!")
-    print("Multi-Format, Custom Photo, Dynamic Scenes va 24/7 navbat faol...")
+    print("🤖 MUZAFFARZED AI VIDEO BOT (INFINITY 5.0 ULTRA) ISHGA TUSHDI!")
+    print("Voice to Reels, Custom Photos, 1-Click Format Conversion faol...")
     print("=" * 65)
     await dp.start_polling(bot)
 
