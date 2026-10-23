@@ -85,6 +85,11 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 continue
 
             scene_emoji = emojis[sc_idx % len(emojis)]
+            spk = sc.get("speaker", 1)
+            # Speaker 2 uchun kontrast rang (Neon pushti-binafsha)
+            cur_active_bgr = "&H00FF60D0" if spk == 2 else active_bgr
+            speaker_badge = "👩 " if spk == 2 else ("👨 " if "speaker" in sc else "")
+
             chunk_size = 3
             for i in range(0, len(words), chunk_size):
                 chunk = words[i:i + chunk_size]
@@ -95,13 +100,13 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
                     line_parts = []
                     if i == 0:
-                        line_parts.append(f"{scene_emoji}")
+                        line_parts.append(f"{speaker_badge}{scene_emoji}")
 
                     for idx, part in enumerate(chunk):
                         word_text = part["word"]
                         if idx == active_idx:
                             # 120% pop va neon yonuvchi rang
-                            line_parts.append(f"{{\\c{active_bgr}&\\fscx120\\fscy120}}{word_text}{{\\rKaraoke}}")
+                            line_parts.append(f"{{\\c{cur_active_bgr}&\\fscx120\\fscy120}}{word_text}{{\\rKaraoke}}")
                         else:
                             line_parts.append(f"{{\\c{base_bgr}&}}{word_text}")
                     
@@ -116,3 +121,34 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             f.write(full_content)
 
         return output_ass_path
+
+    def generate_srt(self, scenes: List[Dict], output_srt_path: str) -> str:
+        """CapCut, Adobe Premiere va YouTube uchun standart SRT subtitr fayli yaratish."""
+        entries = []
+        counter = 1
+        for sc in scenes:
+            spk = sc.get("speaker", 1)
+            spk_prefix = f"[Speaker {spk}] " if "speaker" in sc else ""
+            words = sc.get("words", [])
+            chunk_size = 4
+            for i in range(0, len(words), chunk_size):
+                chunk = words[i:i + chunk_size]
+                if not chunk:
+                    continue
+                start_time = self._format_srt_time(chunk[0]["start"])
+                end_time = self._format_srt_time(chunk[-1]["end"])
+                chunk_text = " ".join([w["word"] for w in chunk])
+                entries.append(f"{counter}\n{start_time} --> {end_time}\n{spk_prefix}{chunk_text}\n")
+                counter += 1
+
+        with open(output_srt_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(entries))
+        return output_srt_path
+
+    @staticmethod
+    def _format_srt_time(seconds: float) -> str:
+        h = int(seconds // 3600)
+        m = int((seconds % 3600) // 60)
+        s = int(seconds % 60)
+        ms = int(round((seconds - int(seconds)) * 1000))
+        return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"

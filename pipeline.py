@@ -133,6 +133,15 @@ class VideoPipeline:
             size_key=size_key
         )
 
+        # Alohida SRT subtitr fayli eksporti
+        srt_path = str(OUTPUT_DIR / f"{task_id}_subtitles.srt")
+        await asyncio.to_thread(self.subtitle_eng.generate_srt, processed_scenes, srt_path)
+
+        # Video uchun maxsus muqova (thumbnail) kartochkasi
+        thumb_path = str(TEMP_DIR / f"{task_id}_thumb.jpg")
+        if processed_scenes:
+            await asyncio.to_thread(visual_eng.generate_thumbnail_card, processed_scenes[0]["image_path"], topic, thumb_path)
+
         # 5-Bosqich: Kinematografik LUT render va Final montaj
         await notify(5, "🎬 5/5: Kinematografik rang grading va montaj yakunlanmoqda...")
         scene_clips = []
@@ -168,6 +177,8 @@ class VideoPipeline:
             "status": "success",
             "video_path": output_final,
             "mp3_path": output_mp3,
+            "srt_path": srt_path,
+            "thumb_path": thumb_path if os.path.exists(thumb_path) else None,
             "script_text": full_script_text,
             "seo_package": seo_data,
             "duration": total_duration,

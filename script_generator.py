@@ -1,6 +1,6 @@
 """
-MuzaffarZed AI Video Bot - Ssenariy Generatori (Version 8.0 Singularity AI Engine)
-Mavzu bo'yicha 3 bosqichli AI (Gemini 2.0 -> Pollinations AI Text -> Procedural) va SEO to'plami.
+MuzaffarZed AI Video Bot - Ssenariy Generatori (Version 9.0 Quantum AI & Podcast Dialogue)
+Mavzu bo'yicha 3 bosqichli AI (Gemini 2.0 -> Pollinations AI Text -> Procedural), Podkast-Dialog va SEO.
 Muallif: MuzaffarZed
 """
 import os
@@ -11,6 +11,24 @@ import urllib.request
 import urllib.parse
 from typing import List, Dict
 from config import GEMINI_API_KEY, VIDEO_STYLES, DEFAULT_VIDEO_STYLE, DURATIONS, DEFAULT_DURATION
+
+def transliterate_uzbek(text: str) -> str:
+    """O'zbekcha kirill yozuvini fonetik jihatdan benuqson lotin yozuviga o'girish."""
+    mapping = {
+        'Ў': "O'", 'ў': "o'", 'Ғ': "G'", 'ғ': "g'", 'Ш': "Sh", 'ш': "sh",
+        'Ч': "Ch", 'ч': "ch", 'Ё': "Yo", 'ё': "yo", 'Ю': "Yu", 'ю': "yu",
+        'Я': "Ya", 'я': "ya", 'Қ': "Q",  'қ': "q",  'Ҳ': "H",  'ҳ': "h",
+        'А': "A",  'а': "a",  'Б': "B",  'б': "b",  'В': "V",  'в': "v",
+        'Г': "G",  'г': "g",  'Д': "D",  'д': "d",  'Е': "E",  'е': "e",
+        'Ж': "J",  'ж': "j",  'З': "Z",  'з': "z",  'И': "I",  'и': "i",
+        'Й': "Y",  'й': "y",  'К': "K",  'к': "k",  'Л': "L",  'л': "l",
+        'М': "M",  'м': "m",  'Н': "N",  'н': "n",  'О': "O",  'о': "o",
+        'П': "P",  'п': "p",  'Р': "R",  'р': "r",  'С': "S",  'с': "s",
+        'Т': "T",  'т': "t",  'У': "U",  'у': "u",  'Ф': "F",  'ф': "f",
+        'Х': "X",  'х': "x",  'Ц': "Ts", 'ц': "ts", 'Щ': "Sh", 'щ': "sh",
+        'Ъ': "'",  'ъ': "'",  'Ь': "",   'ь': "",   'Э': "E",  'э': "e"
+    }
+    return "".join(mapping.get(ch, ch) for ch in text)
 
 class ScriptGenerator:
     def __init__(self):
@@ -152,10 +170,29 @@ Javobni FAQAT quyidagi JSON massivida qaytaring, ortiqcha hech qanday matn qo'sh
         return json.loads(text.strip())
 
     def _generate_procedural(self, topic: str, lang: str, style: str, scene_count: int) -> List[Dict]:
-        clean_topic = topic.strip()
+        clean_topic = transliterate_uzbek(topic.strip()) if lang == "uz" else topic.strip()
 
         if lang == "uz":
-            if style == "top_facts":
+            if style == "podcast_dialogue":
+                dialogues = [
+                    (1, f"Bilasanmi, {clean_topic} haqidagi eng hayratlanarli sir nima? 99% insonlar buni bilishmaydi!"),
+                    (2, f"Rostdanmi? Qiziq, aynan qanday sir haqida gapiryapsan?"),
+                    (1, f"Tadqiqotlar shuni ko'rsatadiki, {clean_topic} kuchi insoniyat tasavvuridan 10 barobar ortiq!"),
+                    (2, f"Ajoyib! Demak buni tushunish har birimiz uchun katta natijalar kaliti ekanda!"),
+                    (1, f"Aynan shunday! Do'stlaringizga ham ulashing va har kuni yangi bilimlarga ega bo'lish uchun bizga obuna bo'ling!")
+                ]
+                chosen_pairs = [dialogues[0], dialogues[1], dialogues[-1]] if scene_count <= 3 else dialogues[:scene_count]
+                scenes = []
+                for idx, (spk, text_block) in enumerate(chosen_pairs):
+                    scenes.append({
+                        "scene_num": idx + 1,
+                        "speaker": spk,
+                        "text": text_block,
+                        "visual_prompt": f"cinematic podcast dialogue vertical 8k concept representing {clean_topic}, speaker {spk}, frame {idx+1}"
+                    })
+                return scenes
+
+            elif style == "top_facts":
                 templates = [
                     f"99% insonlar {clean_topic} haqidagi bu sirni bilishmaydi! Birinchisi: uning kuchi tasavvur qilinganidan 10 barobar ortiq!",
                     f"Ikkinchi sir: tadqiqotlarga ko'ra, {clean_topic} zamonaviy dunyoda eng buyuk o'zgarishlar kalitiga aylanmoqda.",
@@ -212,41 +249,85 @@ Javobni FAQAT quyidagi JSON massivida qaytaring, ortiqcha hech qanday matn qo'sh
                     "visual_prompt": f"cinematic dramatic vertical 8k visual concept representing {clean_topic}, frame {idx+1}, epic lighting"
                 })
         elif lang == "ru":
-            scenes = [
-                {
-                    "scene_num": 1,
-                    "text": f"99% людей даже не догадываются о скрытой тайне {clean_topic}! Досмотрите это видео до конца!",
-                    "visual_prompt": f"cinematic dramatic vertical shot representing {clean_topic}, 8k photorealistic"
-                },
-                {
-                    "scene_num": 2,
-                    "text": f"Учёные доказали, что {clean_topic} меняет законы привычного мира и открывает невероятные возможности.",
-                    "visual_prompt": f"epic visual concept of {clean_topic}, futuristic energy glow, 8k vertical"
-                },
-                {
-                    "scene_num": 3,
-                    "text": f"Сохраняйте это видео и делитесь с друзьями, чтобы не потерять ценные знания!",
-                    "visual_prompt": f"inspiring majestic vertical visual about {clean_topic}, golden rays, 8k"
-                }
-            ]
+            if style == "podcast_dialogue":
+                scenes = [
+                    {
+                        "scene_num": 1,
+                        "speaker": 1,
+                        "text": f"Ты знаешь самый удивительный факт про {clean_topic}? 99% людей даже не догадываются!",
+                        "visual_prompt": f"cinematic podcast vertical 8k {clean_topic}"
+                    },
+                    {
+                        "scene_num": 2,
+                        "speaker": 2,
+                        "text": f"Серьёзно? И в чём же заключается главный секрет?",
+                        "visual_prompt": f"cinematic discussion vertical 8k {clean_topic}"
+                    },
+                    {
+                        "scene_num": 3,
+                        "speaker": 1,
+                        "text": f"Учёные доказали, что это меняет привычный мир! Подписывайтесь, чтобы знать больше!",
+                        "visual_prompt": f"inspiring vertical 8k {clean_topic}"
+                    }
+                ]
+            else:
+                scenes = [
+                    {
+                        "scene_num": 1,
+                        "text": f"99% людей даже не догадываются о скрытой тайне {clean_topic}! Досмотрите это видео до конца!",
+                        "visual_prompt": f"cinematic dramatic vertical shot representing {clean_topic}, 8k photorealistic"
+                    },
+                    {
+                        "scene_num": 2,
+                        "text": f"Учёные доказали, что {clean_topic} меняет законы привычного мира и открывает невероятные возможности.",
+                        "visual_prompt": f"epic visual concept of {clean_topic}, futuristic energy glow, 8k vertical"
+                    },
+                    {
+                        "scene_num": 3,
+                        "text": f"Сохраняйте это видео и делитесь с друзьями, чтобы не потерять ценные знания!",
+                        "visual_prompt": f"inspiring majestic vertical visual about {clean_topic}, golden rays, 8k"
+                    }
+                ]
         else: # en
-            scenes = [
-                {
-                    "scene_num": 1,
-                    "text": f"99% of people have no idea about the hidden truth behind {clean_topic}! Listen closely right now:",
-                    "visual_prompt": f"cinematic mysterious vertical shot representing {clean_topic}, dramatic lighting, 8k"
-                },
-                {
-                    "scene_num": 2,
-                    "text": f"Groundbreaking discoveries prove that {clean_topic} is ten times more powerful than anyone ever imagined.",
-                    "visual_prompt": f"epic visual concept of {clean_topic}, cosmic futuristic energy, vibrant colors, vertical"
-                },
-                {
-                    "scene_num": 3,
-                    "text": f"Save this video right now and follow for more mind-blowing daily insights!",
-                    "visual_prompt": f"inspiring majestic vertical scene about {clean_topic}, golden sunlight, hyper-detailed, 8k"
-                }
-            ]
+            if style == "podcast_dialogue":
+                scenes = [
+                    {
+                        "scene_num": 1,
+                        "speaker": 1,
+                        "text": f"Did you know the shocking truth about {clean_topic}? 99% of people have no clue!",
+                        "visual_prompt": f"cinematic podcast vertical 8k {clean_topic}"
+                    },
+                    {
+                        "scene_num": 2,
+                        "speaker": 2,
+                        "text": f"Really? Tell me, what makes it so fascinating?",
+                        "visual_prompt": f"cinematic discussion vertical 8k {clean_topic}"
+                    },
+                    {
+                        "scene_num": 3,
+                        "speaker": 1,
+                        "text": f"Studies prove it completely transforms our future! Share this video and follow for more insights!",
+                        "visual_prompt": f"inspiring vertical 8k {clean_topic}"
+                    }
+                ]
+            else:
+                scenes = [
+                    {
+                        "scene_num": 1,
+                        "text": f"99% of people have no idea about the hidden truth behind {clean_topic}! Listen closely right now:",
+                        "visual_prompt": f"cinematic mysterious vertical shot representing {clean_topic}, dramatic lighting, 8k"
+                    },
+                    {
+                        "scene_num": 2,
+                        "text": f"Groundbreaking discoveries prove that {clean_topic} is ten times more powerful than anyone ever imagined.",
+                        "visual_prompt": f"epic visual concept of {clean_topic}, cosmic futuristic energy, vibrant colors, vertical"
+                    },
+                    {
+                        "scene_num": 3,
+                        "text": f"Save this video right now and follow for more mind-blowing daily insights!",
+                        "visual_prompt": f"inspiring majestic vertical scene about {clean_topic}, golden sunlight, hyper-detailed, 8k"
+                    }
+                ]
 
         return scenes
 

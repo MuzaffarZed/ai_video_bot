@@ -248,7 +248,10 @@ def get_topics_keyboard() -> InlineKeyboardMarkup:
 def get_post_video_keyboard(task_id: str, current_fmt: str = "9:16", cur_voice: str = "uz_sardor") -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="🎙 Audio MP3 yuklab olish", callback_data=f"dl_mp3:{task_id}"),
+        InlineKeyboardButton(text="🎙 Audio MP3 olish", callback_data=f"dl_mp3:{task_id}"),
+        InlineKeyboardButton(text="📄 Subtitr (.SRT) olish", callback_data=f"dl_srt:{task_id}")
+    )
+    builder.row(
         InlineKeyboardButton(text="📝 Ssenariy & SEO matni", callback_data=f"view_script:{task_id}")
     )
     if current_fmt == "9:16":
@@ -292,15 +295,15 @@ async def cmd_start(message: types.Message):
 
     welcome_text = (
         f"👋 Assalomu alaykum, <b>{html.escape(message.from_user.full_name)}</b>!\n\n"
-        f"🎬 <b>{BRAND_NAME} (Singularity 8.0 Infinity Grandmaster)</b>ga xush kelibsiz!\n\n"
+        f"🎬 <b>{BRAND_NAME} (Quantum 9.0 Apex Supreme)</b>ga xush kelibsiz!\n\n"
         f"Men to'liq avtonom va jahon darajasidagi video kontent yarataman:\n"
-        f"• 🎙 <b>Ovoz:</b> {v_name}\n"
+        f"• 🎙 <b>Ovoz:</b> {v_name} <i>(+ Ikki kishilik Podkast)</i>\n"
         f"• 🎛 <b>Uslub:</b> {s_name}\n"
         f"• 📱 <b>Format:</b> {f_name}\n"
         f"• 🎬 <b>Rang (LUT):</b> {lut_name}\n"
         f"• 🎨 <b>AI Vizual:</b> <i>Real-Time Pollinations Flux 8K + 4K Unsplash</i>\n"
         f"• 🎚 <b>Studio DSP:</b> <i>EBU R128 + Sidechain Audio Ducking</i>\n"
-        f"• 🏷 <b>SMM:</b> <i>Tayyor Instagram/TikTok tavsif va hashtaglar</i>\n\n"
+        f"• 📄 <b>Eksport:</b> <i>Full HD Video, MP3 Podkast va .SRT Subtitr</i>\n\n"
         f"🚀 <b>Qanday ishlatiladi:</b>\n"
         f"1. ✍️ <b>Matn yozing:</b> Mavzuni yozing va video oling;\n"
         f"2. 💡 <b>/ideas:</b> Trenddagi viral g'oyalardan video yasang;\n"
@@ -666,6 +669,22 @@ async def cb_dl_mp3(callback: types.CallbackQuery):
     else:
         await callback.answer("⚠️ Audio fayl topilmadi.", show_alert=True)
 
+# --- SRT subtitr yuklab olish ---
+@dp.callback_query(F.data.startswith("dl_srt:"))
+async def cb_dl_srt(callback: types.CallbackQuery):
+    task_id = callback.data.split(":")[1]
+    job_info = job_cache.get(task_id)
+    if job_info and job_info.get("srt_path") and os.path.exists(job_info["srt_path"]):
+        await callback.answer("Subtitr yuklanmoqda...")
+        srt_file = FSInputFile(job_info["srt_path"], filename=f"subtitles_{task_id}.srt")
+        await callback.message.answer_document(
+            document=srt_file,
+            caption=f"📄 <b>Standart SRT Subtitr Fayli</b>\nCapCut, Premiere Pro va YouTube uchun tayyor.\n\n<i>{WATERMARK_TEXT}</i>",
+            parse_mode="HTML"
+        )
+    else:
+        await callback.answer("⚠️ Subtitr fayli topilmadi.", show_alert=True)
+
 # --- Ssenariy va SEO matnini ko'rish ---
 @dp.callback_query(F.data.startswith("view_script:"))
 async def cb_view_script(callback: types.CallbackQuery):
@@ -987,6 +1006,7 @@ async def handle_video_creation(
             job_cache[task_id] = {
                 "topic": topic,
                 "mp3_path": mp3_path,
+                "srt_path": result.get("srt_path"),
                 "script_text": script_text,
                 "seo_package": seo_data,
                 "format_key": cur_format,
@@ -1002,6 +1022,9 @@ async def handle_video_creation(
             pass
 
         video_file = FSInputFile(video_path)
+        thumb_path = result.get("thumb_path")
+        thumb_file = FSInputFile(thumb_path) if thumb_path and os.path.exists(thumb_path) else None
+
         caption_text = (
             f"🎬 <b>{html.escape(topic)}</b>\n\n"
             f"🎙 <b>Ovoz:</b> {VOICES[cur_voice]['name']} | {VOICE_MODES[cur_mode]['name']}\n"
@@ -1009,7 +1032,7 @@ async def handle_video_creation(
             f"🎨 <b>Art:</b> {ART_STYLES[cur_art_style]['name']}\n"
             f"🎵 <b>Musiqa:</b> {genre_name} (Sidechain Ducking)\n"
             f"⏱ <b>Davomiyligi:</b> {dur:.1f}s | 📱 <b>Format:</b> {fmt_info['name']}\n"
-            f"💎 <b>Sifat:</b> Studio DSP + Alex Hormozi Karaoke 8.0\n\n"
+            f"💎 <b>Sifat:</b> Studio DSP + Alex Hormozi Karaoke 9.0\n\n"
             f"<i>{WATERMARK_TEXT}</i>"
         )
 
@@ -1018,6 +1041,7 @@ async def handle_video_creation(
             try:
                 await message.answer_video(
                     video=video_file,
+                    thumbnail=thumb_file,
                     caption=caption_text,
                     width=fmt_info["width"],
                     height=fmt_info["height"],
@@ -1064,8 +1088,8 @@ async def main():
 
     bot = Bot(token=token)
     print("=" * 65)
-    print("🤖 MUZAFFARZED AI VIDEO BOT (SINGULARITY 8.0 INFINITY GRANDMASTER) ISHGA TUSHDI!")
-    print("3-Tier AI Script, Flux AI 8K Art, /ideas, /script, Inline Query, SMM SEO faol...")
+    print("🤖 MUZAFFARZED AI VIDEO BOT (QUANTUM 9.0 APEX SUPREME) ISHGA TUSHDI!")
+    print("Podkast-Dialog, SRT Subtitr, Avto-Muqova, Kirill->Lotin, Flux 8K Art faol...")
     print("=" * 65)
     await dp.start_polling(bot)
 

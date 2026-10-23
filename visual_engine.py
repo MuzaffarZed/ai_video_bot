@@ -293,3 +293,16 @@ class VisualEngine:
                 final_img.save(image_path, "JPEG", quality=95)
         except Exception as e:
             print(f"[Cinematic Grade Error] {e}")
+
+    def generate_thumbnail_card(self, image_path: str, title: str, output_thumb_path: str) -> str:
+        """Telegram video kartochkasi uchun ixcham, yuqori sifatli muqova (thumbnail) yaratish."""
+        try:
+            with Image.open(image_path) as im:
+                thumb_w = 320 if self.width < self.height else 640
+                thumb_h = int(thumb_w * (self.height / self.width))
+                resized = im.resize((thumb_w, thumb_h), Image.Resampling.LANCZOS)
+                resized.save(output_thumb_path, "JPEG", quality=90)
+                return output_thumb_path
+        except Exception as e:
+            print(f"[Thumbnail Generate Error] {e}")
+            return image_path

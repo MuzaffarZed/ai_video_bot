@@ -1,6 +1,6 @@
 """
-MuzaffarZed AI Video Bot - Ovozlashtirish va Studiya DSP Dvigateli (Audio 2.5)
-Edge-TTS + Studio Broadcast DSP (Ekvalayzer, Kompressiya, EBU R128 Loudnorm)
+MuzaffarZed AI Video Bot - Ovozlashtirish va Studiya DSP Dvigateli (Audio 9.0 Quantum Multi-Speaker)
+Edge-TTS + Studio Broadcast DSP (Ekvalayzer, Kompressiya, EBU R128) va Ikki kishilik Podkast Ovoz Almashish.
 Muallif: MuzaffarZed
 """
 import os
@@ -10,6 +10,7 @@ import json
 from typing import List, Dict
 import edge_tts
 from config import TEMP_DIR, VOICES, DEFAULT_VOICE, VOICE_MODES, DEFAULT_VOICE_MODE
+from script_generator import transliterate_uzbek
 
 class TTSEngine:
     def __init__(self, voice_key: str = DEFAULT_VOICE, mode_key: str = DEFAULT_VOICE_MODE):
@@ -22,12 +23,27 @@ class TTSEngine:
         self.rate = mode_data.get("rate", "+12%")
         self.pitch = mode_data.get("pitch", "-1Hz")
 
-    async def generate_scene_audio(self, text: str, output_path: str) -> float:
+    async def generate_scene_audio(self, text: str, output_path: str, speaker: int = 1) -> float:
         """
         Bitta kadr matnini ovozlashtiradi, Studiya DSP filtri va EBU R128 bilan boyitadi va saqlaydi.
+        Agar speaker == 2 bo'lsa, avtomatik ravishda qarama-qarshi jinsdagi hamroh ovoziga o'tadi!
         """
+        chosen_voice_id = self.voice_id
+        if speaker == 2:
+            partner_map = {
+                "uz-UZ-SardorNeural": "uz-UZ-MadinaNeural",
+                "uz-UZ-MadinaNeural": "uz-UZ-SardorNeural",
+                "ru-RU-DmitryNeural": "ru-RU-SvetlanaNeural",
+                "ru-RU-SvetlanaNeural": "ru-RU-DmitryNeural",
+                "en-US-ChristopherNeural": "en-US-AriaNeural",
+                "en-US-AriaNeural": "en-US-ChristopherNeural"
+            }
+            chosen_voice_id = partner_map.get(self.voice_id, self.voice_id)
+
+        clean_text = transliterate_uzbek(text) if self.voice_info.get("lang") == "uz" else text
+
         temp_raw = output_path + ".raw.mp3"
-        comm = edge_tts.Communicate(text, self.voice_id, rate=self.rate, pitch=self.pitch)
+        comm = edge_tts.Communicate(clean_text, chosen_voice_id, rate=self.rate, pitch=self.pitch)
         await comm.save(temp_raw)
 
         # Studiya Broadcast DSP zanjiri:
@@ -145,11 +161,13 @@ class TTSEngine:
             scene_idx = i + 1
             audio_path = str(TEMP_DIR / f"{task_id}_audio_{scene_idx}.wav")
 
-            dur = await self.generate_scene_audio(sc["text"], audio_path)
+            speaker_id = sc.get("speaker", 1)
+            dur = await self.generate_scene_audio(sc["text"], audio_path, speaker=speaker_id)
             timed_words = self.build_word_timings(sc["text"], global_timeline_offset, dur)
 
             scene_record = {
                 "scene_num": scene_idx,
+                "speaker": speaker_id,
                 "text": sc["text"],
                 "visual_prompt": sc.get("visual_prompt", ""),
                 "audio_path": audio_path,

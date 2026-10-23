@@ -1,5 +1,5 @@
 """
-MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Singularity 8.0 Infinity Grandmaster)
+MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Quantum 9.0 Apex Supreme)
 Muallif: MuzaffarZed
 """
 import os
@@ -101,6 +101,10 @@ VIDEO_STYLES = {
     "business": {
         "name": "💰 Biznes & Boylik Qoidalari",
         "desc": "Muvaffaqiyat, moliya va sarmoya sirlari"
+    },
+    "podcast_dialogue": {
+        "name": "🎙 Ikki Kishilik Podkast (Sardor & Madina)",
+        "desc": "Savol-javob va qizg'in bahs shaklidagi dinamik suhbat"
     }
 }
 DEFAULT_VIDEO_STYLE = "top_facts"
