@@ -18,65 +18,136 @@ class VisualEngine:
             "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=1080&h=1920&fit=crop&q=80",
             "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=1080&h=1920&fit=crop&q=80",
             "https://images.unsplash.com/photo-1447433819943-74a20887a81e?w=1080&h=1920&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1080&h=1920&fit=crop&q=80"
+            "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1541185933-ef5d8ed016c2?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1502134249126-9f3755a50d78?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1506443432602-ac2fcd6f54e0?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1516339901601-2e1b62dc0c45?w=1080&h=1920&fit=crop&q=80"
         ],
         "ai": [
             "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1080&h=1920&fit=crop&q=80",
             "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=1080&h=1920&fit=crop&q=80",
             "https://images.unsplash.com/photo-1531746790731-6c087fecd65a?w=1080&h=1920&fit=crop&q=80",
             "https://images.unsplash.com/photo-1507146426996-ef05306b995a?w=1080&h=1920&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=1080&h=1920&fit=crop&q=80"
+            "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1677442136019-21780efad99a?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1535378917042-10a22c95931a?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=1080&h=1920&fit=crop&q=80"
         ],
         "business": [
             "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1080&h=1920&fit=crop&q=80",
             "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=1080&h=1920&fit=crop&q=80",
             "https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=1080&h=1920&fit=crop&q=80",
             "https://images.unsplash.com/photo-1450133064473-71024230f91b?w=1080&h=1920&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1579532537598-459ecdaf39cc?w=1080&h=1920&fit=crop&q=80"
+            "https://images.unsplash.com/photo-1579532537598-459ecdaf39cc?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1553729459-efe14ef6055d?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1444723121867-7a241cacace9?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?w=1080&h=1920&fit=crop&q=80"
         ],
         "crypto": [
             "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1080&h=1920&fit=crop&q=80",
             "https://images.unsplash.com/photo-1621416894569-0f39ed31d247?w=1080&h=1920&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1622979135225-d2ba269bc1df?w=1080&h=1920&fit=crop&q=80"
+            "https://images.unsplash.com/photo-1622979135225-d2ba269bc1df?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1642543492481-44e81e3914a7?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1629339942248-45d4b10c8c2f?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1640340434855-6084b1f4901c?w=1080&h=1920&fit=crop&q=80"
         ],
         "motivation": [
             "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=1080&h=1920&fit=crop&q=80",
             "https://images.unsplash.com/photo-1499209974431-9daccece0089?w=1080&h=1920&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=1080&h=1920&fit=crop&q=80"
+            "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1519052537078-e6302a4968d4?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1470246973918-29a93221c455?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?w=1080&h=1920&fit=crop&q=80"
         ],
         "history": [
             "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=1080&h=1920&fit=crop&q=80",
             "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=1080&h=1920&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?w=1080&h=1920&fit=crop&q=80"
+            "https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1539650116574-8efeb43e2750?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1461360370896-922624d12aa1?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1533158307587-828f0a76ef46?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=1080&h=1920&fit=crop&q=80"
         ],
         "nature": [
             "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1080&h=1920&fit=crop&q=80",
             "https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=1080&h=1920&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1426604966848-d7adac402bff?w=1080&h=1920&fit=crop&q=80"
+            "https://images.unsplash.com/photo-1426604966848-d7adac402bff?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1505765050516-f72dcac9c60e?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1518791841217-8f162f1e1131?w=1080&h=1920&fit=crop&q=80"
         ],
         "mind": [
             "https://images.unsplash.com/photo-1507413245164-6160d8298b31?w=1080&h=1920&fit=crop&q=80",
             "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1080&h=1920&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=1080&h=1920&fit=crop&q=80"
+            "https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1529699211952-734e80c4d42b?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1509062522246-3755977927d7?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1517842645767-c639042777db?w=1080&h=1920&fit=crop&q=80"
         ],
         "tech": [
             "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=1080&h=1920&fit=crop&q=80",
             "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=1080&h=1920&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=1080&h=1920&fit=crop&q=80"
+            "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=1080&h=1920&fit=crop&q=80"
         ],
         "sport": [
             "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=1080&h=1920&fit=crop&q=80",
             "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1080&h=1920&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=1080&h=1920&fit=crop&q=80"
+            "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1517649763962-0c623266ddc0?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1517963879433-6fa2b0fc862b?w=1080&h=1920&fit=crop&q=80"
         ],
         "cars": [
             "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=1080&h=1920&fit=crop&q=80",
             "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=1080&h=1920&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=1080&h=1920&fit=crop&q=80"
+            "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1511919884226-fd3cad34687c?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1544829099-b9a0c07fad1a?w=1080&h=1920&fit=crop&q=80"
         ],
         "future": [
             "https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=1080&h=1920&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1080&h=1920&fit=crop&q=80"
+            "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1516116211227-bbc66542d991?w=1080&h=1920&fit=crop&q=80"
+        ],
+        "ocean": [
+            "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1498855926480-d98e83099315?w=1080&h=1920&fit=crop&q=80"
+        ],
+        "urban": [
+            "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1477959858617-67f30bc75b82?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=1080&h=1920&fit=crop&q=80"
         ]
     }
 
@@ -109,9 +180,13 @@ class VisualEngine:
             return "history"
         elif any(w in t for w in ["miya", "ong", "psixologiya", "fikr", "xotira", "aqlli", "odam", "inson", "tafakkur"]):
             return "mind"
-        elif any(w in t for w in ["dengiz", "okean", "tog'", "tabiat", "suv", "o'rmon", "hayot", "jonivor"]):
+        elif any(w in t for w in ["okean", "dengiz", "akula", "baliq", "suvosti", "coral", "reef", "jellyfish"]):
+            return "ocean"
+        elif any(w in t for w in ["shahar", "megapolis", "ko'cha", "tokyo", "new york", "london", "metropol", "bino"]):
+            return "urban"
+        elif any(w in t for w in ["tog'", "tabiat", "o'rmon", "daryo", "hayot", "jonivor", "manzara"]):
             return "nature"
-        elif any(w in t for w in ["kelajak", "kiberpank", "shahar", "sivilizatsiya"]):
+        elif any(w in t for w in ["kelajak", "kiberpank", "sivilizatsiya", "uçuvchi"]):
             return "future"
         return "space"
 
@@ -199,31 +274,40 @@ class VisualEngine:
         cat = self.detect_category(prompt)
         style_info = ART_STYLES.get(art_style, ART_STYLES[DEFAULT_ART_STYLE])
         prompt_suffix = style_info.get("prompt_suffix", ", 8k resolution, cinematic lighting, photorealistic, dramatic vertical shot")
-        model = style_info.get("model", "flux-realism")
+        model = style_info.get("model", "")
+        model_param = f"&model={model}" if model else ""
 
-        # 1-Urinish: Real-Time Pollinations AI Generator
+        # 1-Urinish: Real-Time Pollinations AI Generator (Birlamchi va Zaxira Mirror)
         ai_success = False
-        try:
-            full_prompt = f"{prompt}{prompt_suffix}"
-            encoded_prompt = urllib.parse.quote(full_prompt)
-            pollinations_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={self.width}&height={self.height}&nologo=true&seed={seed}&model={model}"
-            ai_success = self._download_image(pollinations_url, output_path, timeout=9)
-        except Exception as e:
-            ai_success = False
+        full_prompt = f"{prompt}{prompt_suffix}"
+        encoded_prompt = urllib.parse.quote(full_prompt)
 
-        # 2-Urinish: Curated 4K fotolar bazasi
+        for p_url in [
+            f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={self.width}&height={self.height}&nologo=true&seed={seed}{model_param}",
+            f"https://pollinations.ai/p/{encoded_prompt}?width={self.width}&height={self.height}&seed={seed}"
+        ]:
+            try:
+                ai_success = self._download_image(p_url, output_path, timeout=9)
+                if ai_success and os.path.exists(output_path) and os.path.getsize(output_path) >= 3000:
+                    break
+            except Exception:
+                ai_success = False
+
+        # 2-Urinish: Kengaytirilgan 130+ Kinematik Fotolar Jamg'armasi (Shablon takrorlanishidan 100% holi)
         if not ai_success or not os.path.exists(output_path) or os.path.getsize(output_path) < 3000:
             curated_urls = self.CURATED_THEMES.get(cat, self.CURATED_THEMES["space"])
-            target_url = curated_urls[(scene_num - 1 + seed) % len(curated_urls)]
-            ai_success = self._download_image(target_url, output_path, timeout=10)
+            import hashlib
+            hash_val = int(hashlib.md5(f"{prompt}_{seed}_{scene_num}_{time.time():.0f}".encode("utf-8")).hexdigest(), 16)
+            target_url = curated_urls[hash_val % len(curated_urls)]
+            ai_success = self._download_image(target_url, output_path, timeout=8)
 
-        # 3-Urinish: Picsum Seed
+        # 3-Urinish: Picsum Dynamic High-Res Seed
         if not ai_success or not os.path.exists(output_path) or os.path.getsize(output_path) < 3000:
-            clean_seed = f"v_{cat}_{seed}_{scene_num}"
+            clean_seed = f"cinema_{cat}_{seed}_{scene_num}"
             picsum_url = f"https://picsum.photos/seed/{clean_seed}/{self.width}/{self.height}"
-            ai_success = self._download_image(picsum_url, output_path, timeout=10)
+            ai_success = self._download_image(picsum_url, output_path, timeout=8)
 
-        # 4-Urinish: 100% Oflayn badiiy grafika
+        # 4-Urinish: 100% Oflayn badiiy kinoviy grafika
         if not ai_success or not os.path.exists(output_path) or os.path.getsize(output_path) < 3000:
             self._generate_fallback_graphic(cat, output_path)
 
@@ -255,10 +339,17 @@ class VisualEngine:
             "space": ("#040714", "#120926", (0, 190, 255), (255, 0, 140)),
             "ai": ("#020B14", "#091D33", (0, 240, 255), (80, 0, 255)),
             "business": ("#0A0F0D", "#1C2417", (255, 215, 0), (0, 200, 120)),
+            "crypto": ("#0B0D17", "#1E1A0A", (255, 180, 0), (0, 230, 255)),
             "motivation": ("#120505", "#2B0B0B", (255, 60, 0), (255, 200, 0)),
+            "history": ("#140D07", "#2E1C0F", (230, 160, 80), (180, 120, 50)),
             "sport": ("#120505", "#2B0B0B", (255, 60, 0), (255, 200, 0)),
             "tech": ("#030914", "#08182B", (0, 150, 255), (0, 255, 180)),
-            "nature": ("#03120A", "#0C2E1A", (0, 230, 110), (0, 180, 220))
+            "cars": ("#110508", "#240915", (255, 40, 80), (200, 200, 255)),
+            "mind": ("#090717", "#181136", (180, 100, 255), (0, 200, 255)),
+            "nature": ("#03120A", "#0C2E1A", (0, 230, 110), (0, 180, 220)),
+            "ocean": ("#010C17", "#032038", (0, 160, 255), (0, 255, 220)),
+            "urban": ("#0B0714", "#19112B", (255, 0, 120), (255, 220, 0)),
+            "future": ("#020E1A", "#08243D", (0, 255, 230), (255, 0, 180))
         }
         bg1, bg2, glow1, glow2 = palette_map.get(category, palette_map["space"])
 

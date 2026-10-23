@@ -316,22 +316,22 @@ ART_STYLES = {
     "photoreal": {
         "name": "📸 Fotorealistik 8K (Haqiqiy kamera)",
         "prompt_suffix": ", 8k resolution, cinematic lighting, photorealistic, dramatic vertical shot, 35mm lens, award-winning cinematography",
-        "model": "flux-realism"
+        "model": ""
     },
     "cinematic_3d": {
         "name": "🎬 3D Kinematik (Unreal Engine 5)",
         "prompt_suffix": ", 3d digital render, octane render, unreal engine 5, volumetric lighting, raytracing, highly detailed, vertical shot",
-        "model": "flux"
+        "model": ""
     },
     "cyberpunk": {
         "name": "🌆 Kiberpank Neon (Futuristik)",
         "prompt_suffix": ", cyberpunk neon aesthetic, futuristic, glowing reflections, synthwave colors, 8k vertical shot",
-        "model": "flux"
+        "model": ""
     },
     "anime": {
         "name": "✨ Anime / Makoto Shinkai Uslubi",
         "prompt_suffix": ", anime art style, makoto shinkai aesthetic, vibrant colors, detailed scenery, vertical shot",
-        "model": "flux-anime"
+        "model": ""
     }
 }
 DEFAULT_ART_STYLE = "photoreal"

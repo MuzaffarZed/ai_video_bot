@@ -115,8 +115,9 @@ class VideoPipeline:
             if custom_image_path and os.path.exists(custom_image_path) and sc["scene_num"] == 1:
                 await asyncio.to_thread(visual_eng.process_custom_user_image, custom_image_path, img_path)
             else:
-                prompt = sc.get("visual_prompt") or topic
-                await asyncio.to_thread(visual_eng.get_scene_visual, prompt, img_path, None, sc["scene_num"], art_style)
+                prompt = sc.get("visual_prompt") or sc.get("text") or topic
+                scene_seed = random.randint(10000, 999999) + sc["scene_num"] * 1013
+                await asyncio.to_thread(visual_eng.get_scene_visual, prompt, img_path, scene_seed, sc["scene_num"], art_style)
             sc["image_path"] = img_path
 
         await asyncio.gather(*[fetch_scene_visual(sc) for sc in processed_scenes])
