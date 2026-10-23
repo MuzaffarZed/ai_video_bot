@@ -433,14 +433,45 @@ Javobni FAQAT quyidagi JSON massivida qaytaring, ortiqcha hech qanday matn qo'sh
         tiktok_caption = f"{clean_t} 🤯 {tiktok_tags}"
         instagram_caption = f"{caption}\n\n.\n{tags}"
 
+        if lang == "ru":
+            engagement_q = f"💬 Вопрос для обсуждения: А что вы думаете про {clean_t}? Напишите ваше мнение в комментариях!"
+        elif lang == "en":
+            engagement_q = f"💬 Discussion Question: What are your thoughts on {clean_t}? Share your perspective in the comments below!"
+        else:
+            engagement_q = f"💬 Muhokama uchun savol: Siz {clean_t} haqida nima deb o'ylaysiz? Fikringizni izohlarda yozib qoldiring!"
+
         return {
             "caption": caption,
             "hashtags": tags,
             "youtube_chapters": youtube_chapters,
             "tiktok_caption": tiktok_caption,
             "instagram_caption": instagram_caption,
+            "engagement_question": engagement_q,
             "best_time": "18:30 - 21:30 (Eng yuqori faollik vaqti)"
         }
+
+    @staticmethod
+    def generate_series_plan(topic: str, lang: str = "uz") -> List[Dict]:
+        """Katta mavzuni 3 qismli ketma-ket viral mini-serialga ajratish."""
+        clean = topic.strip()
+        if lang == "ru":
+            return [
+                {"part": 1, "title": f"Часть 1: Шокирующее начало — {clean}", "hook": f"99% людей не знают, с чего началось {clean}!"},
+                {"part": 2, "title": f"Часть 2: Скрытая правда про {clean}", "hook": f"Секреты {clean}, которые изменили весь мир!"},
+                {"part": 3, "title": f"Часть 3: Неожиданный финал {clean}", "hook": f"Главный вывод о {clean}, который перевернет ваше мышление!"}
+            ]
+        elif lang == "en":
+            return [
+                {"part": 1, "title": f"Part 1: The Shocking Origin of {clean}", "hook": f"99% of people have no idea how {clean} started!"},
+                {"part": 2, "title": f"Part 2: The Hidden Truth of {clean}", "hook": f"The hidden secrets of {clean} that change everything!"},
+                {"part": 3, "title": f"Part 3: The Ultimate Revelation of {clean}", "hook": f"The final mind-blowing realization about {clean}!"}
+            ]
+        else:
+            return [
+                {"part": 1, "title": f"1-Qism: {clean} — Shok Boshlanish", "hook": f"99% insonlar {clean} qanday boshlanganini bilishmaydi!"},
+                {"part": 2, "title": f"2-Qism: {clean} — Yashirin Haqiqat", "hook": f"{clean} ning butun dunyodan yashirilgan eng katta siri!"},
+                {"part": 3, "title": f"3-Qism: {clean} — Kutilmagan Xulosa", "hook": f"{clean} bo'yicha hayotingizni o'zgartiruvchi yakuniy haqiqat!"}
+            ]
 
     def parse_custom_user_script(self, custom_text: str, topic: str = "Shaxsiy Mavzu") -> List[Dict]:
         """

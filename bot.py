@@ -312,19 +312,28 @@ def get_topics_keyboard() -> InlineKeyboardMarkup:
     builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
     return builder.as_markup()
 
-def get_post_video_keyboard(task_id: str, current_fmt: str = "9:16", cur_voice: str = "uz_sardor") -> InlineKeyboardMarkup:
+def get_post_video_keyboard(task_id: str, current_fmt: str = "9:16", cur_voice: str = "uz_sardor", cur_speed: float = 1.0) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text="🎙 Audio MP3 olish", callback_data=f"dl_mp3:{task_id}"),
-        InlineKeyboardButton(text="📄 Subtitr (.SRT) olish", callback_data=f"dl_srt:{task_id}")
+        InlineKeyboardButton(text="🗣 Toza Nutq (Vocals)", callback_data=f"dl_vocals:{task_id}"),
+        InlineKeyboardButton(text="📄 Subtitr (.SRT)", callback_data=f"dl_srt:{task_id}")
     )
     builder.row(
         InlineKeyboardButton(text="📸 HD Muqova (Poster)", callback_data=f"dl_poster:{task_id}"),
         InlineKeyboardButton(text="📱 15s Story Snippet", callback_data=f"dl_story:{task_id}")
     )
+    spd_btn = (
+        InlineKeyboardButton(text="⚡️ 1.25x Turbo Tezlik", callback_data=f"set_speed:{task_id}:1.25")
+        if cur_speed <= 1.05 else
+        InlineKeyboardButton(text="⚡️ 1.0x Normal Tezlik", callback_data=f"set_speed:{task_id}:1.0")
+    )
     builder.row(
-        InlineKeyboardButton(text="📝 Ssenariy & SEO matni", callback_data=f"view_script:{task_id}"),
+        spd_btn,
         InlineKeyboardButton(text="🎨 Yangi AI Kadrlar (Re-Roll)", callback_data=f"reroll_vis:{task_id}")
+    )
+    builder.row(
+        InlineKeyboardButton(text="📝 Ssenariy & SMM matni", callback_data=f"view_script:{task_id}")
     )
     if current_fmt == "9:16":
         builder.row(InlineKeyboardButton(text="🖥 YouTube (16:9) ga o'girish", callback_data=f"re_render:{task_id}:16:9"))
@@ -519,6 +528,35 @@ async def cmd_remix(message: types.Message):
         reply_markup=builder.as_markup(),
         parse_mode="HTML"
     )
+
+@dp.message(Command("series"))
+async def cmd_series(message: types.Message):
+    args = message.text[len("/series"):].strip()
+    if not args:
+        await message.answer(
+            "🎬 <b>AI Serial Generator:</b>\n\n"
+            "Mavzuni yozing, masalan:\n"
+            "<code>/series Koinotning eng sirli hodisalari</code>\n\n"
+            "Bot avtomatik ravishda 3 qismli ketma-ket serial rejasini tuzib beradi!\n\n"
+            f"<i>{WATERMARK_TEXT}</i>",
+            parse_mode="HTML"
+        )
+        return
+
+    series_plan = pipeline.script_gen.generate_series_plan(args, lang="uz")
+    builder = InlineKeyboardBuilder()
+    for item in series_plan:
+        builder.row(InlineKeyboardButton(text=item["title"], callback_data=f"quick_gen:{item['title']}"))
+    builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
+
+    resp = (
+        f"🎬 <b>«{html.escape(args)}» — 3 Qismli Serial Rejasi:</b>\n\n"
+    )
+    for item in series_plan:
+        resp += f"📌 <b>{item['title']}</b>\n<i>Hook: {item['hook']}</i>\n\n"
+    resp += f"<i>Har bir qismni yaratish uchun quyidagi tugmani bosing:</i>\n\n<i>{WATERMARK_TEXT}</i>"
+
+    await message.answer(resp, reply_markup=builder.as_markup(), parse_mode="HTML")
 
 @dp.message(Command("health", "ping"))
 async def cmd_health(message: types.Message):
@@ -898,6 +936,25 @@ async def cb_dl_mp3(callback: types.CallbackQuery):
     else:
         await callback.answer("⚠️ Audio fayl topilmadi.", show_alert=True)
 
+# --- Toza nutq (Vocals MP3) yuklab olish ---
+@dp.callback_query(F.data.startswith("dl_vocals:"))
+async def cb_dl_vocals(callback: types.CallbackQuery):
+    task_id = callback.data.split(":")[1]
+    job_info = job_cache.get(task_id)
+    vocals_p = job_info.get("vocals_path") if job_info else None
+    if vocals_p and os.path.exists(vocals_p):
+        await callback.answer("Toza nutq yuklanmoqda...")
+        audio_file = FSInputFile(vocals_p)
+        await callback.message.answer_audio(
+            audio=audio_file,
+            title=f"{job_info.get('topic', 'Nutq')} (Vocals)",
+            performer="MuzaffarZed AI Studios",
+            caption=f"🗣 <b>Toza Nutq (Vocals Only - Studio Speech)</b>\nCapCut va montaj uchun fonsiz toza audio.\n\n<i>{WATERMARK_TEXT}</i>",
+            parse_mode="HTML"
+        )
+    else:
+        await callback.answer("⚠️ Toza nutq fayli topilmadi.", show_alert=True)
+
 # --- SRT subtitr yuklab olish ---
 @dp.callback_query(F.data.startswith("dl_srt:"))
 async def cb_dl_srt(callback: types.CallbackQuery):
@@ -967,6 +1024,49 @@ async def cb_dl_story(callback: types.CallbackQuery):
         logger.error(f"Story snippet error: {e}")
         await callback.message.answer(f"⚠️ Snippet tayyorlashda xatolik: {e}")
 
+# --- 1-Click Video Tezligini O'zgartirish (Pacing Multiplier) ---
+@dp.callback_query(F.data.startswith("set_speed:"))
+async def cb_set_speed(callback: types.CallbackQuery):
+    parts = callback.data.split(":")
+    task_id = parts[1]
+    speed = float(parts[2])
+    job_info = job_cache.get(task_id)
+    if not job_info or not job_info.get("video_path") or not os.path.exists(job_info["video_path"]):
+        await callback.answer("⚠️ Video fayli topilmadi.", show_alert=True)
+        return
+
+    await callback.answer(f"⚡️ {speed}x tezlikka montaj qilinmoqda...")
+    status_msg = await callback.message.answer(f"⚡️ <b>Video {speed}x tezlikda montaj qilinmoqda...</b>", parse_mode="HTML")
+
+    speed_tag = str(speed).replace(".", "_")
+    output_speed_path = str(TEMP_DIR / f"{task_id}_speed_{speed_tag}.mp4")
+
+    try:
+        await pipeline.change_video_speed(job_info["video_path"], output_speed_path, speed=speed)
+        try: await status_msg.delete()
+        except Exception: pass
+
+        top = job_info.get("topic", "Video")
+        cur_fmt = job_info.get("format_key", DEFAULT_FORMAT)
+        cur_v = job_info.get("voice_key", DEFAULT_VOICE)
+
+        await callback.message.answer_video(
+            video=FSInputFile(output_speed_path),
+            caption=(
+                f"🎬 <b>{html.escape(top)}</b>\n\n"
+                f"⚡️ <b>Tezlik (Pacing):</b> {speed}x Dynamic Tempo\n"
+                f"💎 <b>Sifat:</b> Singularity 18.0 Cosmic Singularity\n\n"
+                f"<i>{WATERMARK_TEXT}</i>"
+            ),
+            reply_markup=get_post_video_keyboard(task_id, cur_fmt, cur_v, cur_speed=speed),
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        logger.error(f"Change speed error: {e}")
+        try: await status_msg.delete()
+        except Exception: pass
+        await callback.message.answer(f"⚠️ Tezlikni o'zgartirishda xatolik: {e}")
+
 # --- Ssenariy va SEO matnini ko'rish ---
 @dp.callback_query(F.data.startswith("view_script:"))
 async def cb_view_script(callback: types.CallbackQuery):
@@ -979,8 +1079,10 @@ async def cb_view_script(callback: types.CallbackQuery):
         tags = seo.get("hashtags", "")
         timing = seo.get("best_time", "")
         chapters = seo.get("youtube_chapters", "")
+        eq = seo.get("engagement_question", "")
 
         chapters_block = f"⏱ <b>YouTube Chapters (Vaqt belgilari):</b>\n<code>{html.escape(chapters)}</code>\n\n" if chapters else ""
+        eq_block = f"💬 <b>Viral Muhokama Savoli:</b>\n<i>{html.escape(eq)}</i>\n\n" if eq else ""
 
         msg_body = (
             f"📝 <b>Video Ssenariysi:</b>\n"
@@ -990,6 +1092,7 @@ async def cb_view_script(callback: types.CallbackQuery):
             f"🎵 <b>TikTok uchun Ixcham Tavsif:</b>\n"
             f"<code>{html.escape(seo.get('tiktok_caption', caption_seo))}</code>\n\n"
             f"{chapters_block}"
+            f"{eq_block}"
             f"⏰ <b>Optimal yuklash vaqti:</b> <i>{timing}</i>\n\n"
             f"<i>{WATERMARK_TEXT}</i>"
         )
@@ -1450,6 +1553,7 @@ async def handle_video_creation(
                 "topic": topic,
                 "video_path": video_path,
                 "mp3_path": mp3_path,
+                "vocals_path": result.get("vocals_path"),
                 "srt_path": result.get("srt_path"),
                 "script_text": script_text,
                 "seo_package": seo_data,

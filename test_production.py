@@ -256,5 +256,27 @@ class TestSingularity10(unittest.TestCase):
         self.assertIn("Biznes va Boylik", seo["tiktok_caption"])
         self.assertIn("#reels", seo["instagram_caption"])
 
+    def test_cinematic_35mm_filter(self):
+        self.assertIn("cinematic_35mm", VISUAL_FILTERS)
+        filt = VISUAL_FILTERS["cinematic_35mm"]["filter"]
+        self.assertIn("vignette", filt)
+        self.assertIn("noise", filt)
+
+    def test_change_video_speed_method(self):
+        self.assertTrue(hasattr(VideoPipeline, "change_video_speed"))
+
+    def test_series_plan_generator(self):
+        plan = ScriptGenerator.generate_series_plan("Qora tuynuklar", lang="uz")
+        self.assertEqual(len(plan), 3)
+        self.assertIn("1-Qism", plan[0]["title"])
+        self.assertIn("2-Qism", plan[1]["title"])
+        self.assertIn("3-Qism", plan[2]["title"])
+
+    def test_engagement_question_in_seo(self):
+        sg = ScriptGenerator()
+        seo = sg.generate_viral_seo_package("Sun'iy intellekt", lang="uz")
+        self.assertIn("engagement_question", seo)
+        self.assertIn("Sun'iy intellekt", seo["engagement_question"])
+
 if __name__ == "__main__":
     unittest.main()

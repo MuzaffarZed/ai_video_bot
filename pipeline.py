@@ -141,6 +141,15 @@ class VideoPipeline:
         output_mp3 = str(OUTPUT_DIR / f"{task_id}_podcast.mp3")
         await asyncio.to_thread(self.audio_mixer.export_mp3_podcast, master_audio, output_mp3)
 
+        # Alohida toza nutq (Vocals only) eksporti
+        clean_voice_mp3 = str(OUTPUT_DIR / f"{task_id}_vocals.mp3")
+        merged_voice_temp = str(TEMP_DIR / "merged_voice.wav")
+        if os.path.exists(merged_voice_temp):
+            try:
+                await asyncio.to_thread(self.audio_mixer.export_mp3_podcast, merged_voice_temp, clean_voice_mp3)
+            except Exception:
+                clean_voice_mp3 = None
+
         ass_path = str(TEMP_DIR / f"{task_id}_subtitles.ass")
         await asyncio.to_thread(
             self.subtitle_eng.generate_ass,
@@ -202,6 +211,7 @@ class VideoPipeline:
             "status": "success",
             "video_path": output_final,
             "mp3_path": output_mp3,
+            "vocals_path": clean_voice_mp3 if clean_voice_mp3 and os.path.exists(clean_voice_mp3) else None,
             "srt_path": srt_path,
             "thumb_path": thumb_path if os.path.exists(thumb_path) else None,
             "poster_path": poster_path if os.path.exists(poster_path) else None,
@@ -430,6 +440,37 @@ class VideoPipeline:
 
         def run_ffmpeg():
             subprocess.run(cmd, capture_output=True, check=True, timeout=45)
+
+        await asyncio.to_thread(run_ffmpeg)
+        return output_path
+
+    @staticmethod
+    async def change_video_speed(video_path: str, output_path: str, speed: float = 1.25) -> str:
+        """
+        Videoni tezlashtirish (masalan 1.25x) yoki sekinlashtirish (0.85x) —
+        ovoz toni buzilmasdan (pitch-preserving atempo) va o'ta tezkor (ultrafast) render.
+        """
+        if not os.path.exists(video_path):
+            raise FileNotFoundError(f"Video fayli topilmadi: {video_path}")
+
+        filter_str = f"[0:v]setpts=PTS/{speed}[v];[0:a]atempo={speed}[a]"
+        cmd = [
+            "ffmpeg", "-nostdin", "-y",
+            "-i", video_path,
+            "-filter_complex", filter_str,
+            "-map", "[v]",
+            "-map", "[a]",
+            "-c:v", "libx264",
+            "-preset", "ultrafast",
+            "-crf", "22",
+            "-c:a", "aac",
+            "-b:a", "192k",
+            "-movflags", "+faststart",
+            output_path
+        ]
+
+        def run_ffmpeg():
+            subprocess.run(cmd, capture_output=True, check=True, timeout=60)
 
         await asyncio.to_thread(run_ffmpeg)
         return output_path

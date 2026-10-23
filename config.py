@@ -1,5 +1,5 @@
 """
-MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Singularity 17.0 Transcendent Omnipotence)
+MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Singularity 18.0 Cosmic Singularity)
 Muallif: MuzaffarZed
 """
 import os
@@ -135,6 +135,10 @@ VISUAL_FILTERS = {
     "teal_orange": {
         "name": "🎬 Kinematik Teal & Orange (Gollivud)",
         "filter": "eq=contrast=1.08:saturation=1.2:gamma_r=0.92:gamma_b=1.12"
+    },
+    "cinematic_35mm": {
+        "name": "🎞 Gollivud 35mm (Film Grain + Vignette)",
+        "filter": "eq=contrast=1.08:saturation=1.12,vignette=PI/4.8,noise=alls=6:allf=t+u"
     },
     "cyberpunk": {
         "name": "🌆 Kiberpank Neon (To'yingan yorug'lik)",
