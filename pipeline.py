@@ -148,7 +148,8 @@ class VideoPipeline:
             ass_path,
             theme_key=theme_key,
             format_key=format_key,
-            size_key=size_key
+            size_key=size_key,
+            topic_badge=topic
         )
 
         # Alohida SRT subtitr fayli eksporti
@@ -253,7 +254,8 @@ class VideoPipeline:
             ass_path,
             theme_key=theme_key,
             format_key=new_format_key,
-            size_key=size_key
+            size_key=size_key,
+            topic_badge=topic
         )
 
         poster_path = str(OUTPUT_DIR / f"{reformat_task_id}_poster.jpg")
@@ -338,7 +340,8 @@ class VideoPipeline:
             ass_path,
             theme_key=theme_key,
             format_key=format_key,
-            size_key=size_key
+            size_key=size_key,
+            topic_badge=topic
         )
 
         async def render_single_clip(sc):

@@ -5,7 +5,7 @@ Muallif: MuzaffarZed
 """
 import os
 import sys
-from typing import List, Dict
+from typing import List, Dict, Optional
 from config import (
     WATERMARK_TEXT,
     FORMATS,
@@ -51,7 +51,8 @@ class SubtitleEngine:
         output_ass_path: str,
         theme_key: str = DEFAULT_SUBTITLE_THEME,
         format_key: str = DEFAULT_FORMAT,
-        size_key: str = DEFAULT_SUBTITLE_SIZE
+        size_key: str = DEFAULT_SUBTITLE_SIZE,
+        topic_badge: Optional[str] = None
     ) -> str:
         watermark_font = "DejaVu Sans" if sys.platform != "win32" else "Segoe UI"
         
@@ -77,6 +78,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: HeaderBadge,{self.font_name},32,&H00FFFFFF,&H00000000,&H00000000,&H60000000,-1,0,0,0,100,100,1,0,3,4,0,8,40,40,90,1
 Style: Karaoke,{self.font_name},{actual_font_size},{base_bgr},{active_bgr},{outline_bgr},&H95000000,-1,0,0,0,100,100,1,0,1,6,4,2,60,60,{margin_v},1
 Style: Watermark,{watermark_font},34,&H75FFFFFF,&H00000000,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1,0,9,40,40,75,1
 
@@ -90,6 +92,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         end_str_full = self._format_time(total_duration)
 
         events.append(f"Dialogue: 1,{start_str_full},{end_str_full},Watermark,,0,0,0,,{WATERMARK_TEXT}")
+        if topic_badge:
+            clean_badge = f"【 {topic_badge[:28].upper()} 】"
+            events.append(f"Dialogue: 2,{start_str_full},{end_str_full},HeaderBadge,,0,0,0,,{clean_badge}")
 
         emojis = ["🔥", "💡", "🧠", "✨", "🚀", "⚡", "🎯", "💎", "⏳", "👑"]
 

@@ -371,17 +371,18 @@ async def cmd_start(message: types.Message):
 
     welcome_text = (
         f"👋 Assalomu alaykum, <b>{html.escape(message.from_user.full_name)}</b>!\n\n"
-        f"🎬 <b>{BRAND_NAME} (Singularity 16.0 Zenith Singularity)</b>ga xush kelibsiz!\n\n"
+        f"🎬 <b>{BRAND_NAME} (Singularity 17.0 Transcendent Omnipotence)</b>ga xush kelibsiz!\n\n"
         f"Men to'liq avtonom va jahon darajasidagi video kontent yarataman:\n"
         f"• 🎙 <b>Ovoz:</b> {v_name} <i>(+ Dinamik Pacing & Hamroh Podkast)</i>\n"
         f"• 🎚 <b>Studio DSP:</b> {dsp_name} <i>(+ Treyler, Radio, Vintage FX)</i>\n"
+        f"• 🛸 <b>Kamera:</b> {cam_name} <i>(+ Ken Burns Slow Zoom & Pan)</i>\n"
+        f"• 🔔 <b>Sonic Branding:</b> <i>Boom -> Whoosh -> Riser -> Outro Chime</i>\n"
         f"• 🎛 <b>Uslub:</b> {s_name}\n"
         f"• 📱 <b>Format:</b> {f_name} <i>(+ 15s Story Snippet)</i>\n"
         f"• 🎬 <b>Rang (LUT):</b> {lut_name}\n"
-        f"• 🎥 <b>Kamera Harakati:</b> {cam_name}\n"
-        f"• 💬 <b>Subtitr:</b> <i>Alex Hormozi 2.0 + Power-Word Pop Highlight</i>\n"
+        f"• 💬 <b>Subtitr:</b> <i>Alex Hormozi 2.0 + Power-Word Pop + Header Badge</i>\n"
         f"• 🎨 <b>AI Vizual:</b> <i>Parallel Flux 8K + HD Poster + 1-Click Re-Roll</i>\n"
-        f"• ⏱ <b>YouTube Chapters:</b> <i>Vaqt belgilari va viral SEO paket</i>\n"
+        f"• ⏱ <b>SMM Paket:</b> <i>Instagram Bio, TikTok Caption & YouTube Chapters</i>\n"
         f"• ⚡️ <b>Tezkor Reformat:</b> <i>3 soniyada 16:9 / 9:16 transkodlash</i>\n"
         f"• 📄 <b>Eksport:</b> <i>Full HD Video, HD Poster, MP3 va .SRT Subtitr</i>\n\n"
         f"🚀 <b>Qanday ishlatiladi:</b>\n"
@@ -855,17 +856,18 @@ async def cb_topics_menu(callback: types.CallbackQuery):
 @dp.callback_query(F.data == "menu_about")
 async def cb_about_menu(callback: types.CallbackQuery):
     about_text = (
-        f"💎 <b>{BRAND_NAME} (Singularity 16.0 Zenith Singularity)</b>\n\n"
+        f"💎 <b>{BRAND_NAME} (Singularity 17.0 Transcendent Omnipotence)</b>\n\n"
         "• <b>Real-Time Parallel AI:</b> Pollinations AI 8K + 4K Unsplash + HD Poster\n"
         "• <b>Studiya DSP:</b> Broadcast Warmth, Hollywood Trailer, Live Radio, Vintage Tape\n"
         "• <b>Kinematografik LUT:</b> Teal & Orange, Cyberpunk, Golden, Clean HDR\n"
-        "• <b>Kamera Harakati:</b> Dynamic Drift, Shock Punch, Crisp Static\n"
+        "• <b>Kamera Harakati:</b> Ken Burns Zoom-In, Smooth Panorama, Drift, Punch\n"
+        "• <b>Sonic Branding:</b> Impact Boom -> Whoosh -> Tension Riser -> Outro Chime\n"
         "• <b>Formatlar:</b> 9:16 Vertikal, 16:9 Gorizontal, 1:1 Kvadrat, 15s Story Snippet\n"
         "• <b>Ovoz:</b> Microsoft Neural + Dinamik Pacing + Podkast Ovoz Almashish\n"
-        "• <b>Subtitr:</b> Alex Hormozi 2.0 (Glassmorphic Shadow + Power-Word Pop)\n"
+        "• <b>Subtitr:</b> Alex Hormozi 2.0 (Glassmorphic Shadow + Pop + Header Badge)\n"
         "• <b>Musiqa & SFX:</b> 8 ta janr + Sidechain Ducking + Tension Riser Swell\n"
         "• <b>1-Click Re-Roll & Fast Reformat:</b> 3-4 soniyada yangi kadrlar va format\n"
-        "• <b>SMM Paket:</b> YouTube Chapters, avtomatik tavsif, 15 ta hashtag\n\n"
+        "• <b>SMM Paket:</b> Instagram Reels Bio, TikTok Caption va YouTube Chapters\n\n"
         f"<i>{WATERMARK_TEXT}</i>"
     )
     builder = InlineKeyboardBuilder()
@@ -983,10 +985,10 @@ async def cb_view_script(callback: types.CallbackQuery):
         msg_body = (
             f"📝 <b>Video Ssenariysi:</b>\n"
             f"<code>{html.escape(job_info['script_text'])}</code>\n\n"
-            f"🏷 <b>Instagram / TikTok uchun Tavsif:</b>\n"
-            f"<i>{html.escape(caption_seo)}</i>\n\n"
-            f"📌 <b>Hashtaglar:</b>\n"
-            f"<code>{html.escape(tags)}</code>\n\n"
+            f"📸 <b>Instagram Reels uchun Tayyor Tavsif:</b>\n"
+            f"<code>{html.escape(seo.get('instagram_caption', caption_seo))}</code>\n\n"
+            f"🎵 <b>TikTok uchun Ixcham Tavsif:</b>\n"
+            f"<code>{html.escape(seo.get('tiktok_caption', caption_seo))}</code>\n\n"
             f"{chapters_block}"
             f"⏰ <b>Optimal yuklash vaqti:</b> <i>{timing}</i>\n\n"
             f"<i>{WATERMARK_TEXT}</i>"
@@ -1479,7 +1481,7 @@ async def handle_video_creation(
             f"🎨 <b>Art:</b> {ART_STYLES[cur_art_style]['name']}\n"
             f"🎵 <b>Musiqa:</b> {genre_name} (Sidechain Ducking + SFX)\n"
             f"⏱ <b>Davomiyligi:</b> {dur:.1f}s | 📱 <b>Format:</b> {fmt_info['name']}\n"
-            f"💎 <b>Sifat:</b> Singularity 16.0 Zenith Singularity\n\n"
+            f"💎 <b>Sifat:</b> Singularity 17.0 Transcendent Omnipotence\n\n"
             f"<i>{WATERMARK_TEXT}</i>"
         )
 

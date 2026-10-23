@@ -429,10 +429,16 @@ Javobni FAQAT quyidagi JSON massivida qaytaring, ortiqcha hech qanday matn qo'sh
             else:
                 youtube_chapters = "00:00 - Kirish (Hook)\n00:05 - Asosiy sirlar va voqealar\n00:15 - Xulosa va Obuna bo'lish"
 
+        tiktok_tags = " ".join(tags.split()[:6])
+        tiktok_caption = f"{clean_t} 🤯 {tiktok_tags}"
+        instagram_caption = f"{caption}\n\n.\n{tags}"
+
         return {
             "caption": caption,
             "hashtags": tags,
             "youtube_chapters": youtube_chapters,
+            "tiktok_caption": tiktok_caption,
+            "instagram_caption": instagram_caption,
             "best_time": "18:30 - 21:30 (Eng yuqori faollik vaqti)"
         }
 

@@ -224,5 +224,37 @@ class TestSingularity10(unittest.TestCase):
     def test_extract_story_snippet_method(self):
         self.assertTrue(hasattr(VideoPipeline, "extract_story_snippet"))
 
+    def test_ken_burns_camera_motions(self):
+        self.assertIn("ken_burns_in", CAMERA_MOTIONS)
+        self.assertIn("ken_burns_pan", CAMERA_MOTIONS)
+        self.assertEqual(CAMERA_MOTIONS["ken_burns_in"]["mode"], "zoom_in")
+        self.assertEqual(CAMERA_MOTIONS["ken_burns_pan"]["mode"], "pan_horiz")
+
+    def test_outro_chime_sfx(self):
+        mixer = AudioMixer()
+        self.assertTrue(mixer.default_chime.exists())
+        self.assertTrue(hasattr(AudioMixer, "_generate_outro_chime"))
+
+    def test_subtitle_header_badge(self):
+        se = SubtitleEngine()
+        test_ass = str(TEMP_DIR / "test_badge.ass")
+        scenes = [{"scene_num": 1, "text": "Test badge", "start_time": 0.0, "end_time": 3.0, "words": []}]
+        se.generate_ass(scenes, test_ass, topic_badge="Koinot Sirlari")
+        self.assertTrue(os.path.exists(test_ass))
+        with open(test_ass, "r", encoding="utf-8") as f:
+            content = f.read()
+            self.assertIn("HeaderBadge", content)
+            self.assertIn("KOINOT SIRLARI", content)
+        try: os.remove(test_ass)
+        except Exception: pass
+
+    def test_multi_platform_seo(self):
+        sg = ScriptGenerator()
+        seo = sg.generate_viral_seo_package("Biznes va Boylik", lang="uz")
+        self.assertIn("tiktok_caption", seo)
+        self.assertIn("instagram_caption", seo)
+        self.assertIn("Biznes va Boylik", seo["tiktok_caption"])
+        self.assertIn("#reels", seo["instagram_caption"])
+
 if __name__ == "__main__":
     unittest.main()

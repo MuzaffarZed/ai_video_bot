@@ -1,5 +1,5 @@
 """
-MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Singularity 16.0 Zenith Singularity)
+MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Singularity 17.0 Transcendent Omnipotence)
 Muallif: MuzaffarZed
 """
 import os
@@ -355,17 +355,32 @@ CAMERA_MOTIONS = {
     "dynamic_drift": {
         "name": "🎬 Kinematik Drift (1.15x Mayin suzish)",
         "zoom": 1.15,
-        "speed": 1.0
+        "speed": 1.0,
+        "mode": "drift"
+    },
+    "ken_burns_in": {
+        "name": "🔭 Ken Burns Slow Zoom (1.0 -> 1.20x)",
+        "zoom": 1.20,
+        "speed": 0.8,
+        "mode": "zoom_in"
+    },
+    "ken_burns_pan": {
+        "name": "🛸 Kinematik Silliq Pan (Panorama)",
+        "zoom": 1.18,
+        "speed": 0.7,
+        "mode": "pan_horiz"
     },
     "rapid_punch": {
         "name": "⚡️ Shok Zoom Punch (1.28x Tezkor)",
         "zoom": 1.28,
-        "speed": 1.6
+        "speed": 1.6,
+        "mode": "punch"
     },
     "static_crisp": {
         "name": "📸 Tiniq Statik (1.02x Qimirlamasdan)",
         "zoom": 1.02,
-        "speed": 0.0
+        "speed": 0.0,
+        "mode": "static"
     }
 }
 DEFAULT_CAMERA_MOTION = "dynamic_drift"

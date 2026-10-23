@@ -36,6 +36,9 @@ class AudioMixer:
         self.default_riser = SFX_DIR / "riser_sweep.wav"
         if not self.default_riser.exists():
             self._generate_riser(str(self.default_riser))
+        self.default_chime = SFX_DIR / "outro_chime.wav"
+        if not self.default_chime.exists():
+            self._generate_outro_chime(str(self.default_chime))
 
     @staticmethod
     def _synthesize_track(genre: str, file_path: str, duration: float = 65.0):
@@ -182,9 +185,30 @@ class AudioMixer:
             wf.setframerate(sr)
             wf.writeframes(audio.tobytes())
 
+    @staticmethod
+    def _generate_outro_chime(file_path: str):
+        """Kristaldek tiniq, nafis yakuniy studiya chimesi (Outro sonic logo)."""
+        sr = 44100
+        dur = 1.6
+        t = np.linspace(0, dur, int(sr * dur), endpoint=False)
+        sig = (
+            0.40 * np.sin(2 * np.pi * 1318.5 * t) +
+            0.30 * np.sin(2 * np.pi * 1661.2 * t) +
+            0.20 * np.sin(2 * np.pi * 1975.5 * t) +
+            0.15 * np.sin(2 * np.pi * 2637.0 * t)
+        )
+        env = np.exp(-3.2 * t)
+        audio = (sig * env * 32767 * 0.40).astype(np.int16)
+        with wave.open(file_path, 'w') as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(sr)
+            wf.writeframes(audio.tobytes())
+
     def _build_sfx_track(self, transition_points: List[float], total_dur: float, sfx_output_path: str) -> bool:
         """
-        Sahna o'tishlari uchun whoosh, boshlanish uchun cinematic impact boom va kulminatsiya oldidan riser sweep SFX yo'lagini yaratadi.
+        Sahna o'tishlari uchun whoosh, boshlanish uchun cinematic impact boom,
+        kulminatsiya oldidan riser sweep va yakun uchun outro chime SFX yo'lagini yaratadi.
         """
         sr = 44100
         total_samples = int(sr * total_dur)
@@ -234,6 +258,20 @@ class AudioMixer:
                     sfx_track[riser_start:riser_start + riser_len] += riser_data * 0.30
             except Exception as e:
                 print(f"[SFX Riser Notice] {e}")
+
+        # 4. Outro CTA yakunida kristal Outro Chime SFX
+        if total_dur >= 3.0 and self.default_chime.exists():
+            try:
+                with wave.open(str(self.default_chime), 'r') as wf:
+                    chime_data = np.frombuffer(wf.readframes(wf.getnframes()), dtype=np.int16).astype(np.float32) / 32767.0
+                chime_len = len(chime_data)
+                chime_start = max(0, total_samples - int(sr * 1.5))
+                end_chime = min(chime_start + chime_len, total_samples)
+                actual_chime_len = end_chime - chime_start
+                if actual_chime_len > 0:
+                    sfx_track[chime_start:end_chime] += chime_data[:actual_chime_len] * 0.28
+            except Exception as e:
+                print(f"[SFX Outro Notice] {e}")
 
         np.clip(sfx_track, -1.0, 1.0, out=sfx_track)
         audio_int16 = (sfx_track * 32767).astype(np.int16)

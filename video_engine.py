@@ -48,22 +48,13 @@ class VideoEngine:
         clean_img = os.path.relpath(image_path, BASE_DIR).replace("\\", "/")
         clean_out = os.path.relpath(output_clip_path, BASE_DIR).replace("\\", "/")
 
-        motion_data = CAMERA_MOTIONS.get(motion_key, CAMERA_MOTIONS.get(DEFAULT_CAMERA_MOTION, {"zoom": 1.15, "speed": 1.0}))
+        motion_data = CAMERA_MOTIONS.get(motion_key, CAMERA_MOTIONS.get(DEFAULT_CAMERA_MOTION, {"zoom": 1.15, "speed": 1.0, "mode": "drift"}))
         zoom_val = motion_data.get("zoom", 1.15)
         speed_factor = motion_data.get("speed", 1.0)
+        mode = motion_data.get("mode", "drift")
 
         scaled_w = int(target_w * zoom_val)
         scaled_h = int(target_h * zoom_val)
-
-        if speed_factor <= 0.001:
-            drift_x = "(in_w-out_w)/2"
-            drift_y = "(in_h-out_h)/2"
-        elif scene_idx % 2 == 1:
-            drift_x = f"(in_w-out_w)/2 + sin(t*{1.1 * speed_factor:.2f})*{int(target_w * 0.035 * speed_factor)}"
-            drift_y = f"(in_h-out_h)/2 + (t/10)*{int(target_h * 0.015 * speed_factor)}"
-        else:
-            drift_x = f"(in_w-out_w)/2 - sin(t*{1.1 * speed_factor:.2f})*{int(target_w * 0.035 * speed_factor)}"
-            drift_y = f"(in_h-out_h)/2 - (t/10)*{int(target_h * 0.012 * speed_factor)}"
 
         filter_data = VISUAL_FILTERS.get(filter_key, VISUAL_FILTERS[DEFAULT_VISUAL_FILTER])
         color_filter = filter_data.get("filter", "eq=contrast=1.06:saturation=1.14")
@@ -72,13 +63,44 @@ class VideoEngine:
         fade_out_st = max(0.0, duration - fade_d)
         fades = f"fade=t=in:st=0:d={fade_d:.3f},fade=t=out:st={fade_out_st:.3f}:d={fade_d:.3f}"
 
-        vf_filter = (
-            f"scale={scaled_w}:{scaled_h}:force_original_aspect_ratio=increase,crop={scaled_w}:{scaled_h},"
-            f"crop={target_w}:{target_h}:x='{drift_x}':y='{drift_y}',"
-            f"{color_filter},"
-            f"{fades},"
-            f"setsar=1"
-        )
+        if mode == "zoom_in":
+            vf_filter = (
+                f"zoompan=z='min(zoom+0.0016,1.22)':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={target_w}x{target_h}:fps={self.fps},"
+                f"{color_filter},"
+                f"{fades},"
+                f"setsar=1"
+            )
+        elif mode == "pan_horiz":
+            if scene_idx % 2 == 1:
+                pan_x = f"(in_w-out_w)*(t/{max(0.1, duration):.3f})"
+            else:
+                pan_x = f"(in_w-out_w)*(1 - t/{max(0.1, duration):.3f})"
+            pan_y = "(in_h-out_h)/2"
+            vf_filter = (
+                f"scale={scaled_w}:{scaled_h}:force_original_aspect_ratio=increase,crop={scaled_w}:{scaled_h},"
+                f"crop={target_w}:{target_h}:x='{pan_x}':y='{pan_y}',"
+                f"{color_filter},"
+                f"{fades},"
+                f"setsar=1"
+            )
+        else:
+            if speed_factor <= 0.001:
+                drift_x = "(in_w-out_w)/2"
+                drift_y = "(in_h-out_h)/2"
+            elif scene_idx % 2 == 1:
+                drift_x = f"(in_w-out_w)/2 + sin(t*{1.1 * speed_factor:.2f})*{int(target_w * 0.035 * speed_factor)}"
+                drift_y = f"(in_h-out_h)/2 + (t/10)*{int(target_h * 0.015 * speed_factor)}"
+            else:
+                drift_x = f"(in_w-out_w)/2 - sin(t*{1.1 * speed_factor:.2f})*{int(target_w * 0.035 * speed_factor)}"
+                drift_y = f"(in_h-out_h)/2 - (t/10)*{int(target_h * 0.012 * speed_factor)}"
+
+            vf_filter = (
+                f"scale={scaled_w}:{scaled_h}:force_original_aspect_ratio=increase,crop={scaled_w}:{scaled_h},"
+                f"crop={target_w}:{target_h}:x='{drift_x}':y='{drift_y}',"
+                f"{color_filter},"
+                f"{fades},"
+                f"setsar=1"
+            )
 
         cmd = [
             "ffmpeg", "-nostdin", "-y",
