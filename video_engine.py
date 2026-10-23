@@ -1,12 +1,12 @@
 """
-MuzaffarZed AI Video Bot - Kengaytirilgan Video Montaj Dvigateli (Version 2.5)
-Kinematografik Dynamic Zoom & Pan, oltin progress-bar, to'yingan ranglar va karaoke.
+MuzaffarZed AI Video Bot - Kengaytirilgan Video Montaj Dvigateli (Version 3.0 Flagship)
+Kinematografik Dynamic Zoom & Pan, moslashuvchan oltin/neon progress-bar va tezkor montaj.
 Muallif: MuzaffarZed
 """
 import os
 import subprocess
 from typing import List, Dict
-from config import BASE_DIR, TEMP_DIR, OUTPUT_DIR, FPS
+from config import BASE_DIR, TEMP_DIR, OUTPUT_DIR, FPS, SUBTITLE_THEMES, DEFAULT_SUBTITLE_THEME
 
 class VideoEngine:
     def __init__(self, fps: int = FPS):
@@ -14,16 +14,13 @@ class VideoEngine:
 
     def render_scene_clip(self, image_path: str, duration: float, output_clip_path: str, scene_idx: int = 1) -> str:
         """
-        Bitta rasmdan kinematografik suzuvchi kamera harakati (Zoom & Pan) va to'yingan ranglarga ega
-        Full HD (1080x1920) dinamik klip hosil qiladi.
+        Bitta rasmdan kinematografik suzuvchi kamera harakati (Dynamic Zoom & Pan)
+        va to'yingan ranglarga ega Full HD (1080x1920) klip hosil qiladi.
         """
         clean_img = os.path.relpath(image_path, BASE_DIR).replace("\\", "/")
         clean_out = os.path.relpath(output_clip_path, BASE_DIR).replace("\\", "/")
 
-        # Kadr indeksiga qarab harakat dinamikasi (Visual Retention Formula):
-        # 1-kadr: Oldinga sekin yaqinlashish (Zoom-in) + o'ngga suzish
-        # 2-kadr: Orqaga sekin uzoqlashish (Zoom-out) + chapga suzish
-        # 3-kadr: Dramatik markaziy drift
+        # Kadr indeksiga qarab harakat dinamikasi (Visual Retention Formula)
         if scene_idx == 1:
             drift_x = "(in_w-out_w)/2 + sin(t*1.1)*40"
             drift_y = "(in_h-out_h)/2 + (t/10)*30"
@@ -64,11 +61,12 @@ class VideoEngine:
         master_audio_path: str,
         ass_subtitle_path: str,
         output_final_path: str,
-        total_duration: float = 20.0
+        total_duration: float = 20.0,
+        theme_key: str = DEFAULT_SUBTITLE_THEME
     ) -> str:
         """
         Barcha kadr kliplarini birlashtiradi, ovozni ulaydi,
-        zamonaviy oltin progress-barni chizadi va karaoke subtitrni yondiradi.
+        zamonaviy progress-barni chizadi va karaoke subtitrni yondiradi.
         """
         concat_txt = TEMP_DIR / "clips_concat.txt"
         with open(concat_txt, "w", encoding="utf-8") as f:
@@ -81,10 +79,18 @@ class VideoEngine:
         rel_ass = os.path.relpath(ass_subtitle_path, BASE_DIR).replace("\\", "/")
         rel_final = os.path.abspath(output_final_path).replace("\\", "/")
 
-        # Pastki qismdagi zamonaviy progress chizig'i (Qorong'i rels + Oltin faol chiziq)
+        # Rang mavzusiga mos progress-bar
+        bar_colors = {
+            "gold": "0xFFD700@0.95",
+            "emerald": "0x00FF7F@0.95",
+            "fire": "0xFF3030@0.95",
+            "cyan": "0x00FFFF@0.95"
+        }
+        active_color = bar_colors.get(theme_key, "0xFFD700@0.95")
+
         dark_rail = "drawbox=x=0:y=ih-14:w=iw:h=14:color=black@0.45:t=fill"
-        gold_bar = f"drawbox=x=0:y=ih-14:w='iw*(t/{max(1.0, total_duration):.3f})':h=14:color=0xFFD700@0.95:t=fill"
-        progress_filter = f"{dark_rail},{gold_bar}"
+        active_bar = f"drawbox=x=0:y=ih-14:w='iw*(t/{max(1.0, total_duration):.3f})':h=14:color={active_color}:t=fill"
+        progress_filter = f"{dark_rail},{active_bar}"
 
         # 1-Urinish: Progress-bar + ASS karaoke subtitrlar
         full_vf_with_sub = f"{progress_filter},ass={rel_ass}"

@@ -1,6 +1,6 @@
 """
-MuzaffarZed AI Video Bot - Ssenariy Generatori (Version 2.5 Viral Retention)
-Mavzudan jozibali 3 kadrli yuqori ushlab qoluvchi (Hook, Insight, CTA) ssenariy tuzadi.
+MuzaffarZed AI Video Bot - Ssenariy Generatori (Version 3.0 Multi-Style Flagship)
+Mavzu va tanlangan uslubga mos 3 kadrli viral ssenariy tuzadi (Top Faktlar, Hikoya, Motivatsiya, Ilm, Biznes).
 Muallif: MuzaffarZed
 """
 import os
@@ -8,7 +8,7 @@ import re
 import json
 import random
 from typing import List, Dict
-from config import GEMINI_API_KEY
+from config import GEMINI_API_KEY, VIDEO_STYLES, DEFAULT_VIDEO_STYLE
 
 class ScriptGenerator:
     def __init__(self):
@@ -22,65 +22,120 @@ class ScriptGenerator:
                 print(f"[Warning] Gemini yuklanmadi: {e}. Fallback rejim ishlatiladi.")
                 self.has_gemini = False
 
-    def generate(self, topic: str, lang: str = "uz") -> List[Dict]:
+    @staticmethod
+    def detect_language(text: str) -> str:
+        """Matn qaysi tilda ekanligini avtomatik aniqlash."""
+        cyrillic_chars = sum(1 for c in text if 'а' <= c.lower() <= 'я' or c.lower() in 'ёъь')
+        latin_chars = sum(1 for c in text if 'a' <= c.lower() <= 'z')
+        
+        if cyrillic_chars > 6:
+            # O'zbekcha krill yoki ruscha
+            if any(w in text.lower() for w in ["ҳақида", "билан", "учун", "қандай", "нима", "сири"]):
+                return "uz"
+            return "ru"
+        
+        # Lotin tahlili
+        t_low = text.lower()
+        if any(w in t_low for w in ["haqida", "bilan", "uchun", "qanday", "nima", "sirlari", "qoidalari", "inson", "koinot"]):
+            return "uz"
+        if any(w in t_low for w in ["the", "how", "what", "secrets", "facts", "about", "world", "rules"]):
+            return "en"
+        return "uz"
+
+    def generate(self, topic: str, lang: str = "uz", style: str = DEFAULT_VIDEO_STYLE) -> List[Dict]:
         """
-        Berilgan mavzu bo'yicha viral video ssenariysini tuzadi.
+        Berilgan mavzu va uslub bo'yicha viral video ssenariysini tuzadi.
         """
+        # Avto til aniqlash
+        detected_lang = self.detect_language(topic)
+        final_lang = lang if lang in ["uz", "ru", "en"] else detected_lang
+
         if self.has_gemini:
             try:
-                return self._generate_with_gemini(topic, lang)
+                return self._generate_with_gemini(topic, final_lang, style)
             except Exception as e:
                 print(f"[Gemini Error] {e}. Procedural generatorga o'tilmoqda.")
-                return self._generate_procedural(topic, lang)
+                return self._generate_procedural(topic, final_lang, style)
         else:
-            return self._generate_procedural(topic, lang)
+            return self._generate_procedural(topic, final_lang, style)
 
-    def _generate_with_gemini(self, topic: str, lang: str) -> List[Dict]:
+    def _generate_with_gemini(self, topic: str, lang: str, style: str) -> List[Dict]:
+        style_instructions = {
+            "top_facts": (
+                "Format: 3 ta qisqa va hayratlanarli faktlar ketma-ketligi.\n"
+                "1-kadr (Hook): Shok qiluvchi 1-fakt.\n"
+                "2-kadr (Body): Aqlbovar qilmas 2-fakt.\n"
+                "3-kadr (CTA): Eng buyuk 3-fakt va obuna bo'lishga chaqiriq."
+            ),
+            "story": (
+                "Format: Kinematografik chuqur hikoya (Storytelling).\n"
+                "1-kadr: Kutilmagan dramatik boshlanish.\n"
+                "2-kadr: Voqealar rivoji va kutilmagan sir ochilishi.\n"
+                "3-kadr: Hayotni o'zgartiruvchi xulosa va savol."
+            ),
+            "motivation": (
+                "Format: Shiddatli va qat'iyatli motivatsiya (Mindset).\n"
+                "1-kadr: Uyqudan uyg'otuvchi kuchli chaqiriq.\n"
+                "2-kadr: G'alaba, mehnat va taslim bo'lmaslik qoidasi.\n"
+                "3-kadr: Bugunoq harakat qilishga undovchi so'zlar."
+            ),
+            "science": (
+                "Format: Ilmiy kashfiyot va koinot tadqiqoti.\n"
+                "1-kadr: Koinot yoki fanning eng sirli savoli.\n"
+                "2-kadr: So'nggi ilmiy tadqiqotlar va fizik haqiqat.\n"
+                "3-kadr: Insoniyat kelajagi va buyuk xulosa."
+            ),
+            "business": (
+                "Format: Boylik va biznes psixologiyasi.\n"
+                "1-kadr: 99% insonlar pul haqida bilmaydigan xato.\n"
+                "2-kadr: Millionerlar amal qiladigan yashirin qoida.\n"
+                "3-kadr: Moliyaviy erkinlik sari 1-qadam."
+            )
+        }.get(style, "Top faktlar uslubida")
+
         lang_prompt = {
-            "uz": "O'zbek tilida, nihoyatda hayajonli, 1-soniyadanoq ushlab qoluvchi viral Reels/Shorts uslubida",
-            "ru": "На русском языке, с мощным вирусным хуком для TikTok/Reels",
-            "en": "In English, high-retention viral hook, engaging storytelling"
+            "uz": "O'zbek tilida, nihoyatda hayajonli va viral Reels uslubida",
+            "ru": "На русском языке, мощно и динамично для TikTok/Reels",
+            "en": "In English, high-retention viral hook and engaging storytelling"
         }.get(lang, "O'zbek tilida")
 
         prompt = f"""
-Siz jahon darajasidagi viral video produserisiz (MrBeast va Alex Hormozi uslubida).
+Siz jahonning eng mashhur video produserisiz (MrBeast va Alex Hormozi darajasida).
 Mavzu: "{topic}"
 Til: {lang_prompt}
+Uslub: {style_instructions}
 
-Ushbu mavzu bo'yicha 3 ta ketma-ket kadrli ultra-dinamik (18-24 soniyalik) TikTok/Reels ssenariysini tuzing.
-1-kadr (Hook, 4 soniya): Tomoshabinni lol qoldiradigan keskin savol yoki sir.
-2-kadr (Body/Insight, 8 soniya): Asosiy sir, hayratlanarli ilmiy yoki amaliy fakt.
-3-kadr (CTA/Action, 5 soniya): Fikrni o'zgartiruvchi xulosa va harakatga chaqiruv.
+Jami davomiyligi 18-24 soniyalik, 3 ta ketma-ket kadrli TikTok/Reels ssenariysini tuzing.
+Har bir kadr 1-2 jumlali lo'nda, ta'sirli va tez o'qiladigan bo'lsin.
 
-Javobni FAQAT quyidagi JSON massivida qaytaring, ortiqcha so'z yoki markdown yozmang:
+Javobni FAQAT quyidagi JSON massivida qaytaring, ortiqcha hech qanday matn qo'shmang:
 [
   {{
     "scene_num": 1,
-    "text": "1-2 jumlali kuchli Hook matni",
-    "visual_prompt": "cinematic hyper-detailed vertical image description in english, dramatic volumetric lighting, 8k"
+    "text": "1-kadr matni",
+    "visual_prompt": "cinematic hyper-detailed vertical 8k description in english, dramatic volumetric lighting"
   }},
   {{
     "scene_num": 2,
-    "text": "Asosiy sir va dalil matni",
-    "visual_prompt": "cinematic epic visual concept description in english, high-contrast, vibrant, 8k vertical"
+    "text": "2-kadr matni",
+    "visual_prompt": "cinematic epic visual concept description in english, high-contrast, vibrant vertical 8k"
   }},
   {{
     "scene_num": 3,
-    "text": "Xulosa va chaqiriq matni",
-    "visual_prompt": "inspiring triumphant majestic visual in english, golden rays, 8k photorealistic"
+    "text": "3-kadr matni",
+    "visual_prompt": "inspiring triumphant majestic visual in english, golden sunlight, 8k photorealistic vertical"
   }}
 ]
 """
         response = self.model.generate_content(prompt)
         text = response.text.strip()
 
-        # Robust Regex Parser (JSONDecodeError dan mutlaq himoya)
+        # Xavfsiz Regex JSON ekstraktori
         json_match = re.search(r'\[\s*\{.*\}\s*\]', text, re.DOTALL)
         if json_match:
             raw_json = json_match.group(0)
             return json.loads(raw_json)
 
-        # Tozalash
         if text.startswith("```json"):
             text = text[7:]
         if text.startswith("```"):
@@ -89,63 +144,61 @@ Javobni FAQAT quyidagi JSON massivida qaytaring, ortiqcha so'z yoki markdown yoz
             text = text[:-3]
         return json.loads(text.strip())
 
-    def _generate_procedural(self, topic: str, lang: str) -> List[Dict]:
+    def _generate_procedural(self, topic: str, lang: str, style: str) -> List[Dict]:
         """
-        Yuqori darajadagi viral qoliplar (API kalitisiz 100% Zero-Defect).
+        AI kalitisiz har qanday sharoitda 100% ishlaydigan ko'p uslubli viral generator.
         """
         clean_topic = topic.strip()
 
         if lang == "uz":
-            hooks = [
-                f"99% insonlar {clean_topic} haqidagi bu sirni bilishmaydi! Diqqat bilan tinglang:",
-                f"To'xtang! Agar siz {clean_topic} haqida eshitgan bo'lsangiz, asl haqiqat sizni hayratda qoldiradi!",
-                f"Siz hech o'ylab ko'rganmisiz, {clean_topic} hayotimizni qanchalik o'zgartirishi mumkin? Bu aqlbovar qilmas sir!",
-                f"Bir daqiqa! Aynan bugun {clean_topic} haqida bilishingiz kerak bo'lgan eng muhim haqiqat ochiladi!"
-            ]
-            bodies = [
-                f"Olimlar va yetakchi soha mutaxassislarining so'nggi tahlillari shuni ko'rsatadiki, {clean_topic} biz o'ylagandan 10 barobar kuchliroq ta'sirga ega.",
-                f"Eng hayratlanarlisi shundaki, {clean_topic} ning yashirin mexanizmlari bugungi kunda eng buyuk imkoniyatlar kalitiga aylanmoqda.",
-                f"Tadqiqotlarga ko'ra, kimki {clean_topic} qonuniyatlarini tushunib yetsa, u o'z sohasida mutlaq ustunlikka erishadi.",
-                f"Chuqur o'rganishlar natijasida ma'lum bo'lishicha, {clean_topic} kelajak texnologiyalari va tafakkurining asosi hisoblanadi."
-            ]
-            conclusions = [
-                f"Ushbu videoni saqlab oling va do'stlaringizga ham ulashing! Yangi bilimlardan har doim xabardor bo'ling!",
-                f"Siz bu haqda qanday fikrdasiz? Fikringizni izohlarda yozib qoldiring va bizga obuna bo'lishni unutmang!",
-                f"Kelajak aynan shunday yangiliklar qo'lida. O'z imkoniyatlaringizni oshirish uchun bizni kuzatib boring!",
-                f"Hayotingizni o'zgartirish uchun bugunoq harakat qiling! Kanalimizga a'zo bo'ling va eng so'nggi bilimlarga ega bo'ling!"
-            ]
-
-            h = random.choice(hooks)
-            b = random.choice(bodies)
-            c = random.choice(conclusions)
+            if style == "top_facts":
+                s1 = f"99% insonlar {clean_topic} haqidagi bu shok faktni bilishmaydi! Birinchisi: uning kuchi kutilgandan 10 barobar ortiq!"
+                s2 = f"Ikkinchi fakt: olimlar tadqiqotiga ko'ra, {clean_topic} butun dunyodagi jarayonlarni yashirin tarzda boshqaradi!"
+                s3 = f"Eng hayratlanarlisi esa uchinchisi: bu sir sizning ham hayotingizni o'zgartiradi! Videoni saqlang va obuna bo'ling!"
+            elif style == "motivation":
+                s1 = f"To'xtang! Agar siz {clean_topic} yo'lida qiyinchilikka uchrayotgan bo'lsangiz, bu so'zlarni hoziroq eshitishingiz shart!"
+                s2 = f"Yodda tuting: hech kim osonlikcha g'olib bo'lmagan. Qat'iyat va intizom har qanday to'siqni parchalab tashlaydi!"
+                s3 = f"Bugunoq orzuingiz sari harakatni boshlang! Siz hamma narsaga qodirsiz, taslim bo'lmang!"
+            elif style == "business":
+                s1 = f"Boy insonlar {clean_topic} haqida hech qachon ochiq gapirishmaydi! Mana bu yashirin qoidani diqqat bilan eshiting:"
+                s2 = f"Oddiy insonlar faqat vaqtini sarflaydi, muvaffaqiyatli insonlar esa {clean_topic} qonuniyatlariga tayanib boylik yaratadi."
+                s3 = f"Kelajak aynan to'g'ri qarorlar qabul qilganlar qo'lida. Moliyaviy bilimlarni oshirish uchun obuna bo'ling!"
+            elif style == "science":
+                s1 = f"Koinotning eng sirli jumboqlaridan biri bu — {clean_topic}! Buni ko'rib aqlingiz lol qoladi:"
+                s2 = f"Zamonaviy teleskoplar va kvant fizikasi shuni isbotladiki, {clean_topic} biz o'ylagan borliq qonunlarini butunlay o'zgartiradi."
+                s3 = f"Bu sir insoniyatni yangi sivilizatsiya darajasiga olib chiqishi mumkin! Ko'proq bilish uchun bizni kuzatib boring!"
+            else: # story
+                s1 = f"Bir kuni butun insoniyatni hayratda qoldirgan voqea sodir bo'ldi. Hamma narsa aynan {clean_topic} dan boshlangan edi..."
+                s2 = f"Hech kim kutmagan paytda uning ortidagi asl haqiqat oshkor bo'ldi va bu barcha tushunchalarni ostin-ustun qildi."
+                s3 = f"Bu voqeadan chiqarilgan eng muhim saboq — haqiqat doimo g'alaba qozonishidir. Fikringizni izohlarda yozib qoldiring!"
 
             scenes = [
                 {
                     "scene_num": 1,
-                    "text": h,
-                    "visual_prompt": f"cinematic mysterious vertical shot of {clean_topic}, dramatic volumetric lighting, 8k, photorealistic"
+                    "text": s1,
+                    "visual_prompt": f"cinematic dramatic vertical shot representing {clean_topic}, 8k volumetric lighting"
                 },
                 {
                     "scene_num": 2,
-                    "text": b,
-                    "visual_prompt": f"epic visual concept representing {clean_topic}, high-tech futuristic elements, vibrant glow, vertical 8k"
+                    "text": s2,
+                    "visual_prompt": f"epic visual concept of {clean_topic}, glowing details, vertical 8k photorealistic"
                 },
                 {
                     "scene_num": 3,
-                    "text": c,
-                    "visual_prompt": f"inspiring triumphant visual art about {clean_topic}, golden hour sunlight, majestic, 8k vertical"
+                    "text": s3,
+                    "visual_prompt": f"inspiring triumphant visual art about {clean_topic}, golden sunset, 8k vertical"
                 }
             ]
         elif lang == "ru":
             scenes = [
                 {
                     "scene_num": 1,
-                    "text": f"99% людей даже не догадываются о скрытой тайне {clean_topic}! Досмотрите до конца!",
+                    "text": f"99% людей даже не догадываются о скрытой тайне {clean_topic}! Досмотрите это видео до конца!",
                     "visual_prompt": f"cinematic dramatic vertical shot representing {clean_topic}, 8k photorealistic"
                 },
                 {
                     "scene_num": 2,
-                    "text": f"Учёные доказали, что {clean_topic} меняет привычные законы и открывает невероятные возможности.",
+                    "text": f"Учёные доказали, что {clean_topic} меняет законы привычного мира и открывает невероятные возможности.",
                     "visual_prompt": f"epic visual concept of {clean_topic}, futuristic energy glow, 8k vertical"
                 },
                 {
@@ -158,17 +211,17 @@ Javobni FAQAT quyidagi JSON massivida qaytaring, ortiqcha so'z yoki markdown yoz
             scenes = [
                 {
                     "scene_num": 1,
-                    "text": f"99% of people have no idea about the hidden truth behind {clean_topic}! Listen closely:",
+                    "text": f"99% of people have no idea about the hidden truth behind {clean_topic}! Listen closely right now:",
                     "visual_prompt": f"cinematic mysterious vertical shot representing {clean_topic}, dramatic lighting, 8k"
                 },
                 {
                     "scene_num": 2,
-                    "text": f"Recent breakthroughs prove that {clean_topic} is ten times more impactful than anyone imagined.",
+                    "text": f"Groundbreaking discoveries prove that {clean_topic} is ten times more powerful than anyone ever imagined.",
                     "visual_prompt": f"epic visual concept of {clean_topic}, cosmic futuristic energy, vibrant colors, vertical"
                 },
                 {
                     "scene_num": 3,
-                    "text": f"Save this video right now and follow for more groundbreaking insights every single day!",
+                    "text": f"Save this video right now and follow for more mind-blowing daily insights!",
                     "visual_prompt": f"inspiring majestic vertical scene about {clean_topic}, golden sunlight, hyper-detailed, 8k"
                 }
             ]

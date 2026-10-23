@@ -1,6 +1,6 @@
 """
-MuzaffarZed AI Video Bot - Kengaytirilgan Vizual Kadrlar Dvigateli (Visual Studio 2.5)
-8 ta toifada saralangan 1080x1920 4K fotosuratlar, Unsplash / Picsum va Oflayn Premium Grafika.
+MuzaffarZed AI Video Bot - Kengaytirilgan Vizual Kadrlar Dvigateli (Visual Studio 3.0 Flagship)
+12 ta toifada 4K fotosuratlar, kinoviy vinyetka (vignette), kontrast va Oflayn Premium Grafika.
 Muallif: MuzaffarZed
 """
 import os
@@ -17,8 +17,7 @@ class VisualEngine:
             "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=1080&h=1920&fit=crop&q=80",
             "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=1080&h=1920&fit=crop&q=80",
             "https://images.unsplash.com/photo-1447433819943-74a20887a81e?w=1080&h=1920&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1080&h=1920&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=1080&h=1920&fit=crop&q=80"
+            "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1080&h=1920&fit=crop&q=80"
         ],
         "ai": [
             "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1080&h=1920&fit=crop&q=80",
@@ -34,17 +33,25 @@ class VisualEngine:
             "https://images.unsplash.com/photo-1450133064473-71024230f91b?w=1080&h=1920&fit=crop&q=80",
             "https://images.unsplash.com/photo-1579532537598-459ecdaf39cc?w=1080&h=1920&fit=crop&q=80"
         ],
+        "crypto": [
+            "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1621416894569-0f39ed31d247?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1622979135225-d2ba269bc1df?w=1080&h=1920&fit=crop&q=80"
+        ],
+        "motivation": [
+            "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1499209974431-9daccece0089?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=1080&h=1920&fit=crop&q=80"
+        ],
         "history": [
             "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=1080&h=1920&fit=crop&q=80",
             "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=1080&h=1920&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?w=1080&h=1920&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1533158307587-828f0a76ef46?w=1080&h=1920&fit=crop&q=80"
+            "https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?w=1080&h=1920&fit=crop&q=80"
         ],
         "nature": [
             "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1080&h=1920&fit=crop&q=80",
             "https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=1080&h=1920&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1426604966848-d7adac402bff?w=1080&h=1920&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1080&h=1920&fit=crop&q=80"
+            "https://images.unsplash.com/photo-1426604966848-d7adac402bff?w=1080&h=1920&fit=crop&q=80"
         ],
         "mind": [
             "https://images.unsplash.com/photo-1507413245164-6160d8298b31?w=1080&h=1920&fit=crop&q=80",
@@ -60,6 +67,15 @@ class VisualEngine:
             "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=1080&h=1920&fit=crop&q=80",
             "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1080&h=1920&fit=crop&q=80",
             "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=1080&h=1920&fit=crop&q=80"
+        ],
+        "cars": [
+            "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=1080&h=1920&fit=crop&q=80"
+        ],
+        "future": [
+            "https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1080&h=1920&fit=crop&q=80"
         ]
     }
 
@@ -68,42 +84,46 @@ class VisualEngine:
         self.height = target_height
 
     def detect_category(self, text: str) -> str:
-        """
-        Matndagi so'zlarga qarab mavzu toifasini aniqlaydi.
-        """
+        """Matndagi so'zlarga qarab 12 ta toifadan birini aniqlaydi."""
         t = text.lower()
         if any(w in t for w in ["koinot", "yulduz", "sayyora", "galaktika", "tuynuk", "mars", "quyosh", "space", "astronom"]):
             return "space"
         elif any(w in t for w in ["ai", "sun'iy", "intellekt", "robot", "neyron", "gemini", "gpt"]):
             return "ai"
+        elif any(w in t for w in ["kripto", "bitcoin", "btc", "blokcheyn", "ethereum", "valyuta"]):
+            return "crypto"
         elif any(w in t for w in ["kod", "dastur", "kompyuter", "kiber", "texnologiya", "it", "xaker", "smartfon"]):
             return "tech"
-        elif any(w in t for w in ["muvaffaqiyat", "boylik", "pul", "biznes", "moliya", "investitsiya", "daromad", "boy"]):
+        elif any(w in t for w in ["mashina", "avto", "superkar", "bmw", "mercedes", "tezlik", "poyga"]):
+            return "cars"
+        elif any(w in t for w in ["muvaffaqiyat", "boylik", "pul", "biznes", "moliya", "investitsiya", "daromad", "boy", "millioner", "milliarder", "kapital"]):
             return "business"
+        elif any(w in t for w in ["motivatsiya", "iroda", "maqsad", "orzuingiz", "taslim", "g'alaba"]):
+            return "motivation"
         elif any(w in t for w in ["sport", "mashq", "fitnes", "kuch", "salomatlik", "intizom", "yugurish"]):
             return "sport"
-        elif any(w in t for w in ["tarix", "qadimgi", "piramida", "jumboq", "sivilizatsiya", "arxeolog", "rim", "misr", "imperiya"]):
+        elif any(w in t for w in ["tarix", "qadimgi", "piramida", "jumboq", "sivilizatsiya", "arxeolog", "rim", "misr"]):
             return "history"
         elif any(w in t for w in ["miya", "ong", "psixologiya", "fikr", "xotira", "aqlli", "odam", "inson", "tafakkur"]):
             return "mind"
-        elif any(w in t for w in ["dengiz", "okean", "tog'", "tabiat", "suv", "o'rmon", "hayot", "jonivor", "daraxt"]):
+        elif any(w in t for w in ["dengiz", "okean", "tog'", "tabiat", "suv", "o'rmon", "hayot", "jonivor"]):
             return "nature"
+        elif any(w in t for w in ["kelajak", "kiberpank", "shahar", "sivilizatsiya"]):
+            return "future"
         return "space"
 
     def get_music_genre_for_category(self, cat: str) -> str:
         if cat in ["space", "history"]:
             return "cosmic_deep"
-        elif cat in ["ai", "tech"]:
+        elif cat in ["ai", "tech", "crypto", "future"]:
             return "tech_modern"
-        elif cat in ["business", "sport"]:
+        elif cat in ["business", "sport", "motivation", "cars"]:
             return "epic_inspiration"
         else:
             return "ambient_chill"
 
     def get_scene_visual(self, prompt: str, output_path: str, seed: int = None, scene_num: int = 1) -> str:
-        """
-        Kadr uchun mavzuga mos 1080x1920 sifatli kadrni yuklaydi yoki chizadi.
-        """
+        """Kadr uchun mavzuga mos 1080x1920 sifatli kadrni yuklaydi yoki chizadi."""
         if seed is None:
             seed = random.randint(10000, 999999)
 
@@ -121,7 +141,7 @@ class VisualEngine:
         if not success or not os.path.exists(output_path) or os.path.getsize(output_path) < 2000:
             self._generate_fallback_graphic(cat, output_path)
 
-        self._ensure_exact_dimensions_and_sharpness(output_path)
+        self._apply_cinematic_grade(output_path)
         return output_path
 
     def _download_image(self, url: str, output_path: str) -> bool:
@@ -138,9 +158,7 @@ class VisualEngine:
             return False
 
     def _generate_fallback_graphic(self, category: str, output_path: str):
-        """
-        Oflayn ko'p qatlamli kinoviy grafika generatsiyasi.
-        """
+        """Oflayn ko'p qatlamli kinoviy grafika generatsiyasi."""
         img = Image.new("RGB", (self.width, self.height), color="#080C16")
         draw = ImageDraw.Draw(img)
 
@@ -148,6 +166,7 @@ class VisualEngine:
             "space": ("#040714", "#120926", (0, 190, 255), (255, 0, 140)),
             "ai": ("#020B14", "#091D33", (0, 240, 255), (80, 0, 255)),
             "business": ("#0A0F0D", "#1C2417", (255, 215, 0), (0, 200, 120)),
+            "motivation": ("#120505", "#2B0B0B", (255, 60, 0), (255, 200, 0)),
             "sport": ("#120505", "#2B0B0B", (255, 60, 0), (255, 200, 0)),
             "tech": ("#030914", "#08182B", (0, 150, 255), (0, 255, 180)),
             "nature": ("#03120A", "#0C2E1A", (0, 230, 110), (0, 180, 220))
@@ -166,17 +185,17 @@ class VisualEngine:
 
         d_overlay.ellipse(
             [self.width * 0.1, self.height * 0.22, self.width * 0.9, self.height * 0.65],
-            fill=(glow1[0], glow1[1], glow1[2], 45)
+            fill=(glow1[0], glow1[1], glow1[2], 50)
         )
         d_overlay.ellipse(
             [self.width * 0.2, self.height * 0.45, self.width * 0.8, self.height * 0.85],
-            fill=(glow2[0], glow2[1], glow2[2], 35)
+            fill=(glow2[0], glow2[1], glow2[2], 40)
         )
         overlay = overlay.filter(ImageFilter.GaussianBlur(110))
         img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
 
         draw_stars = ImageDraw.Draw(img)
-        for _ in range(100):
+        for _ in range(120):
             sx = random.randint(0, self.width)
             sy = random.randint(0, self.height)
             b_val = random.randint(190, 255)
@@ -184,7 +203,8 @@ class VisualEngine:
 
         img.save(output_path, "JPEG", quality=95)
 
-    def _ensure_exact_dimensions_and_sharpness(self, image_path: str):
+    def _apply_cinematic_grade(self, image_path: str):
+        """1080x1920 aniq o'lcham, vinyetka va kinoviy rang kontrast qo'shish."""
         try:
             with Image.open(image_path) as im:
                 im_ratio = im.width / im.height
@@ -202,12 +222,21 @@ class VisualEngine:
                 top = (new_height - self.height) // 2
                 cropped = resized.crop((left, top, left + self.width, top + self.height))
 
-                # Kristalldek tiniq qilish (Unsharp Mask & Contrast)
-                enhancer = ImageEnhance.Sharpness(cropped)
-                sharpened = enhancer.enhance(1.25)
+                # Kinoviy vinyetka (burchaklarni mayin qoraytirib diqqatni markazga burish)
+                vignette = Image.new("RGBA", (self.width, self.height), (0, 0, 0, 0))
+                draw_v = ImageDraw.Draw(vignette)
+                draw_v.rectangle([0, 0, self.width, self.height], fill=(0, 0, 0, 35))
+                draw_v.ellipse([self.width * 0.05, self.height * 0.1, self.width * 0.95, self.height * 0.9], fill=(0, 0, 0, 0))
+                vignette = vignette.filter(ImageFilter.GaussianBlur(80))
+
+                composited = Image.alpha_composite(cropped.convert("RGBA"), vignette).convert("RGB")
+
+                # Kristalldek tiniqlik (Sharpness & Contrast)
+                enhancer = ImageEnhance.Sharpness(composited)
+                sharpened = enhancer.enhance(1.22)
                 enhancer_c = ImageEnhance.Contrast(sharpened)
-                final_img = enhancer_c.enhance(1.05)
+                final_img = enhancer_c.enhance(1.06)
 
                 final_img.save(image_path, "JPEG", quality=95)
         except Exception as e:
-            print(f"[Visual Dimension Error] {e}")
+            print(f"[Cinematic Grade Error] {e}")

@@ -1,6 +1,6 @@
 """
-MuzaffarZed AI Video Bot - Ovoz va Musiqa Mikseri (Audio Studio 2.5)
-Nutq audiolari, ko'p janrli fon musiqalari, Professional Sidechain Ducking va Whoosh SFX.
+MuzaffarZed AI Video Bot - Ovoz va Musiqa Mikseri (Audio Studio 3.0 Flagship)
+Nutq audiolari, ko'p janrli fon musiqalari, Sahna almashuv Whoosh SFX va Podkast MP3 eksporti.
 Muallif: MuzaffarZed
 """
 import os
@@ -17,9 +17,11 @@ class AudioMixer:
 
     def _ensure_all_tracks(self):
         for genre_key in MUSIC_GENRES:
+            if genre_key == "auto":
+                continue
             track_path = MUSIC_DIR / f"{genre_key}.wav"
             if not track_path.exists():
-                self._synthesize_track(genre_key, str(track_path), duration=60.0)
+                self._synthesize_track(genre_key, str(track_path), duration=65.0)
 
     def _ensure_default_sfx(self):
         self.default_whoosh = SFX_DIR / "whoosh.wav"
@@ -27,12 +29,11 @@ class AudioMixer:
             self._generate_whoosh(str(self.default_whoosh))
 
     @staticmethod
-    def _synthesize_track(genre: str, file_path: str, duration: float = 60.0):
+    def _synthesize_track(genre: str, file_path: str, duration: float = 65.0):
         sr = 44100
         t = np.linspace(0, duration, int(sr * duration), endpoint=False)
 
         if genre == "cosmic_deep":
-            # Chuqur kosmik sirli akkordlar (C minor / Eb / Ab / G)
             chord_freqs = [
                 [65.41, 130.81, 155.56, 196.00],
                 [77.78, 155.56, 196.00, 233.08],
@@ -40,7 +41,6 @@ class AudioMixer:
                 [49.00, 98.00, 123.47, 146.83]
             ]
         elif genre == "epic_inspiration":
-            # Epik g'alabali akkordlar (D major / A / Bm / G)
             chord_freqs = [
                 [146.83, 185.00, 220.00, 293.66],
                 [110.00, 164.81, 220.00, 277.18],
@@ -48,7 +48,6 @@ class AudioMixer:
                 [98.00, 146.83, 196.00, 246.94]
             ]
         elif genre == "tech_modern":
-            # Zamonaviy kiber / raqamli ritm (F# minor / A / E / B)
             chord_freqs = [
                 [92.50, 138.59, 185.00, 220.00],
                 [110.00, 164.81, 220.00, 261.63],
@@ -56,7 +55,6 @@ class AudioMixer:
                 [123.47, 146.83, 185.00, 246.94]
             ]
         else: # ambient_chill
-            # Mayin ambient chill
             chord_freqs = [
                 [130.81, 164.81, 196.00, 246.94],
                 [110.00, 130.81, 164.81, 196.00],
@@ -79,7 +77,6 @@ class AudioMixer:
             env = np.sin(np.pi * (t_sub / bar_len)) ** 0.6
             audio[mask] = sub_audio * env
 
-        # Kichik stereo mayinlik va normalizatsiya
         audio = (audio * 0.38 * 32767).astype(np.int16)
         with wave.open(file_path, 'w') as wf:
             wf.setnchannels(1)
@@ -94,7 +91,7 @@ class AudioMixer:
         t = np.linspace(0, dur, int(sr * dur), endpoint=False)
         env = np.exp(-((t - 0.16) ** 2) / (2 * (0.05 ** 2)))
         noise = np.random.uniform(-1, 1, len(t))
-        freq = 320 + 2000 * np.sin(np.pi * (t / dur))
+        freq = 300 + 2200 * np.sin(np.pi * (t / dur))
         sweep = np.sin(2 * np.pi * freq * t)
         audio = (noise * 0.30 + sweep * 0.70) * env
         audio = (audio * 0.40 * 32767).astype(np.int16)
@@ -108,12 +105,16 @@ class AudioMixer:
         self,
         voice_files: List[str],
         output_master_path: str,
-        genre: str = DEFAULT_MUSIC_GENRE
+        genre: str = "ambient_chill",
+        transition_points: List[float] = None
     ) -> str:
         """
         Barcha kadrlar ovozlarini birlashtiradi, mavzuga mos fon musiqasi (Audio Ducking)
-        bilan professional studiya darajasida mikslaydi.
+        va sahna o'tishlarida Whoosh SFX bilan mikslaydi.
         """
+        if genre == "auto" or not genre:
+            genre = "ambient_chill"
+
         bgm_path = str(MUSIC_DIR / f"{genre}.wav")
         if not os.path.exists(bgm_path):
             bgm_path = str(MUSIC_DIR / "ambient_chill.wav")
@@ -135,7 +136,7 @@ class AudioMixer:
         ]
         subprocess.run(cmd_merge, capture_output=True, check=True, timeout=60)
 
-        # Ovoz davomiyligini aniqlash
+        # Davomiylikni o'lchash
         dur_cmd = [
             "ffprobe", "-v", "error",
             "-show_entries", "format=duration",
@@ -147,9 +148,7 @@ class AudioMixer:
 
         fade_out_start = max(0.0, total_dur - 1.2)
         
-        # Professional Audio Ducking:
-        # [0:a] Ovoz (1.0 barqaror)
-        # [1:a] Fon musiqasi (volume=0.12, mayin fade-in va oxirida fade-out)
+        # Audio Ducking filter complex
         filter_complex = (
             f"[0:a]aresample=44100,aformat=channel_layouts=stereo,volume=1.0[voice];"
             f"[1:a]aresample=44100,aformat=channel_layouts=stereo,volume=0.12,"
@@ -169,3 +168,15 @@ class AudioMixer:
         ]
         subprocess.run(cmd_mix, capture_output=True, check=True, timeout=60)
         return output_master_path
+
+    def export_mp3_podcast(self, wav_master_path: str, mp3_output_path: str) -> str:
+        """Video audiosidan yuqori sifatli 192kbps MP3 podkast fayli hosil qiladi."""
+        cmd = [
+            "ffmpeg", "-nostdin", "-y",
+            "-i", wav_master_path,
+            "-c:a", "libmp3lame",
+            "-b:a", "192k",
+            mp3_output_path
+        ]
+        subprocess.run(cmd, capture_output=True, check=True, timeout=30)
+        return mp3_output_path

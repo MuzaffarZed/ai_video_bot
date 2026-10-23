@@ -1,12 +1,12 @@
 """
-MuzaffarZed AI Video Bot - Zamonaviy Karaoke Subtitrlar Generatori (Version 2.5)
-Alex Hormozi 2.0 dinamik neon karaoke, Instagram/TikTok xavfsiz zonasi va mualliflik muhri.
+MuzaffarZed AI Video Bot - Zamonaviy Karaoke Subtitrlar Generatori (Version 3.0 Multi-Theme)
+Alex Hormozi 2.0 dinamik pop karaoke, 4 xil rang sxemasi, xavfsiz zona va mualliflik muhri.
 Muallif: MuzaffarZed
 """
 import os
 import sys
 from typing import List, Dict
-from config import WATERMARK_TEXT, SUBTITLE_SAFE_MARGIN_V
+from config import WATERMARK_TEXT, SUBTITLE_SAFE_MARGIN_V, SUBTITLE_THEMES, DEFAULT_SUBTITLE_THEME
 
 class SubtitleEngine:
     def __init__(self, font_name: str = None, font_size: int = 76):
@@ -24,12 +24,17 @@ class SubtitleEngine:
         centi = int((secs - int(secs)) * 100)
         return f"{hours}:{minutes:02d}:{int(secs):02d}.{centi:02d}"
 
-    def generate_ass(self, scenes: List[Dict], output_ass_path: str) -> str:
+    def generate_ass(self, scenes: List[Dict], output_ass_path: str, theme_key: str = DEFAULT_SUBTITLE_THEME) -> str:
         """
-        Barcha kadrlar so'zlarini zamonaviy dinamik karaoke tarzida ASS formatiga yozadi.
+        Barcha kadrlar so'zlarini tanlangan rang sxemasi bilan zamonaviy ASS formatiga yozadi.
         """
         watermark_font = "DejaVu Sans" if sys.platform != "win32" else "Segoe UI"
         margin_v = SUBTITLE_SAFE_MARGIN_V
+
+        theme_data = SUBTITLE_THEMES.get(theme_key, SUBTITLE_THEMES[DEFAULT_SUBTITLE_THEME])
+        active_bgr = theme_data["active_color"]
+        base_bgr = theme_data["base_color"]
+        outline_bgr = theme_data["outline_color"]
 
         ass_header = f"""[Script Info]
 ScriptType: v4.00+
@@ -39,7 +44,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Karaoke,{self.font_name},{self.font_size},&H00FFFFFF,&H0000D7FF,&H00000000,&H80000000,-1,0,0,0,100,100,1,0,1,6,3,2,60,60,{margin_v},1
+Style: Karaoke,{self.font_name},{self.font_size},{base_bgr},{active_bgr},{outline_bgr},&H80000000,-1,0,0,0,100,100,1,0,1,6,3,2,60,60,{margin_v},1
 Style: Watermark,{watermark_font},34,&H75FFFFFF,&H00000000,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1,0,9,40,40,75,1
 
 [Events]
@@ -54,7 +59,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         # 1. Doimiy nafis mualliflik muhri (Dasturchi: MuzaffarZed)
         events.append(f"Dialogue: 1,{start_str_full},{end_str_full},Watermark,,0,0,0,,{WATERMARK_TEXT}")
 
-        emojis = ["🔥", "💡", "🧠", "✨", "🚀", "⚡", "🎯", "💎"]
+        emojis = ["🔥", "💡", "🧠", "✨", "🚀", "⚡", "🎯", "💎", "⏳", "👑"]
 
         # 2. Hormozi 2-3 so'zli dinamik pop karaoke
         for sc_idx, sc in enumerate(scenes):
@@ -63,7 +68,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 continue
 
             scene_emoji = emojis[sc_idx % len(emojis)]
-            chunk_size = 3  # Mobil ekran uchun eng ideal ritm
+            chunk_size = 3  # Mobil ekran uchun optimal 2-3 so'z
             for i in range(0, len(words), chunk_size):
                 chunk = words[i:i + chunk_size]
 
@@ -78,10 +83,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     for idx, part in enumerate(chunk):
                         word_text = part["word"]
                         if idx == active_idx:
-                            # Oltin-neon sariq (&H00D7FF&) va 118% pop kattalashuv
-                            line_parts.append(f"{{\\c&H00D7FF&\\fscx118\\fscy118}}{word_text}{{\\rKaraoke}}")
+                            # Tanlangan mavzu rangida yonish va 118% pop kattalashuv
+                            line_parts.append(f"{{\\c{active_bgr}&\\fscx118\\fscy118}}{word_text}{{\\rKaraoke}}")
                         else:
-                            line_parts.append(f"{{\\c&HFFFFFF&}}{word_text}")
+                            line_parts.append(f"{{\\c{base_bgr}&}}{word_text}")
                     
                     dialogue_text = " ".join(line_parts)
                     ev_start = self._format_time(w_start)
