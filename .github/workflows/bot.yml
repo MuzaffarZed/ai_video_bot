@@ -41,10 +41,33 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: 🧠 Kuchli Oflayn AI Dvigatelini O'rnatish (Ollama + Qwen 2.5 7B Flagman)
+        run: |
+          echo "=== 1. Ollama o'rnatilmoqda ==="
+          curl -fsSL https://ollama.com/install.sh | sh
+          
+          echo "=== 2. Ollama xizmati fonda ishga tushirilmoqda ==="
+          ollama serve > /tmp/ollama.log 2>&1 &
+          
+          echo "=== 3. Ollama xizmati tekshirilmoqda ==="
+          for i in {1..30}; do
+            if curl -s http://localhost:11434/api/tags > /dev/null; then
+              echo "✅ Ollama server muvaffaqiyatli ishga tushdi ($i s)"
+              break
+            fi
+            sleep 1
+          done
+          
+          echo "=== 4. Flagman Qwen 2.5 7B modeli yuklanmoqda ==="
+          ollama pull qwen2.5:7b || echo "Ollama pull fallback tayyor"
+          ollama list
+
       - name: 🤖 Botni Bulutda Ishga Tushirish
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OLLAMA_HOST: "http://localhost:11434"
+          OLLAMA_MODEL: "qwen2.5:7b"
           PYTHONUNBUFFERED: "1"
         run: |
           python bot.py

@@ -534,5 +534,15 @@ class TestSingularity10(unittest.TestCase):
         callbacks = [btn.callback_data for row in kb.inline_keyboard for btn in row]
         self.assertIn("menu_create_text", callbacks)
 
+    def test_ollama_local_llm_config_and_resilience(self):
+        from config import OLLAMA_HOST, OLLAMA_MODEL
+        self.assertEqual(OLLAMA_MODEL, "qwen2.5:7b")
+        self.assertIn("11434", OLLAMA_HOST)
+        sg = ScriptGenerator()
+        self.assertTrue(hasattr(sg, "_generate_with_local_llm"))
+        self.assertTrue(hasattr(sg, "_is_ollama_available"))
+        # Unreachable host da tezkor tekshiruv False qaytarishi kerak
+        self.assertFalse(sg._is_ollama_available())
+
 if __name__ == "__main__":
     unittest.main()

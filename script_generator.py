@@ -12,7 +12,7 @@ import urllib.parse
 from typing import List, Dict, Optional
 from config import (
     GEMINI_API_KEY, VIDEO_STYLES, DEFAULT_VIDEO_STYLE, DURATIONS, DEFAULT_DURATION,
-    VOICE_MODES, DEFAULT_VOICE_MODE
+    VOICE_MODES, DEFAULT_VOICE_MODE, OLLAMA_HOST, OLLAMA_MODEL, OLLAMA_TIMEOUT
 )
 
 def transliterate_uzbek(text: str) -> str:
@@ -293,21 +293,125 @@ class ScriptGenerator:
         dur_info = DURATIONS.get(duration_key, DURATIONS[DEFAULT_DURATION])
         scene_count = dur_info.get("scene_count", 3)
 
-        # 1-Bosqich: Gemini 2.0 Flash (agar API kalit mavjud bo'lsa)
+        # 1-Bosqich: Flagman Mahalliy Server AI (Ollama Qwen 2.5 7B - 100% oflayn, limitsiz)
+        if self._is_ollama_available():
+            try:
+                local_scenes = self._generate_with_local_llm(final_topic, final_lang, style, scene_count, voice_mode)
+                if local_scenes and len(local_scenes) >= 2:
+                    print(f"[Local AI Success] Flagman Qwen 2.5 7B orqali {len(local_scenes)} ta kadr yaratildi.")
+                    return local_scenes
+            except Exception as e:
+                print(f"[Local AI Notice] {e}. Zaxira kanallarga o'tilmoqda.")
+
+        # 2-Bosqich: Gemini 2.0 Flash (agar API kalit mavjud bo'lsa)
         if self.has_gemini:
             try:
                 return self._generate_with_gemini(final_topic, final_lang, style, scene_count, voice_mode)
             except Exception as e:
                 print(f"[Gemini Error] {e}. Pollinations AI ga o'tilmoqda.")
 
-        # 2-Bosqich: Pollinations AI Text (bepul, onlayn sun'iy intellekt)
+        # 3-Bosqich: Pollinations AI Text (bepul, onlayn sun'iy intellekt)
         try:
             return self._generate_with_pollinations(final_topic, final_lang, style, scene_count, voice_mode)
         except Exception as e:
             print(f"[Pollinations Text Error] {e}. Procedural generatorga o'tilmoqda.")
 
-        # 3-Bosqich: Oflayn protsedural generator (100% ishonchli zaxira)
+        # 4-Bosqich: Oflayn protsedural generator (100% ishonchli zaxira)
         return self._generate_procedural(final_topic, final_lang, style, scene_count, voice_mode)
+
+    def _is_ollama_available(self) -> bool:
+        """Ollama serveri faol yoki yo'qligini tezkor 1.2 soniyada tekshirish."""
+        try:
+            req = urllib.request.Request(f"{OLLAMA_HOST}/api/tags", headers={"User-Agent": "MuzaffarZed-Bot"})
+            with urllib.request.urlopen(req, timeout=1.2) as resp:
+                return resp.status == 200
+        except Exception:
+            return False
+
+    def _generate_with_local_llm(
+        self,
+        topic: str,
+        lang: str,
+        style: str,
+        scene_count: int,
+        voice_mode: str = DEFAULT_VOICE_MODE
+    ) -> List[Dict]:
+        """Ollama serverida 100% oflayn ishlaydigan Flagman Qwen 2.5 7B orqali ssenariy yaratish."""
+        lang_instruction = {
+            "uz": "O'zbek tilida, nihoyatda hayajonli, jonli va viral Reels/Shorts uslubida",
+            "ru": "На русском языке, мощно и динамично для TikTok/Reels",
+            "en": "In English, high-retention viral hook and engaging storytelling"
+        }.get(lang, "O'zbek tilida")
+
+        cadence_guide = CADENCE_DIALECT_PROMPTS.get(voice_mode, "")
+
+        prompt = (
+            f"Siz professional video produser va ssenaristisiz (MrBeast va Alex Hormozi darajasida).\n"
+            f"Mavzu: '{topic}'.\n"
+            f"Til: {lang_instruction}.\n"
+            f"Uslub: {style}.\n"
+            f"{cadence_guide}\n"
+            f"Vazifa: AYNAN {scene_count} ta ketma-ket kadrli ssenariy yozing.\n"
+            f"1-kadr (Hook): Birinchi 2 soniyada tomoshabin e'tiborini mixlab qo'yuvchi kuchli jumlalar.\n"
+            f"O'rta kadrlar: Kutilmagan, qiziqarli faktlar va drayv.\n"
+            f"Oxirgi kadr (CTA): Fikr qoldirish yoki do'stlarga ulashishga chaqiruv.\n\n"
+            f"Javobni FAQAT quyidagi JSON massivida qaytaring (hech qanday qo'shimcha so'zsiz):\n"
+            f'[{{"scene_num": 1, "text": "1-kadr matni", "visual_prompt": "cinematic dramatic vertical 8k visual prompt in english"}}]'
+        )
+
+        payload = json.dumps({
+            "model": OLLAMA_MODEL,
+            "prompt": prompt,
+            "format": "json",
+            "stream": False,
+            "options": {
+                "temperature": 0.7,
+                "top_p": 0.9
+            }
+        }).encode("utf-8")
+
+        req = urllib.request.Request(
+            f"{OLLAMA_HOST}/api/generate",
+            data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": "MuzaffarZed-Bot"
+            }
+        )
+
+        with urllib.request.urlopen(req, timeout=OLLAMA_TIMEOUT) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+
+        raw_response = data.get("response", "").strip()
+        m = re.search(r'\[\s*\{.*\}\s*\]', raw_response, re.DOTALL)
+        parsed = None
+        if m:
+            try:
+                parsed = json.loads(m.group(0))
+            except Exception:
+                pass
+
+        if not parsed:
+            try:
+                obj = json.loads(raw_response)
+                if isinstance(obj, list):
+                    parsed = obj
+                elif isinstance(obj, dict):
+                    parsed = obj.get("scenes") or obj.get("kadrlar") or obj.get("data") or list(obj.values())[0]
+            except Exception:
+                pass
+
+        if isinstance(parsed, list) and len(parsed) >= 2:
+            result = []
+            for idx, sc in enumerate(parsed[:scene_count]):
+                result.append({
+                    "scene_num": idx + 1,
+                    "text": str(sc.get("text", topic)),
+                    "visual_prompt": str(sc.get("visual_prompt", f"cinematic dramatic vertical 8k concept of {topic}, scene {idx+1}"))
+                })
+            return result
+
+        raise ValueError("Ollama Qwen 2.5 7B to'liq JSON kadrlar qaytarmadi")
 
     def _generate_with_pollinations(self, topic: str, lang: str, style: str, scene_count: int, voice_mode: str = DEFAULT_VOICE_MODE) -> List[Dict]:
         """Pollinations bepul ochiq AI matn modeli orqali ssenariy yaratish."""
