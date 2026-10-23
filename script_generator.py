@@ -1,5 +1,5 @@
 """
-MuzaffarZed AI Video Bot - Ssenariy Generatori
+MuzaffarZed AI Video Bot - Ssenariy Generatori (Version 2.0 Viral Hooks)
 Mavzudan jozibali 3-5 kadrli ssenariy va kadrlar vizual promptlarini tuzadi.
 Muallif: MuzaffarZed
 """
@@ -23,11 +23,7 @@ class ScriptGenerator:
 
     def generate(self, topic: str, lang: str = "uz") -> List[Dict]:
         """
-        Berilgan mavzu bo'yicha video ssenariysini tuzadi.
-        Qaytaradi: [
-           {"scene_num": 1, "text": "...", "visual_prompt": "..."},
-           ...
-        ]
+        Berilgan mavzu bo'yicha viral video ssenariysini tuzadi.
         """
         if self.has_gemini:
             try:
@@ -40,37 +36,37 @@ class ScriptGenerator:
 
     def _generate_with_gemini(self, topic: str, lang: str) -> List[Dict]:
         lang_prompt = {
-            "uz": "O'zbek tilida, nihoyatda qiziqarli, zamonaviy va viral uslubda",
-            "ru": "На русском языке, захватывающе и динамично для Reels/Shorts",
-            "en": "In English, engaging, high-retention viral Reels/Shorts style"
+            "uz": "O'zbek tilida, nihoyatda hayajonli, 1-soniyadanoq ushlab qoluvchi viral Reels/Shorts uslubida",
+            "ru": "На русском языке, с мощным вирусным хуком для TikTok/Reels",
+            "en": "In English, high-retention viral hook, engaging storytelling"
         }.get(lang, "O'zbek tilida")
 
         prompt = f"""
-Siz professional viral video rejissyori va kopiraytersiz.
+Siz jahon darajasidagi viral video produserisiz (MrBeast va Hormozi uslubida).
 Mavzu: "{topic}"
-Til talabi: {lang_prompt}
+Til: {lang_prompt}
 
-Ushbu mavzu bo'yicha 3 ta ketma-ket kadrli qisqa (15-25 soniyalik) TikTok/Reels/Shorts ssenariysini tuzing.
-1-kadr: Qiziqishni uyg'otuvchi kuchli Hook (savol yoki hayratlanarli fakt).
-2-kadr: Asosiy sir, fakt yoki mantiqiy tushuntirish.
-3-kadr: Hayratlanarli xulosa va harakatga chaqiriq (Call-to-Action).
+Ushbu mavzu bo'yicha 3 ta ketma-ket kadrli ultra-dinamik (18-25 soniyalik) TikTok/Reels ssenariysini tuzing.
+1-kadr (Hook): Birinchi 2 soniyada tomoshabinni lol qoldiradigan keskin savol yoki kutilmagan sir.
+2-kadr (Body): Asosiy sir, hayratlanarli ilmiy yoki amaliy dalil.
+3-kadr (CTA): Fikrni o'zgartiruvchi xulosa va harakatga chaqiruv.
 
-Javobni FAQAT quyidagi JSON formatida qaytaring (hech qanday markdown yoki qo'shimcha so'zsiz):
+Javobni FAQAT quyidagi JSON formatida qaytaring:
 [
   {{
     "scene_num": 1,
-    "text": "Ovozlashtiriladigan qisqa 1-2 jumlali matn",
-    "visual_prompt": "cinematic hyper-detailed vertical image description in english for AI image generator"
+    "text": "1-2 jumlali kuchli Hook matni",
+    "visual_prompt": "cinematic hyper-detailed vertical image description in english, dramatic volumetric lighting, 8k"
   }},
   {{
     "scene_num": 2,
-    "text": "Ovozlashtiriladigan asosiy fakt matni",
-    "visual_prompt": "cinematic hyper-detailed vertical image description in english"
+    "text": "Asosiy sir va dalil matni",
+    "visual_prompt": "cinematic epic visual concept description in english, high-contrast, vibrant, 8k vertical"
   }},
   {{
     "scene_num": 3,
-    "text": "Xulosa va harakatga chaqiruv matni",
-    "visual_prompt": "cinematic hyper-detailed vertical image description in english"
+    "text": "Xulosa va chaqiriq matni",
+    "visual_prompt": "inspiring triumphant majestic visual in english, golden rays, 8k photorealistic"
   }}
 ]
 """
@@ -83,31 +79,49 @@ Javobni FAQAT quyidagi JSON formatida qaytaring (hech qanday markdown yoki qo'sh
         if text.endswith("```"):
             text = text[:-3]
         text = text.strip()
-        data = json.loads(text)
-        return data
+        return json.loads(text)
 
     def _generate_procedural(self, topic: str, lang: str) -> List[Dict]:
         """
-        API kalitsiz ham 100% ishlaydigan aqlli ssenariy generatori.
+        Ultra-jozibali viral qoliplar (API kalitsiz 100% Zero-Defect).
         """
         clean_topic = topic.strip()
-        
-        # O'zbekcha aqlli shablonlar
+
         if lang == "uz":
+            hooks = [
+                f"99% insonlar {clean_topic} haqidagi bu haqiqatni bilishmaydi! Diqqat bilan eshiting:",
+                f"To'xtang! Agar siz {clean_topic} haqida eshitgan bo'lsangiz, asl haqiqat sizni lol qoldiradi!",
+                f"Siz hech {clean_topic} insoniyat tarixini qanday o'zgartirganini o'ylab ko'rganmisiz? Bu aqlbovar qilmas sir!"
+            ]
+            bodies = [
+                f"Olimlar va soha mutaxassislarining so'nggi kashfiyotiga ko'ra, {clean_topic} biz o'ylagandan 10 barobar kuchliroq ta'sirga ega.",
+                f"Eng qizig'i shundaki, {clean_topic} zamonaviy dunyoda eng buyuk imkoniyatlar kalitiga aylanib bormoqda.",
+                f"Chuqur tahlillar shuni ko'rsatadiki, {clean_topic} ning asl qudrati uning yashirin qonuniyatlarida yotadi."
+            ]
+            conclusions = [
+                f"Ushbu videoni saqlab oling va do'stlaringizga ham ulashing! Yangi bilimlardan xabardor bo'ling!",
+                f"Siz bu haqda qanday fikrdasiz? Fikringizni izohlarda yozib qoldiring va bizga obuna bo'ling!",
+                f"Kelajak aynan shunday kashfiyotlar qo'lida. Ko'proq bilish uchun kuzatib boring!"
+            ]
+
+            h = random.choice(hooks)
+            b = random.choice(bodies)
+            c = random.choice(conclusions)
+
             scenes = [
                 {
                     "scene_num": 1,
-                    "text": f"Siz hech {clean_topic} haqidagi eng hayratlanarli haqiqatni eshitganmisiz? Bu ko'pchilikni lol qoldiradi!",
-                    "visual_prompt": f"cinematic mysterious vertical shot representing {clean_topic}, dramatic lighting, 8k, hyperrealistic"
+                    "text": h,
+                    "visual_prompt": f"cinematic mysterious vertical shot of {clean_topic}, dramatic volumetric lighting, 8k, hyperrealistic"
                 },
                 {
                     "scene_num": 2,
-                    "text": f"Olimlarning tadqiqotlariga ko'ra, {clean_topic} insoniyat tasavvuridan ancha chuqurroq va qudratliroq kuchga ega.",
-                    "visual_prompt": f"epic visual concept of {clean_topic}, high-tech futuristic elements, vibrant neon glow, vertical framing"
+                    "text": b,
+                    "visual_prompt": f"epic visual concept representing {clean_topic}, high-tech futuristic elements, vibrant glow, vertical 8k"
                 },
                 {
                     "scene_num": 3,
-                    "text": f"Bu haqda do'stlaringizga ham ulashing va yangi kashfiyotlar uchun bizni kuzatib boring!",
+                    "text": c,
                     "visual_prompt": f"inspiring triumphant visual art about {clean_topic}, golden hour sunlight, majestic, 8k vertical"
                 }
             ]
@@ -115,37 +129,37 @@ Javobni FAQAT quyidagi JSON formatida qaytaring (hech qanday markdown yoki qo'sh
             scenes = [
                 {
                     "scene_num": 1,
-                    "text": f"Вы когда-нибудь задумывались, что на самом деле скрывает тема {clean_topic}? Этот факт вас поразит!",
-                    "visual_prompt": f"cinematic mysterious vertical shot representing {clean_topic}, dramatic lighting, 8k, photorealistic"
+                    "text": f"99% людей даже не догадываются о скрытой тайне {clean_topic}! Досмотрите до конца!",
+                    "visual_prompt": f"cinematic dramatic vertical shot representing {clean_topic}, 8k photorealistic"
                 },
                 {
                     "scene_num": 2,
-                    "text": f"Учёные доказали, что {clean_topic} таит в себе невероятные возможности, меняющие наше представление о мире.",
-                    "visual_prompt": f"epic visual concept of {clean_topic}, high-tech futuristic elements, vibrant glow, vertical"
+                    "text": f"Учёные доказали, что {clean_topic} меняет законы привычного мира и открывает невероятные возможности.",
+                    "visual_prompt": f"epic visual concept of {clean_topic}, futuristic energy glow, 8k vertical"
                 },
                 {
                     "scene_num": 3,
-                    "text": f"Поделитесь этим видео с друзьями и подписывайтесь, чтобы не пропустить самое интересное!",
-                    "visual_prompt": f"inspiring triumphant vertical visual about {clean_topic}, majestic lighting, 8k"
+                    "text": f"Сохраняйте это видео и делитесь с друзьями, чтобы не потерять!",
+                    "visual_prompt": f"inspiring majestic vertical visual about {clean_topic}, golden rays, 8k"
                 }
             ]
         else: # en
             scenes = [
                 {
                     "scene_num": 1,
-                    "text": f"Did you know the shocking truth about {clean_topic}? This will completely blow your mind!",
-                    "visual_prompt": f"cinematic mysterious vertical shot representing {clean_topic}, dramatic volumetric lighting, 8k, photorealistic"
+                    "text": f"99% of people have no idea about the hidden truth behind {clean_topic}! Listen closely:",
+                    "visual_prompt": f"cinematic mysterious vertical shot representing {clean_topic}, dramatic lighting, 8k"
                 },
                 {
                     "scene_num": 2,
-                    "text": f"Recent discoveries reveal that {clean_topic} is far more fascinating and powerful than anyone previously imagined.",
-                    "visual_prompt": f"epic visual concept of {clean_topic}, cosmic futuristic energy, vibrant colors, vertical wallpaper"
+                    "text": f"Recent scientific breakthroughs prove that {clean_topic} is ten times more powerful than anyone ever imagined.",
+                    "visual_prompt": f"epic visual concept of {clean_topic}, cosmic futuristic energy, vibrant colors, vertical"
                 },
                 {
                     "scene_num": 3,
-                    "text": f"Share this with someone who needs to see it, and follow for more mind-blowing discoveries!",
-                    "visual_prompt": f"inspiring majestic vertical scene about {clean_topic}, golden rays, hyper-detailed, 8k"
+                    "text": f"Save this video right now and share it with someone who needs to hear this!",
+                    "visual_prompt": f"inspiring majestic vertical scene about {clean_topic}, golden sunlight, hyper-detailed, 8k"
                 }
             ]
-            
+
         return scenes

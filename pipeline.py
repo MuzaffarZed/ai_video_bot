@@ -81,23 +81,29 @@ class VideoPipeline:
         await asyncio.to_thread(self.subtitle_eng.generate_ass, processed_scenes, ass_path)
 
         # 5-Bosqich: Kliplarni render qilish va Final montaj
-        await notify(5, "🎬 5/5: Subtitr va audio ulanib, Full HD video yig'ilmoqda...")
+        await notify(5, "🎬 5/5: Kinematografik harakat va montaj yakunlanmoqda...")
         scene_clips = []
         for sc in processed_scenes:
             clip_path = str(TEMP_DIR / f"{task_id}_clip_{sc['scene_num']}.mp4")
-            await asyncio.to_thread(self.video_eng.render_scene_clip, sc["image_path"], sc["duration"], clip_path)
+            await asyncio.to_thread(
+                self.video_eng.render_scene_clip,
+                sc["image_path"],
+                sc["duration"],
+                clip_path,
+                sc["scene_num"]
+            )
             scene_clips.append(clip_path)
 
+        total_duration = processed_scenes[-1]["end_time"] if processed_scenes else 0.0
         output_final = str(OUTPUT_DIR / f"{task_id}_final.mp4")
         await asyncio.to_thread(
             self.video_eng.assemble_final_video,
             scene_clips,
             master_audio,
             ass_path,
-            output_final
+            output_final,
+            total_duration
         )
-
-        total_duration = processed_scenes[-1]["end_time"] if processed_scenes else 0.0
 
         return {
             "status": "success",
