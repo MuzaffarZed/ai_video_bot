@@ -11,9 +11,6 @@ jobs:
   run-bot:
     runs-on: ubuntu-latest
     timeout-minutes: 340
-    env:
-      DEBIAN_FRONTEND: noninteractive
-      NEEDRESTART_MODE: a
 
     steps:
       - name: 📥 Kodni yuklash (Checkout)
@@ -25,13 +22,15 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
 
-      - name: 🎬 FFmpeg & FFprobe to'liq o'rnatish (Ubuntu Native Non-Interactive)
+      - name: 🎬 FFmpeg & FFprobe to'liq o'rnatish (Instant 3s Static Binary)
         run: |
-          sudo apt-get update -qq
-          sudo -E apt-get install -y --no-install-recommends ffmpeg fonts-dejavu-core
+          sudo curl -sSL https://github.com/eugeneware/ffmpeg-static/releases/download/b6.0/ffmpeg-linux-x64 -o /usr/local/bin/ffmpeg
+          sudo chmod +x /usr/local/bin/ffmpeg
+          sudo curl -sSL https://github.com/eugeneware/ffmpeg-static/releases/download/b6.0/ffprobe-linux-x64 -o /usr/local/bin/ffprobe
+          sudo chmod +x /usr/local/bin/ffprobe
           which ffmpeg
           which ffprobe
-          ffmpeg -version | head -n 2
+          ffmpeg -version | head -n 1
 
       - name: 📦 Python kutubxonalarini o'rnatish
         run: |
