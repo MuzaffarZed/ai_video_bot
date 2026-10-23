@@ -59,6 +59,7 @@ class VideoPipeline:
         filter_key: str = DEFAULT_VISUAL_FILTER,
         size_key: str = DEFAULT_SUBTITLE_SIZE,
         art_style: str = DEFAULT_ART_STYLE,
+        bgm_volume: float = 0.15,
         custom_scenes: Optional[List[Dict]] = None,
         custom_image_path: Optional[str] = None,
         progress_callback: Optional[Callable[[int, int, str], None]] = None
@@ -117,7 +118,7 @@ class VideoPipeline:
         if final_music_genre == "auto" or not final_music_genre:
             final_music_genre = visual_eng.get_music_genre_for_category(category)
 
-        await asyncio.to_thread(self.audio_mixer.mix, voice_files, master_audio, genre=final_music_genre)
+        await asyncio.to_thread(self.audio_mixer.mix, voice_files, master_audio, genre=final_music_genre, bgm_volume=bgm_volume)
 
         # Alohida MP3 podkast
         output_mp3 = str(OUTPUT_DIR / f"{task_id}_podcast.mp3")

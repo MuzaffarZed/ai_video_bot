@@ -125,25 +125,50 @@ class VisualEngine:
             return "ambient_chill"
 
     def process_custom_user_image(self, input_image_path: str, output_path: str) -> str:
-        """Foydalanuvchi yuborgan rasmni video formatiga moslab qayta ishlash."""
+        """
+        Foydalanuvchi rasmini professional formatga moslash:
+        Agar rasm formati boshqacha bo'lsa (masalan 16:9 yoki 1:1), kesib tashlamasdan
+        orqa fonga xiralashgan (Blurred Glass Pad) chiroyli fon beradi va markazga joylaydi!
+        """
         try:
             with Image.open(input_image_path) as im:
                 im_ratio = im.width / im.height
                 target_ratio = self.width / self.height
 
-                if im_ratio > target_ratio:
-                    new_height = self.height
-                    new_width = int(new_height * im_ratio)
+                # Agar rasm video formatiga deyarli mos bo'lsa
+                if abs(im_ratio - target_ratio) < 0.12:
+                    if im_ratio > target_ratio:
+                        new_h = self.height
+                        new_w = int(new_h * im_ratio)
+                    else:
+                        new_w = self.width
+                        new_h = int(new_w / im_ratio)
+                    resized = im.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                    l = (new_w - self.width) // 2
+                    t = (new_h - self.height) // 2
+                    cropped = resized.crop((l, t, l + self.width, t + self.height))
+                    cropped.save(output_path, "JPEG", quality=95)
                 else:
-                    new_width = self.width
-                    new_height = int(new_width / im_ratio)
+                    # Smart Glassmorphic Blur Pad (Nafis xira orqa fon + markazda to'liq rasm)
+                    bg = im.resize((self.width, self.height), Image.Resampling.LANCZOS)
+                    bg = bg.filter(ImageFilter.GaussianBlur(55))
+                    dim = Image.new("RGBA", (self.width, self.height), (0, 0, 0, 75))
+                    bg = Image.alpha_composite(bg.convert("RGBA"), dim)
 
-                resized = im.resize((new_width, new_height), Image.Resampling.LANCZOS)
-                left = (new_width - self.width) // 2
-                top = (new_height - self.height) // 2
-                cropped = resized.crop((left, top, left + self.width, top + self.height))
+                    # Foreground fit
+                    if im_ratio > target_ratio:
+                        fg_w = self.width
+                        fg_h = int(self.width / im_ratio)
+                    else:
+                        fg_h = self.height
+                        fg_w = int(self.height * im_ratio)
+                    fg = im.resize((fg_w, fg_h), Image.Resampling.LANCZOS)
 
-                cropped.save(output_path, "JPEG", quality=95)
+                    pos_x = (self.width - fg_w) // 2
+                    pos_y = (self.height - fg_h) // 2
+                    bg.paste(fg, (pos_x, pos_y))
+                    bg.convert("RGB").save(output_path, "JPEG", quality=95)
+
                 self._apply_cinematic_grade(output_path)
                 return output_path
         except Exception as e:

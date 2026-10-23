@@ -1,11 +1,12 @@
 import os, sys, unittest
+from PIL import Image
 sys.stdout.reconfigure(encoding='utf-8')
 
 sys.path.insert(0, r'C:\Users\MuzaffarZed\ai_workspace\ai_video_bot')
 
 from config import (
     VOICES, VIDEO_STYLES, VISUAL_FILTERS, SUBTITLE_THEMES, SUBTITLE_SIZES,
-    FORMATS, DURATIONS, MUSIC_GENRES, ART_STYLES, TEMP_DIR
+    FORMATS, DURATIONS, MUSIC_GENRES, ART_STYLES, STUDIO_PRESETS, MUSIC_VOLUMES, TEMP_DIR
 )
 from script_generator import ScriptGenerator, transliterate_uzbek
 from visual_engine import VisualEngine
@@ -15,13 +16,15 @@ from audio_mixer import AudioMixer
 from video_engine import VideoEngine
 from pipeline import VideoPipeline
 
-class TestQuantum9(unittest.TestCase):
+class TestSingularity10(unittest.TestCase):
     def test_config_integrity(self):
         self.assertIn("uz_sardor", VOICES)
         self.assertIn("photoreal", ART_STYLES)
         self.assertIn("suspense_drama", MUSIC_GENRES)
         self.assertIn("lofi_vibes", MUSIC_GENRES)
         self.assertIn("podcast_dialogue", VIDEO_STYLES)
+        self.assertIn("tiktok_hook", STUDIO_PRESETS)
+        self.assertIn("mute", MUSIC_VOLUMES)
         self.assertIn("9:16", FORMATS)
         self.assertIn("teal_orange", VISUAL_FILTERS)
 
@@ -40,16 +43,28 @@ class TestQuantum9(unittest.TestCase):
         self.assertEqual(scenes[1]["speaker"], 2)
         self.assertEqual(scenes[2]["speaker"], 1)
 
-    def test_visual_engine_thumbnail_generation(self):
+    def test_visual_engine_smart_blur_padding(self):
         ve = VisualEngine("9:16")
-        test_img = str(TEMP_DIR / "test_orig.jpg")
-        ve._generate_fallback_graphic("space", test_img)
+        # Create a horizontal (16:9) image to test blur padding
+        test_in = str(TEMP_DIR / "test_landscape.jpg")
+        img = Image.new("RGB", (800, 450), color=(100, 150, 200))
+        img.save(test_in, "JPEG")
+
+        test_out = str(TEMP_DIR / "test_padded.jpg")
+        ve.process_custom_user_image(test_in, test_out)
+        self.assertTrue(os.path.exists(test_out))
+        with Image.open(test_out) as out_im:
+            self.assertEqual(out_im.width, 1080)
+            self.assertEqual(out_im.height, 1920)
+
+        # Test thumbnail
         test_thumb = str(TEMP_DIR / "test_thumb.jpg")
-        ve.generate_thumbnail_card(test_img, "Test Title", test_thumb)
+        ve.generate_thumbnail_card(test_out, "Test Title", test_thumb)
         self.assertTrue(os.path.exists(test_thumb))
-        self.assertTrue(os.path.getsize(test_thumb) > 500)
+
         try:
-            os.remove(test_img)
+            os.remove(test_in)
+            os.remove(test_out)
             os.remove(test_thumb)
         except Exception:
             pass

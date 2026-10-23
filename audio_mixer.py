@@ -120,11 +120,13 @@ class AudioMixer:
         voice_files: List[str],
         output_master_path: str,
         genre: str = "ambient_chill",
-        transition_points: List[float] = None
+        transition_points: List[float] = None,
+        bgm_volume: float = 0.15
     ) -> str:
         """
         Barcha kadrlar ovozlarini birlashtiradi, mavzuga mos fon musiqasi (Audio Ducking)
         va sahna o'tishlarida Whoosh SFX bilan mikslaydi.
+        Agar bgm_volume <= 0.001 bo'lsa, musiqasiz faqat toza nutq chiqaradi.
         """
         if genre == "auto" or not genre:
             genre = "ambient_chill"
@@ -160,12 +162,24 @@ class AudioMixer:
         res = subprocess.run(dur_cmd, capture_output=True, text=True, check=True, timeout=20)
         total_dur = float(res.stdout.strip())
 
+        # Agar musiqasiz rejim tanlangan bo'lsa
+        if bgm_volume <= 0.001 or genre == "mute":
+            cmd_clean = [
+                "ffmpeg", "-nostdin", "-y",
+                "-i", merged_voice,
+                "-c:a", "pcm_s16le",
+                "-ar", "44100",
+                output_master_path
+            ]
+            subprocess.run(cmd_clean, capture_output=True, check=True, timeout=60)
+            return output_master_path
+
         fade_out_start = max(0.0, total_dur - 1.2)
         
         # Audio Ducking filter complex
         filter_complex = (
             f"[0:a]aresample=44100,aformat=channel_layouts=stereo,volume=1.0[voice];"
-            f"[1:a]aresample=44100,aformat=channel_layouts=stereo,volume=0.12,"
+            f"[1:a]aresample=44100,aformat=channel_layouts=stereo,volume={bgm_volume:.3f},"
             f"atrim=0:{total_dur:.3f},afade=t=in:st=0:d=0.8,afade=t=out:st={fade_out_start:.3f}:d=1.2[bgm];"
             f"[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[outa]"
         )

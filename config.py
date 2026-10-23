@@ -1,5 +1,5 @@
 """
-MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Quantum 9.0 Apex Supreme)
+MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Singularity 10.0 Omnipresent Titan)
 Muallif: MuzaffarZed
 """
 import os
@@ -244,6 +244,89 @@ ART_STYLES = {
     }
 }
 DEFAULT_ART_STYLE = "photoreal"
+
+# 11. Fon Musiqasi Balandligi (BGM Volume)
+MUSIC_VOLUMES = {
+    "mute": {"name": "🔇 Musiqasiz (Faqat toza nutq)", "vol": 0.0},
+    "low": {"name": "🔉 Mayin fon (8%)", "vol": 0.08},
+    "medium": {"name": "🔊 Standart (15%)", "vol": 0.15},
+    "high": {"name": "📢 Baland (25%)", "vol": 0.25}
+}
+DEFAULT_MUSIC_VOLUME = "medium"
+
+# 12. 1-Bosishda Studiya Shablonlari (Studio Presets)
+STUDIO_PRESETS = {
+    "tiktok_hook": {
+        "name": "🔥 TikTok Viral Hook (15s, Kiberpank, Olovli)",
+        "settings": {
+            "style": "top_facts",
+            "mode": "reels_fast",
+            "theme": "fire",
+            "sub_size": "large",
+            "format": "9:16",
+            "filter": "cyberpunk",
+            "duration": "short_15",
+            "music": "tech_modern",
+            "art_style": "cyberpunk"
+        }
+    },
+    "space_doku": {
+        "name": "🌌 Koinot Mini-Doku (45s, Teal-Orange, Cyan)",
+        "settings": {
+            "style": "science",
+            "mode": "cinematic_deep",
+            "theme": "cyan",
+            "sub_size": "medium",
+            "format": "9:16",
+            "filter": "teal_orange",
+            "duration": "deep_45",
+            "music": "cosmic_deep",
+            "art_style": "photoreal"
+        }
+    },
+    "podcast_dual": {
+        "name": "🎙 Ikki Kishilik Podkast (30s, Sardor & Madina)",
+        "settings": {
+            "style": "podcast_dialogue",
+            "mode": "natural_clean",
+            "theme": "gold",
+            "sub_size": "medium",
+            "format": "9:16",
+            "filter": "clean",
+            "duration": "medium_30",
+            "music": "lofi_vibes",
+            "art_style": "photoreal"
+        }
+    },
+    "youtube_wide": {
+        "name": "🖥 YouTube Gorizontal (16:9, Clean HDR)",
+        "settings": {
+            "style": "story",
+            "mode": "natural_clean",
+            "theme": "gold",
+            "sub_size": "small",
+            "format": "16:9",
+            "filter": "clean",
+            "duration": "deep_45",
+            "music": "ambient_chill",
+            "art_style": "photoreal"
+        }
+    },
+    "business_master": {
+        "name": "💰 Biznes & Boylik (30s, Oltin, Zumrad)",
+        "settings": {
+            "style": "business",
+            "mode": "reels_fast",
+            "theme": "emerald",
+            "sub_size": "medium",
+            "format": "9:16",
+            "filter": "golden",
+            "duration": "medium_30",
+            "music": "epic_inspiration",
+            "art_style": "photoreal"
+        }
+    }
+}
 
 WATERMARK_TEXT = "Dasturchi: MuzaffarZed"
 BRAND_NAME = "MuzaffarZed AI Studios"

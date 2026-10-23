@@ -58,10 +58,15 @@ class VideoEngine:
         filter_data = VISUAL_FILTERS.get(filter_key, VISUAL_FILTERS[DEFAULT_VISUAL_FILTER])
         color_filter = filter_data.get("filter", "eq=contrast=1.06:saturation=1.14")
 
+        fade_d = min(0.20, duration * 0.1)
+        fade_out_st = max(0.0, duration - fade_d)
+        fades = f"fade=t=in:st=0:d={fade_d:.3f},fade=t=out:st={fade_out_st:.3f}:d={fade_d:.3f}"
+
         vf_filter = (
             f"scale={scaled_w}:{scaled_h}:force_original_aspect_ratio=increase,crop={scaled_w}:{scaled_h},"
             f"crop={target_w}:{target_h}:x='{drift_x}':y='{drift_y}',"
             f"{color_filter},"
+            f"{fades},"
             f"setsar=1"
         )
 

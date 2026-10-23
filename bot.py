@@ -57,6 +57,9 @@ from config import (
     DEFAULT_ART_STYLE,
     MUSIC_GENRES,
     DEFAULT_MUSIC_GENRE,
+    MUSIC_VOLUMES,
+    DEFAULT_MUSIC_VOLUME,
+    STUDIO_PRESETS,
     WATERMARK_TEXT,
     BRAND_NAME
 )
@@ -122,6 +125,9 @@ def set_user_pref(user_id: int, key: str, value: str):
 def get_main_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
+        InlineKeyboardButton(text="🎛 Studiya Shablonlari (Presets)", callback_data="menu_presets")
+    )
+    builder.row(
         InlineKeyboardButton(text="🎙 Ovoz", callback_data="menu_voice"),
         InlineKeyboardButton(text="⚡ Tezlik & Rejim", callback_data="menu_modes")
     )
@@ -139,15 +145,31 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
     )
     builder.row(
         InlineKeyboardButton(text="🎨 Rasm Uslubi (Art)", callback_data="menu_art_styles"),
-        InlineKeyboardButton(text="🎵 Fon Musiqasi", callback_data="menu_music")
+        InlineKeyboardButton(text="🎚 Musiqa Ovozi", callback_data="menu_music_vol")
     )
     builder.row(
-        InlineKeyboardButton(text="💡 Trend Mavzular", callback_data="menu_topics"),
-        InlineKeyboardButton(text="👤 Profilim", callback_data="menu_profile")
+        InlineKeyboardButton(text="🎵 Fon Musiqasi", callback_data="menu_music"),
+        InlineKeyboardButton(text="💡 Trend Mavzular", callback_data="menu_topics")
     )
     builder.row(
+        InlineKeyboardButton(text="👤 Profilim", callback_data="menu_profile"),
         InlineKeyboardButton(text="📊 Statistika", callback_data="menu_stats")
     )
+    return builder.as_markup()
+
+def get_presets_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for key, p in STUDIO_PRESETS.items():
+        builder.row(InlineKeyboardButton(text=p["name"], callback_data=f"apply_preset:{key}"))
+    builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
+    return builder.as_markup()
+
+def get_music_vol_keyboard(current: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for key, v in MUSIC_VOLUMES.items():
+        check = "✅ " if key == current else ""
+        builder.row(InlineKeyboardButton(text=f"{check}{v['name']}", callback_data=f"set_music_vol:{key}"))
+    builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
     return builder.as_markup()
 
 def get_art_styles_keyboard(current: str) -> InlineKeyboardMarkup:
@@ -325,6 +347,7 @@ async def cmd_profile(message: types.Message):
     cur_d = DURATIONS.get(get_user_pref(user_id, "duration", DEFAULT_DURATION), {})["name"]
     cur_l = VISUAL_FILTERS.get(get_user_pref(user_id, "filter", DEFAULT_VISUAL_FILTER), {})["name"]
     cur_art = ART_STYLES.get(get_user_pref(user_id, "art_style", DEFAULT_ART_STYLE), {})["name"]
+    cur_vol = MUSIC_VOLUMES.get(get_user_pref(user_id, "music_vol", DEFAULT_MUSIC_VOLUME), {})["name"]
     cur_t = SUBTITLE_THEMES.get(get_user_pref(user_id, "theme", DEFAULT_SUBTITLE_THEME), {})["name"]
     cur_sz = SUBTITLE_SIZES.get(get_user_pref(user_id, "sub_size", DEFAULT_SUBTITLE_SIZE), {})["name"]
 
@@ -337,6 +360,7 @@ async def cmd_profile(message: types.Message):
         f"• ⏱ <b>Davomiylik:</b> {cur_d}\n"
         f"• 🎬 <b>Rang (LUT):</b> {cur_l}\n"
         f"• 🎨 <b>Rasm Uslubi:</b> {cur_art}\n"
+        f"• 🎚 <b>Musiqa:</b> {cur_vol}\n"
         f"• 💬 <b>Subtitr:</b> {cur_t}\n"
         f"• 🔠 <b>Shrift o'lchami:</b> {cur_sz}\n\n"
         f"<i>Sozlamalarni o'zgartirish uchun quyidagi tugmani bosing:</i>\n"
@@ -421,20 +445,39 @@ async def cmd_health(message: types.Message):
     )
     await message.answer(health_text, parse_mode="HTML")
 
+@dp.message(Command("presets"))
+async def cmd_presets(message: types.Message):
+    await message.answer(
+        "🎛 <b>1-Bosishda Studiya Shablonlari (Studio Presets):</b>\n\n"
+        "Quyidagi professional shablonlardan birini tanlang va butun studiya sozlamalari (ovoz, uslub, format, rang, subtitr) avtomatik o'rnatiladi:\n\n"
+        f"<i>{WATERMARK_TEXT}</i>",
+        reply_markup=get_presets_keyboard(),
+        parse_mode="HTML"
+    )
+
+@dp.message(Command("clear"))
+async def cmd_clear(message: types.Message):
+    uid = message.from_user.id
+    user_pending_photos.pop(uid, None)
+    user_active_requests.discard(uid)
+    await message.answer("🧹 <b>Barcha vaqtinchalik yuklamalar va so'rovlar tozalandi!</b>", reply_markup=get_main_keyboard(), parse_mode="HTML")
+
 @dp.message(Command("help"))
 async def cmd_help(message: types.Message):
     help_text = (
         f"📖 <b>{BRAND_NAME} - Qo'llanma:</b>\n\n"
         "• <b>Matndan video:</b> Mavzuni yozing (masalan: <i>Qora tuynuklar siri</i>) — AI ssenariy, 8K rasm, ovoz va subtitrlarni montaj qiladi.\n"
-        "• <b>Rasmdan video:</b> Surat yuboring — bot uni 1-kadr sifatida kinoviy vinyetka bilan montaj qiladi.\n"
+        "• <b>Rasmdan video:</b> Surat yuboring — bot uni 1-kadr sifatida xiralashgan fon bilan montaj qiladi.\n"
         "• <b>Ovozdan video:</b> Telegramda ovozli xabar yuboring — bot ovozingizdan video yasab beradi!\n"
         "• <b>SMM Paket:</b> Har bir video bilan birga Instagram/TikTok uchun tayyor sarlavha va 15 ta hashtag taqdim etiladi.\n\n"
         "Buyruqlar:\n"
         "/start - Bosh menyu\n"
+        "/presets - 1-bosishda tayyor studiya shablonlari\n"
         "/ideas - Trenddagi viral g'oyalar katalogi\n"
         "/script - O'z shaxsiy matningizdan video montaj\n"
         "/profile - Sozlamalaringiz xulosasi\n"
         "/health - Tizim salomatligi va holati\n"
+        "/clear - Vaqtinchalik fayllarni tozalash\n"
         "/settings - Sozlamalar paneli\n"
         "/stats - Bot statistikasi\n"
         "/help - Qo'llanma\n\n"
@@ -622,6 +665,49 @@ async def cb_set_art_style(callback: types.CallbackQuery):
     a_name = ART_STYLES[key]["name"]
     await callback.answer(f"Rasm uslubi: {a_name}")
     await callback.message.edit_text(f"✅ Rasm uslubi o'rnatildi: <b>{a_name}</b>", reply_markup=get_art_styles_keyboard(key), parse_mode="HTML")
+
+# --- Studiya Shablonlari (Presets) menyusi ---
+@dp.callback_query(F.data == "menu_presets")
+async def cb_presets_menu(callback: types.CallbackQuery):
+    await callback.message.edit_text(
+        "🎛 <b>1-Bosishda Studiya Shablonlari (Studio Presets):</b>\n\n"
+        "Kerakli professional shablonni tanlang va barcha sozlamalar bir zumda o'rnatiladi:",
+        reply_markup=get_presets_keyboard(),
+        parse_mode="HTML"
+    )
+
+@dp.callback_query(F.data.startswith("apply_preset:"))
+async def cb_apply_preset(callback: types.CallbackQuery):
+    key = callback.data.split(":")[1]
+    preset = STUDIO_PRESETS.get(key)
+    if preset:
+        uid = callback.from_user.id
+        for k, v in preset["settings"].items():
+            set_user_pref(uid, k, v)
+        p_name = preset["name"]
+        await callback.answer(f"Shablon: {p_name[:25]}")
+        await callback.message.edit_text(
+            f"✅ <b>Studiya Shabloni Muvaffaqiyatli Qo'llandi:</b>\n\n"
+            f"📌 <b>{p_name}</b>\n\n"
+            f"Endi video mavzusini yozing yoki quyidagi menyudan foydalaning:\n\n"
+            f"<i>{WATERMARK_TEXT}</i>",
+            reply_markup=get_main_keyboard(),
+            parse_mode="HTML"
+        )
+
+# --- Musiqa Balandligi menyusi ---
+@dp.callback_query(F.data == "menu_music_vol")
+async def cb_music_vol_menu(callback: types.CallbackQuery):
+    cur = get_user_pref(callback.from_user.id, "music_vol", DEFAULT_MUSIC_VOLUME)
+    await callback.message.edit_text("🎚 <b>Fon musiqasi balandligini tanlang:</b>", reply_markup=get_music_vol_keyboard(cur), parse_mode="HTML")
+
+@dp.callback_query(F.data.startswith("set_music_vol:"))
+async def cb_set_music_vol(callback: types.CallbackQuery):
+    key = callback.data.split(":")[1]
+    set_user_pref(callback.from_user.id, "music_vol", key)
+    v_name = MUSIC_VOLUMES[key]["name"]
+    await callback.answer(f"Ovoz: {v_name}")
+    await callback.message.edit_text(f"✅ Musiqa balandligi: <b>{v_name}</b>", reply_markup=get_music_vol_keyboard(key), parse_mode="HTML")
 
 # --- Mavzular menyusi ---
 @dp.callback_query(F.data == "menu_topics")
@@ -934,8 +1020,10 @@ async def handle_video_creation(
     cur_format = get_user_pref(user_id, "format", DEFAULT_FORMAT)
     cur_filter = get_user_pref(user_id, "filter", DEFAULT_VISUAL_FILTER)
     cur_art_style = get_user_pref(user_id, "art_style", DEFAULT_ART_STYLE)
+    cur_music_vol = get_user_pref(user_id, "music_vol", DEFAULT_MUSIC_VOLUME)
     cur_sub_size = get_user_pref(user_id, "sub_size", DEFAULT_SUBTITLE_SIZE)
 
+    bgm_vol = MUSIC_VOLUMES.get(cur_music_vol, {}).get("vol", 0.15)
     fmt_info = FORMATS.get(cur_format, FORMATS[DEFAULT_FORMAT])
 
     status_msg = await message.answer(
@@ -986,6 +1074,7 @@ async def handle_video_creation(
                 filter_key=cur_filter,
                 size_key=cur_sub_size,
                 art_style=cur_art_style,
+                bgm_volume=bgm_vol,
                 custom_scenes=custom_scenes,
                 custom_image_path=custom_image_path,
                 progress_callback=progress_notifier
