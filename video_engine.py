@@ -77,8 +77,10 @@ class VideoEngine:
         rel_ass = os.path.relpath(ass_subtitle_path, BASE_DIR).replace("\\", "/")
         rel_final = os.path.abspath(output_final_path).replace("\\", "/")
 
-        # Pastki qismdagi zamonaviy progress chizig'i filtri
-        progress_filter = f"drawbox=x=0:y=ih-12:w='iw*(t/{max(1.0, total_duration):.3f})':h=12:color=0xFFD700@0.9:t=fill"
+        # Pastki qismdagi zamonaviy progress chizig'i filtri (Qorong'i rels + Oltin chiziq)
+        dark_rail = "drawbox=x=0:y=ih-14:w=iw:h=14:color=black@0.45:t=fill"
+        gold_bar = f"drawbox=x=0:y=ih-14:w='iw*(t/{max(1.0, total_duration):.3f})':h=14:color=0xFFD700@0.95:t=fill"
+        progress_filter = f"{dark_rail},{gold_bar}"
 
         # 1-Urinish: Progress-bar + ASS karaoke subtitrlar
         full_vf_with_sub = f"{progress_filter},ass={rel_ass}"

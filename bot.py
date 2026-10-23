@@ -1,13 +1,16 @@
 """
-MuzaffarZed AI Video Bot - Telegram Bot Interfeysi (aiogram 3.x - Audio Studio 2.0)
-To'liq avtomatlashtirilgan, Studiya DSP ovozi, tezlik/tonalite sozlamalari bilan.
+MuzaffarZed AI Video Bot - Telegram Bot Interfeysi (aiogram 3.x - Ultimate Studio 2.0)
+To'liq avtomatlashtirilgan, xotira bazasi, FloodWait himoyasi va Studio DSP bilan.
 Muallif: MuzaffarZed
 """
 import os
 import sys
+import time
+import json
 import asyncio
 import logging
 import html
+from pathlib import Path
 
 if sys.platform == "win32":
     try:
@@ -21,15 +24,55 @@ from aiogram.filters import CommandStart, Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, FSInputFile
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from config import TELEGRAM_BOT_TOKEN, VOICES, DEFAULT_VOICE, VOICE_MODES, DEFAULT_VOICE_MODE, WATERMARK_TEXT
+from config import (
+    BASE_DIR,
+    TELEGRAM_BOT_TOKEN,
+    VOICES,
+    DEFAULT_VOICE,
+    VOICE_MODES,
+    DEFAULT_VOICE_MODE,
+    WATERMARK_TEXT
+)
 from pipeline import VideoPipeline
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-user_settings = {}
+# Foydalanuvchilar sozlamalari bazasi (Faylda doimiy saqlanadi)
+USER_DB_FILE = BASE_DIR / "user_db.json"
+
+def load_user_db() -> dict:
+    if USER_DB_FILE.exists():
+        try:
+            with open(USER_DB_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def save_user_db(db: dict):
+    try:
+        with open(USER_DB_FILE, "w", encoding="utf-8") as f:
+            json.dump(db, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.error(f"User DB saqlashda xato: {e}")
+
+user_settings = load_user_db()
 active_tasks = set()
 pipeline = VideoPipeline()
+
+def get_user_pref(user_id: int, key: str, default: str) -> str:
+    uid = str(user_id)
+    if uid in user_settings and key in user_settings[uid]:
+        return user_settings[uid][key]
+    return default
+
+def set_user_pref(user_id: int, key: str, value: str):
+    uid = str(user_id)
+    if uid not in user_settings:
+        user_settings[uid] = {}
+    user_settings[uid][key] = value
+    save_user_db(user_settings)
 
 def get_main_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
@@ -78,20 +121,21 @@ dp = Dispatcher()
 @dp.message(CommandStart())
 async def cmd_start(message: types.Message):
     user_id = message.from_user.id
-    if user_id not in user_settings:
-        user_settings[user_id] = {"voice": DEFAULT_VOICE, "mode": DEFAULT_VOICE_MODE}
+    cur_voice = get_user_pref(user_id, "voice", DEFAULT_VOICE)
+    cur_mode = get_user_pref(user_id, "mode", DEFAULT_VOICE_MODE)
 
-    cur_voice = VOICES[user_settings[user_id]["voice"]]["name"]
-    cur_mode = VOICE_MODES[user_settings[user_id]["mode"]]["name"]
+    v_name = VOICES.get(cur_voice, VOICES[DEFAULT_VOICE])["name"]
+    m_name = VOICE_MODES.get(cur_mode, VOICE_MODES[DEFAULT_VOICE_MODE])["name"]
 
     welcome_text = (
         f"👋 Assalomu alaykum, <b>{html.escape(message.from_user.full_name)}</b>!\n\n"
-        f"🎬 <b>MuzaffarZed AI Video Bot (Audio Studio 2.0)</b>ga xush kelibsiz!\n\n"
+        f"🎬 <b>MuzaffarZed AI Video Bot (Ultimate Studio 2.0)</b>ga xush kelibsiz!\n\n"
         f"Men professional <b>Full HD (9:16) Reels/Shorts</b> video tayyorlab beraman:\n"
-        f"• 🎙 <b>Studiya DSP Ovozi:</b> <i>Broadcast kompressor, iliq ko'krak rezonansi va tiniqlik</i>\n"
-        f"• ⚡ <b>Hozirgi sozlama:</b> {cur_voice} | {cur_mode}\n"
-        f"• 🎥 <b>Kamera Harakati:</b> <i>Kinematografik drift va oltin progress chizig'i</i>\n"
-        f"• 📝 <b>Karaoke:</b> <i>Yorqin neon sariq yonuvchi subtitrlar va emojilar</i>\n\n"
+        f"• 🎙 <b>Ovoz:</b> {v_name}\n"
+        f"• ⚡ <b>Rejim:</b> {m_name}\n"
+        f"• 🎚 <b>Studio DSP:</b> <i>Broadcast kompressor va iliq bas</i>\n"
+        f"• 🎥 <b>Dinamika:</b> <i>Kinematografik drift va oltin progress chizig'i</i>\n"
+        f"• 📝 <b>Hormozi Karaoke:</b> <i>Neon sariq yonuvchi 2-3 so'zli dinamik subtitrlar</i>\n\n"
         f"🚀 <b>Video yaratish uchun shunchaki mavzuni yozib yuboring</b> yoki quyidagi tugmalardan birini tanlang:\n\n"
         f"<i>{WATERMARK_TEXT}</i>"
     )
@@ -108,7 +152,7 @@ async def cb_main(callback: types.CallbackQuery):
 @dp.callback_query(F.data == "menu_voice")
 async def cb_voice_menu(callback: types.CallbackQuery):
     user_id = callback.from_user.id
-    cur_voice = user_settings.get(user_id, {}).get("voice", DEFAULT_VOICE)
+    cur_voice = get_user_pref(user_id, "voice", DEFAULT_VOICE)
     await callback.message.edit_text(
         "🎙 <b>Videongiz qaysi tilda va kimning ovozida bo'lishini tanlang:</b>",
         reply_markup=get_voice_keyboard(cur_voice),
@@ -119,11 +163,9 @@ async def cb_voice_menu(callback: types.CallbackQuery):
 async def cb_set_voice(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     voice_key = callback.data.split(":")[1]
-    if user_id not in user_settings:
-        user_settings[user_id] = {"mode": DEFAULT_VOICE_MODE}
-    user_settings[user_id]["voice"] = voice_key
+    set_user_pref(user_id, "voice", voice_key)
     voice_name = VOICES[voice_key]["name"]
-    await callback.answer(f"Ovoz tanlandi: {voice_name}")
+    await callback.answer(f"Ovoz: {voice_name}")
     await callback.message.edit_text(
         f"✅ Ovoz o'rnatildi: <b>{voice_name}</b>\n\nEndi mavzu yozishingiz mumkin:",
         reply_markup=get_voice_keyboard(voice_key),
@@ -133,7 +175,7 @@ async def cb_set_voice(callback: types.CallbackQuery):
 @dp.callback_query(F.data == "menu_modes")
 async def cb_modes_menu(callback: types.CallbackQuery):
     user_id = callback.from_user.id
-    cur_mode = user_settings.get(user_id, {}).get("mode", DEFAULT_VOICE_MODE)
+    cur_mode = get_user_pref(user_id, "mode", DEFAULT_VOICE_MODE)
     await callback.message.edit_text(
         "⚡ <b>Ovoz tezligi va tonalitesini tanlang:</b>\n\n"
         "<i>Reels Dinamik (+12% tezlik) uslubi tavsiya etiladi — nutq baquvvat va jonli eshitiladi.</i>",
@@ -145,9 +187,7 @@ async def cb_modes_menu(callback: types.CallbackQuery):
 async def cb_set_mode(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     mode_key = callback.data.split(":")[1]
-    if user_id not in user_settings:
-        user_settings[user_id] = {"voice": DEFAULT_VOICE}
-    user_settings[user_id]["mode"] = mode_key
+    set_user_pref(user_id, "mode", mode_key)
     mode_name = VOICE_MODES[mode_key]["name"]
     await callback.answer(f"Rejim: {mode_name}")
     await callback.message.edit_text(
@@ -197,8 +237,8 @@ async def handle_video_creation(message: types.Message, topic: str, user_id: int
         return
 
     active_tasks.add(user_id)
-    cur_voice = user_settings.get(user_id, {}).get("voice", DEFAULT_VOICE)
-    cur_mode = user_settings.get(user_id, {}).get("mode", DEFAULT_VOICE_MODE)
+    cur_voice = get_user_pref(user_id, "voice", DEFAULT_VOICE)
+    cur_mode = get_user_pref(user_id, "mode", DEFAULT_VOICE_MODE)
 
     status_msg = await message.answer(
         f"🎬 <b>Yangi video yaratish boshlandi!</b>\n\n"
@@ -209,24 +249,30 @@ async def handle_video_creation(message: types.Message, topic: str, user_id: int
         parse_mode="HTML"
     )
 
-    last_update_text = ""
+    last_edit_time = 0.0
+    last_text = ""
 
     async def progress_notifier(step: int, total: int, status_text: str):
-        nonlocal last_update_text
-        if status_text != last_update_text:
-            last_update_text = status_text
-            try:
-                progress_bar = "▓" * (step * 2) + "░" * ((total - step) * 2)
-                await status_msg.edit_text(
-                    f"🎬 <b>Video yaratilmoqda... [{step}/{total}]</b>\n\n"
-                    f"📌 <b>Mavzu:</b> <i>{html.escape(topic)}</i>\n"
-                    f"<code>[{progress_bar}]</code>\n\n"
-                    f"<b>{status_text}</b>\n\n"
-                    f"<i>{WATERMARK_TEXT}</i>",
-                    parse_mode="HTML"
-                )
-            except Exception:
-                pass
+        nonlocal last_edit_time, last_text
+        now = time.time()
+        # Telegram FloodWait himoyasi (kamida 1.4 soniya oraliq)
+        if (now - last_edit_time < 1.4) and (step < total):
+            return
+
+        last_edit_time = now
+        last_text = status_text
+        try:
+            progress_bar = "▓" * (step * 2) + "░" * ((total - step) * 2)
+            await status_msg.edit_text(
+                f"🎬 <b>Video yaratilmoqda... [{step}/{total}]</b>\n\n"
+                f"📌 <b>Mavzu:</b> <i>{html.escape(topic)}</i>\n"
+                f"<code>[{progress_bar}]</code>\n\n"
+                f"<b>{status_text}</b>\n\n"
+                f"<i>{WATERMARK_TEXT}</i>",
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
 
     try:
         result = await pipeline.create_video(
@@ -238,6 +284,7 @@ async def handle_video_creation(message: types.Message, topic: str, user_id: int
 
         video_path = result["video_path"]
         dur = result["duration"]
+        task_id = result.get("task_id")
 
         try:
             await status_msg.edit_text(
@@ -250,8 +297,9 @@ async def handle_video_creation(message: types.Message, topic: str, user_id: int
         video_file = FSInputFile(video_path)
         caption_text = (
             f"🎬 <b>{html.escape(topic)}</b>\n\n"
-            f"🎙 <i>{VOICES[cur_voice]['name']} | Studio DSP</i>\n"
-            f"⏱ Davomiyligi: {dur:.1f}s | 📱 1080x1920 Full HD\n\n"
+            f"🎙 <b>Ovoz:</b> {VOICES[cur_voice]['name']} | {VOICE_MODES[cur_mode]['name']}\n"
+            f"⏱ <b>Davomiyligi:</b> {dur:.1f}s | 📱 <b>Format:</b> 1080x1920 Full HD\n"
+            f"💎 <b>Sifat:</b> Studio DSP + Alex Hormozi Karaoke 2.0\n\n"
             f"<i>{WATERMARK_TEXT}</i>"
         )
 
@@ -267,6 +315,10 @@ async def handle_video_creation(message: types.Message, topic: str, user_id: int
             await status_msg.delete()
         except Exception:
             pass
+
+        # Diskni tozalash (Garbage Collection)
+        if task_id:
+            pipeline.cleanup_task_files(task_id)
 
     except Exception as e:
         logger.exception("Video yaratishda xato")
@@ -289,7 +341,7 @@ async def main():
 
     bot = Bot(token=token)
     print("=" * 65)
-    print("🤖 MUZAFFARZED AI VIDEO TELEGRAM BOT (AUDIO 2.0) ISHGA TUSHDI!")
+    print("🤖 MUZAFFARZED AI VIDEO TELEGRAM BOT (ULTIMATE STUDIO 2.0) ISHGA TUSHDI!")
     print("Polling rejimi faollashtirildi...")
     print("=" * 65)
     await dp.start_polling(bot)

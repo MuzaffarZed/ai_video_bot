@@ -55,14 +55,14 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         # Emojilar to'plami
         emojis = ["🔥", "💡", "🧠", "✨", "🚀", "⚡", "🎯", "💎"]
 
-        # 2. So'zlarni 3-4 tadan guruhlab, karaoke effekti berish
+        # 2. So'zlarni 2-3 tadan guruhlab (Hormozi / MrBeast ritmi)
         for sc_idx, sc in enumerate(scenes):
             words = sc.get("words", [])
             if not words:
                 continue
 
             scene_emoji = emojis[sc_idx % len(emojis)]
-            chunk_size = 4
+            chunk_size = 3  # Mobil ekran uchun eng optimal (2-3 so'z)
             for i in range(0, len(words), chunk_size):
                 chunk = words[i:i + chunk_size]
 
@@ -71,15 +71,14 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     w_end = w["end"]
 
                     line_parts = []
-                    # Birinchi so'z oldiga emojini qo'shish
                     if active_idx == 0 and i == 0:
                         line_parts.append(f"{scene_emoji}")
 
                     for idx, part in enumerate(chunk):
                         word_text = part["word"]
                         if idx == active_idx:
-                            # Neon sariq va 115% masshtab
-                            line_parts.append(f"{{\\c&H00D7FF&\\fscx115\\fscy115}}{word_text}{{\\rKaraoke}}")
+                            # Oltin-neon sariq va 118% pop-effekti
+                            line_parts.append(f"{{\\c&H00D7FF&\\fscx118\\fscy118}}{word_text}{{\\rKaraoke}}")
                         else:
                             line_parts.append(f"{{\\c&HFFFFFF&}}{word_text}")
                     

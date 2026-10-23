@@ -82,30 +82,54 @@ class TTSEngine:
             return 3.5
 
     def build_word_timings(self, text: str, start_offset: float, total_duration: float) -> List[Dict]:
+        """
+        Bo'g'inlar va tinish belgilari akustikasiga asoslangan millisekundlik vaqt hisoblagich.
+        """
         words = text.strip().split()
         if not words:
             return []
 
-        weights = [max(1, len(w)) for w in words]
-        total_weight = sum(weights)
+        vowels = set("aeiouyаеёиоуыэюя")
+        
+        # Har bir so'zning bo'g'in og'irligi (unli harflar + harf uzunligi)
+        word_weights = []
+        for w in words:
+            w_clean = w.lower()
+            syllables = sum(1 for c in w_clean if c in vowels)
+            weight = max(1.0, syllables * 1.5 + len(w_clean) * 0.4)
+            word_weights.append(weight)
 
-        pad = min(0.12, total_duration * 0.04)
-        active_duration = max(0.5, total_duration - (2 * pad))
+        total_weight = sum(word_weights)
+
+        # Gap boshidagi va oxiridagi mayin nafas pauzasi
+        lead_pad = min(0.10, total_duration * 0.03)
+        tail_pad = min(0.12, total_duration * 0.04)
+        active_duration = max(0.4, total_duration - lead_pad - tail_pad)
 
         word_timings = []
-        current_time = start_offset + pad
+        current_time = start_offset + lead_pad
 
         for i, word in enumerate(words):
-            fraction = weights[i] / total_weight
-            duration = active_duration * fraction
+            fraction = word_weights[i] / total_weight
+            base_dur = active_duration * fraction
+
+            # Tinish belgilariga qarab mayin pauza qo'shish
+            extra_pause = 0.0
+            if word.endswith((",", ";", "-")):
+                extra_pause = min(0.14, base_dur * 0.25)
+            elif word.endswith((".", "!", "?", ":")):
+                extra_pause = min(0.24, base_dur * 0.35)
+
+            actual_word_dur = max(0.15, base_dur - extra_pause)
             w_start = round(current_time, 3)
-            w_end = round(current_time + duration, 3)
+            w_end = round(current_time + actual_word_dur, 3)
+
             word_timings.append({
                 "word": word,
                 "start": w_start,
                 "end": w_end
             })
-            current_time += duration
+            current_time += base_dur
 
         return word_timings
 

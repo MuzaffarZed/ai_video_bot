@@ -69,7 +69,7 @@ class VideoPipeline:
         for sc in processed_scenes:
             img_path = str(TEMP_DIR / f"{task_id}_img_{sc['scene_num']}.jpg")
             prompt = sc.get("visual_prompt") or topic
-            await asyncio.to_thread(self.visual_eng.get_scene_visual, prompt, img_path)
+            await asyncio.to_thread(self.visual_eng.get_scene_visual, prompt, img_path, None, sc["scene_num"])
             sc["image_path"] = img_path
 
         # 4-Bosqich: Musiqa & Audio Ducking & Subtitrlar
@@ -113,3 +113,13 @@ class VideoPipeline:
             "scenes": processed_scenes,
             "task_id": task_id
         }
+
+    @staticmethod
+    def cleanup_task_files(task_id: str):
+        """Vaqtincha render fayllarini diskdan xavfsiz tozalash."""
+        try:
+            for item in TEMP_DIR.glob(f"{task_id}_*"):
+                try: item.unlink(missing_ok=True)
+                except Exception: pass
+        except Exception as e:
+            print(f"[Cleanup Notice] {e}")
