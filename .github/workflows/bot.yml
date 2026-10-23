@@ -22,9 +22,14 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
 
-      - name: 🎬 FFmpeg tekshiruvi (Ubuntu Pre-installed)
+      - name: 🎬 FFmpeg & FFprobe to'liq o'rnatish (Static Build with libass)
+        uses: FedericoCarboni/setup-ffmpeg@v3
+
+      - name: 🔍 FFmpeg va FFprobe tekshiruvi
         run: |
-          ffmpeg -version | head -n 2
+          which ffmpeg
+          which ffprobe
+          ffmpeg -version
 
       - name: 📦 Python kutubxonalarini o'rnatish
         run: |
