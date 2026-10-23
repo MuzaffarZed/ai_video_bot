@@ -1,5 +1,5 @@
 """
-MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Ultimate Flagship 3.0)
+MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Titanium 4.0 Supreme)
 Muallif: MuzaffarZed
 """
 import os
@@ -12,8 +12,9 @@ ASSETS_DIR = BASE_DIR / "assets"
 MUSIC_DIR = ASSETS_DIR / "music"
 SFX_DIR = ASSETS_DIR / "sfx"
 FONTS_DIR = ASSETS_DIR / "fonts"
+USER_UPLOADS_DIR = BASE_DIR / "user_uploads"
 
-for p in [TEMP_DIR, OUTPUT_DIR, ASSETS_DIR, MUSIC_DIR, SFX_DIR, FONTS_DIR]:
+for p in [TEMP_DIR, OUTPUT_DIR, ASSETS_DIR, MUSIC_DIR, SFX_DIR, FONTS_DIR, USER_UPLOADS_DIR]:
     p.mkdir(parents=True, exist_ok=True)
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
@@ -79,15 +80,15 @@ VOICE_MODES = {
 }
 DEFAULT_VOICE_MODE = "reels_fast"
 
-# 3. Video Uslublari (Video Styles / Retention Formats)
+# 3. Video Uslublari (Video Styles)
 VIDEO_STYLES = {
     "top_facts": {
-        "name": "🔥 Top 3 Fakt (Shok va qiziqarli)",
-        "desc": "3 ta hayratlanarli fakt ketma-ketligi"
+        "name": "🔥 Top Faktlar (Shok faktlar)",
+        "desc": "Qiziqarli va shok qiluvchi faktlar ketma-ketligi"
     },
     "story": {
         "name": "💡 Chuqur Hikoya (Storytelling)",
-        "desc": "Dramatik kirish, sir va hayotiy xulosa"
+        "desc": "Dramatik kirish, kulminatsiya va ibratli xulosa"
     },
     "motivation": {
         "name": "⚡ Kuchli Motivatsiya (Mindset)",
@@ -95,45 +96,86 @@ VIDEO_STYLES = {
     },
     "science": {
         "name": "🌌 Ilmiy & Koinot Tadqiqoti",
-        "desc": "Koinot, kashfiyotlar va buyuk sirlar"
+        "desc": "Koinot, kvant fizikasi va buyuk sirlar"
     },
     "business": {
         "name": "💰 Biznes & Boylik Qoidalari",
-        "desc": "Muvaffaqiyat, moliya va intellekt"
+        "desc": "Muvaffaqiyat, moliya va sarmoya sirlari"
     }
 }
 DEFAULT_VIDEO_STYLE = "top_facts"
 
-# 4. Subtitr Dizaynlari (Subtitle Color Schemes)
+# 4. Davomiylik va Kadrlar Miqdori
+DURATIONS = {
+    "short_15": {
+        "name": "⚡ Qisqa Tezkor (3 kadr ~18s)",
+        "scene_count": 3
+    },
+    "medium_30": {
+        "name": "🎬 Standart Reels (5 kadr ~30s)",
+        "scene_count": 5
+    },
+    "deep_45": {
+        "name": "💎 Chuqur Mini-Doku (7 kadr ~45s)",
+        "scene_count": 7
+    }
+}
+DEFAULT_DURATION = "short_15"
+
+# 5. Video Formatlari
+FORMATS = {
+    "9:16": {
+        "width": 1080,
+        "height": 1920,
+        "name": "📱 Vertikal Reels / Shorts (9:16)",
+        "safe_margin_v": 480
+    },
+    "16:9": {
+        "width": 1920,
+        "height": 1080,
+        "name": "🖥 Gorizontal YouTube (16:9)",
+        "safe_margin_v": 120
+    },
+    "1:1": {
+        "width": 1080,
+        "height": 1080,
+        "name": "⏹ Kvadrat Post / TG (1:1)",
+        "safe_margin_v": 160
+    }
+}
+DEFAULT_FORMAT = "9:16"
+FPS = 30
+
+# 6. Subtitr Dizaynlari
 SUBTITLE_THEMES = {
     "gold": {
         "name": "🌟 Alex Hormozi Oltin",
-        "active_color": "&H0000D7FF",   # BGR format for ASS (Gold Yellow)
+        "active_color": "&H0000D7FF",
         "base_color": "&H00FFFFFF",
         "outline_color": "&H00000000"
     },
     "emerald": {
         "name": "🟢 Neon Zumrad Kiber",
-        "active_color": "&H007FFF00",   # Neon Emerald
+        "active_color": "&H007FFF00",
         "base_color": "&H00FFFFFF",
         "outline_color": "&H00000000"
     },
     "fire": {
         "name": "🔴 Olovli Qizil (Action)",
-        "active_color": "&H002020FF",   # Bright Fire Red
+        "active_color": "&H002020FF",
         "base_color": "&H00FFFFFF",
         "outline_color": "&H00000000"
     },
     "cyan": {
         "name": "🔵 Elektr Moviy (Cyan)",
-        "active_color": "&H00FFFF00",   # Electric Cyan
+        "active_color": "&H00FFFF00",
         "base_color": "&H00FFFFFF",
         "outline_color": "&H00000000"
     }
 }
 DEFAULT_SUBTITLE_THEME = "gold"
 
-# 5. Fon Musiqasi Janrlari
+# 7. Fon Musiqasi Janrlari
 MUSIC_GENRES = {
     "auto": "✨ Mavzuga mos avtomatik",
     "ambient_chill": "🌌 Koinot / Tinch Ambient",
@@ -142,17 +184,5 @@ MUSIC_GENRES = {
     "tech_modern": "🤖 Zamonaviy Kiber / Lo-Fi"
 }
 DEFAULT_MUSIC_GENRE = "auto"
-
-# 6. Video Formati va Xavfsiz Zona
-FORMATS = {
-    "9:16": {"width": 1080, "height": 1920, "name": "Reels / Shorts (9:16)"},
-    "16:9": {"width": 1920, "height": 1080, "name": "YouTube (16:9)"},
-    "1:1": {"width": 1080, "height": 1080, "name": "Post (1:1)"}
-}
-DEFAULT_FORMAT = "9:16"
-FPS = 30
-
-# Instagram / TikTok xavfsiz zonasi (Safe Margin)
-SUBTITLE_SAFE_MARGIN_V = 480
 
 WATERMARK_TEXT = "Dasturchi: MuzaffarZed"

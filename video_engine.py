@@ -1,39 +1,50 @@
 """
-MuzaffarZed AI Video Bot - Kengaytirilgan Video Montaj Dvigateli (Version 3.0 Flagship)
-Kinematografik Dynamic Zoom & Pan, moslashuvchan oltin/neon progress-bar va tezkor montaj.
+MuzaffarZed AI Video Bot - Kengaytirilgan Video Montaj Dvigateli (Version 4.0 Titanium Multi-Format)
+Ko'p formatli (9:16, 16:9, 1:1), Dynamic Zoom & Pan va Oltin progress-bar.
 Muallif: MuzaffarZed
 """
 import os
 import subprocess
 from typing import List, Dict
-from config import BASE_DIR, TEMP_DIR, OUTPUT_DIR, FPS, SUBTITLE_THEMES, DEFAULT_SUBTITLE_THEME
+from config import BASE_DIR, TEMP_DIR, OUTPUT_DIR, FPS, FORMATS, DEFAULT_FORMAT, SUBTITLE_THEMES, DEFAULT_SUBTITLE_THEME
 
 class VideoEngine:
     def __init__(self, fps: int = FPS):
         self.fps = fps
 
-    def render_scene_clip(self, image_path: str, duration: float, output_clip_path: str, scene_idx: int = 1) -> str:
+    def render_scene_clip(
+        self,
+        image_path: str,
+        duration: float,
+        output_clip_path: str,
+        scene_idx: int = 1,
+        format_key: str = DEFAULT_FORMAT
+    ) -> str:
         """
         Bitta rasmdan kinematografik suzuvchi kamera harakati (Dynamic Zoom & Pan)
-        va to'yingan ranglarga ega Full HD (1080x1920) klip hosil qiladi.
+        va to'yingan ranglarga ega klip hosil qiladi (9:16, 16:9 yoki 1:1).
         """
+        fmt = FORMATS.get(format_key, FORMATS[DEFAULT_FORMAT])
+        target_w = fmt["width"]
+        target_h = fmt["height"]
+
         clean_img = os.path.relpath(image_path, BASE_DIR).replace("\\", "/")
         clean_out = os.path.relpath(output_clip_path, BASE_DIR).replace("\\", "/")
 
-        # Kadr indeksiga qarab harakat dinamikasi (Visual Retention Formula)
-        if scene_idx == 1:
-            drift_x = "(in_w-out_w)/2 + sin(t*1.1)*40"
-            drift_y = "(in_h-out_h)/2 + (t/10)*30"
-        elif scene_idx == 2:
-            drift_x = "(in_w-out_w)/2 - sin(t*1.1)*40"
-            drift_y = "(in_h-out_h)/2 - (t/10)*25"
+        # Masshtab o'lchami (115% kattaroq qilib Ken Burns harakatiga zaxira)
+        scaled_w = int(target_w * 1.15)
+        scaled_h = int(target_h * 1.15)
+
+        if scene_idx % 2 == 1:
+            drift_x = f"(in_w-out_w)/2 + sin(t*1.1)*{int(target_w * 0.035)}"
+            drift_y = f"(in_h-out_h)/2 + (t/10)*{int(target_h * 0.015)}"
         else:
-            drift_x = "(in_w-out_w)/2 + cos(t*1.2)*35"
-            drift_y = "(in_h-out_h)/2 + sin(t*0.9)*25"
+            drift_x = f"(in_w-out_w)/2 - sin(t*1.1)*{int(target_w * 0.035)}"
+            drift_y = f"(in_h-out_h)/2 - (t/10)*{int(target_h * 0.012)}"
 
         vf_filter = (
-            f"scale=1240:2204:force_original_aspect_ratio=increase,crop=1240:2204,"
-            f"crop=1080:1920:x='{drift_x}':y='{drift_y}',"
+            f"scale={scaled_w}:{scaled_h}:force_original_aspect_ratio=increase,crop={scaled_w}:{scaled_h},"
+            f"crop={target_w}:{target_h}:x='{drift_x}':y='{drift_y}',"
             f"eq=contrast=1.06:saturation=1.14,"
             f"setsar=1"
         )
@@ -62,7 +73,8 @@ class VideoEngine:
         ass_subtitle_path: str,
         output_final_path: str,
         total_duration: float = 20.0,
-        theme_key: str = DEFAULT_SUBTITLE_THEME
+        theme_key: str = DEFAULT_SUBTITLE_THEME,
+        format_key: str = DEFAULT_FORMAT
     ) -> str:
         """
         Barcha kadr kliplarini birlashtiradi, ovozni ulaydi,
@@ -79,7 +91,6 @@ class VideoEngine:
         rel_ass = os.path.relpath(ass_subtitle_path, BASE_DIR).replace("\\", "/")
         rel_final = os.path.abspath(output_final_path).replace("\\", "/")
 
-        # Rang mavzusiga mos progress-bar
         bar_colors = {
             "gold": "0xFFD700@0.95",
             "emerald": "0x00FF7F@0.95",
@@ -120,7 +131,7 @@ class VideoEngine:
         except Exception as e:
             print(f"[VideoEngine Notice] ASS render sinovi: {e}")
 
-        # 2-Urinish (Zero-Defect Fallback): Progress-bar bilan Full HD montaj
+        # 2-Urinish (Zero-Defect Fallback): Progress-bar bilan montaj
         cmd_fallback = [
             "ffmpeg", "-nostdin", "-y",
             "-f", "concat", "-safe", "0",

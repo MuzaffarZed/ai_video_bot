@@ -1,12 +1,12 @@
 """
-MuzaffarZed AI Video Bot - Zamonaviy Karaoke Subtitrlar Generatori (Version 3.0 Multi-Theme)
-Alex Hormozi 2.0 dinamik pop karaoke, 4 xil rang sxemasi, xavfsiz zona va mualliflik muhri.
+MuzaffarZed AI Video Bot - Zamonaviy Karaoke Subtitrlar Generatori (Version 4.0 Titanium Multi-Format)
+Ko'p formatli (9:16, 16:9, 1:1), 4 xil rang sxemasi, dinamik safe-margin va mualliflik muhri.
 Muallif: MuzaffarZed
 """
 import os
 import sys
 from typing import List, Dict
-from config import WATERMARK_TEXT, SUBTITLE_SAFE_MARGIN_V, SUBTITLE_THEMES, DEFAULT_SUBTITLE_THEME
+from config import WATERMARK_TEXT, FORMATS, DEFAULT_FORMAT, SUBTITLE_THEMES, DEFAULT_SUBTITLE_THEME
 
 class SubtitleEngine:
     def __init__(self, font_name: str = None, font_size: int = 76):
@@ -24,27 +24,40 @@ class SubtitleEngine:
         centi = int((secs - int(secs)) * 100)
         return f"{hours}:{minutes:02d}:{int(secs):02d}.{centi:02d}"
 
-    def generate_ass(self, scenes: List[Dict], output_ass_path: str, theme_key: str = DEFAULT_SUBTITLE_THEME) -> str:
+    def generate_ass(
+        self,
+        scenes: List[Dict],
+        output_ass_path: str,
+        theme_key: str = DEFAULT_SUBTITLE_THEME,
+        format_key: str = DEFAULT_FORMAT
+    ) -> str:
         """
-        Barcha kadrlar so'zlarini tanlangan rang sxemasi bilan zamonaviy ASS formatiga yozadi.
+        Barcha kadrlar so'zlarini tanlangan format va rang sxemasi bilan ASS formatiga yozadi.
         """
         watermark_font = "DejaVu Sans" if sys.platform != "win32" else "Segoe UI"
-        margin_v = SUBTITLE_SAFE_MARGIN_V
+        
+        fmt = FORMATS.get(format_key, FORMATS[DEFAULT_FORMAT])
+        play_x = fmt["width"]
+        play_y = fmt["height"]
+        margin_v = fmt.get("safe_margin_v", 480)
 
         theme_data = SUBTITLE_THEMES.get(theme_key, SUBTITLE_THEMES[DEFAULT_SUBTITLE_THEME])
         active_bgr = theme_data["active_color"]
         base_bgr = theme_data["base_color"]
         outline_bgr = theme_data["outline_color"]
 
+        # 16:9 uchun shrift o'lchamini biroz moslash
+        actual_font_size = self.font_size if format_key != "16:9" else int(self.font_size * 0.82)
+
         ass_header = f"""[Script Info]
 ScriptType: v4.00+
-PlayResX: 1080
-PlayResY: 1920
+PlayResX: {play_x}
+PlayResY: {play_y}
 ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Karaoke,{self.font_name},{self.font_size},{base_bgr},{active_bgr},{outline_bgr},&H80000000,-1,0,0,0,100,100,1,0,1,6,3,2,60,60,{margin_v},1
+Style: Karaoke,{self.font_name},{actual_font_size},{base_bgr},{active_bgr},{outline_bgr},&H80000000,-1,0,0,0,100,100,1,0,1,6,3,2,60,60,{margin_v},1
 Style: Watermark,{watermark_font},34,&H75FFFFFF,&H00000000,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1,0,9,40,40,75,1
 
 [Events]
@@ -68,7 +81,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 continue
 
             scene_emoji = emojis[sc_idx % len(emojis)]
-            chunk_size = 3  # Mobil ekran uchun optimal 2-3 so'z
+            chunk_size = 3
             for i in range(0, len(words), chunk_size):
                 chunk = words[i:i + chunk_size]
 
@@ -83,7 +96,6 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     for idx, part in enumerate(chunk):
                         word_text = part["word"]
                         if idx == active_idx:
-                            # Tanlangan mavzu rangida yonish va 118% pop kattalashuv
                             line_parts.append(f"{{\\c{active_bgr}&\\fscx118\\fscy118}}{word_text}{{\\rKaraoke}}")
                         else:
                             line_parts.append(f"{{\\c{base_bgr}&}}{word_text}")

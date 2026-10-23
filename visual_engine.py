@@ -1,6 +1,6 @@
 """
-MuzaffarZed AI Video Bot - Kengaytirilgan Vizual Kadrlar Dvigateli (Visual Studio 3.0 Flagship)
-12 ta toifada 4K fotosuratlar, kinoviy vinyetka (vignette), kontrast va Oflayn Premium Grafika.
+MuzaffarZed AI Video Bot - Kengaytirilgan Vizual Kadrlar Dvigateli (Visual Studio 4.0 Titanium)
+Ko'p formatli (9:16, 16:9, 1:1), foydalanuvchi rasmini qabul qilish, 12 toifali 4K kutubxona va vinyetka.
 Muallif: MuzaffarZed
 """
 import os
@@ -8,7 +8,7 @@ import random
 import urllib.request
 import urllib.parse
 from PIL import Image, ImageDraw, ImageFilter, ImageEnhance
-from config import TEMP_DIR
+from config import TEMP_DIR, FORMATS, DEFAULT_FORMAT
 
 class VisualEngine:
     CURATED_THEMES = {
@@ -79,9 +79,11 @@ class VisualEngine:
         ]
     }
 
-    def __init__(self, target_width: int = 1080, target_height: int = 1920):
-        self.width = target_width
-        self.height = target_height
+    def __init__(self, format_key: str = DEFAULT_FORMAT):
+        fmt = FORMATS.get(format_key, FORMATS[DEFAULT_FORMAT])
+        self.width = fmt["width"]
+        self.height = fmt["height"]
+        self.format_key = format_key
 
     def detect_category(self, text: str) -> str:
         """Matndagi so'zlarga qarab 12 ta toifadan birini aniqlaydi."""
@@ -122,8 +124,34 @@ class VisualEngine:
         else:
             return "ambient_chill"
 
+    def process_custom_user_image(self, input_image_path: str, output_path: str) -> str:
+        """Foydalanuvchi yuborgan rasmni video o'lchamiga moslab kinoviy qayta ishlash."""
+        try:
+            with Image.open(input_image_path) as im:
+                im_ratio = im.width / im.height
+                target_ratio = self.width / self.height
+
+                if im_ratio > target_ratio:
+                    new_height = self.height
+                    new_width = int(new_height * im_ratio)
+                else:
+                    new_width = self.width
+                    new_height = int(new_width / im_ratio)
+
+                resized = im.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                left = (new_width - self.width) // 2
+                top = (new_height - self.height) // 2
+                cropped = resized.crop((left, top, left + self.width, top + self.height))
+
+                cropped.save(output_path, "JPEG", quality=95)
+                self._apply_cinematic_grade(output_path)
+                return output_path
+        except Exception as e:
+            print(f"[User Image Process Error] {e}")
+            return input_image_path
+
     def get_scene_visual(self, prompt: str, output_path: str, seed: int = None, scene_num: int = 1) -> str:
-        """Kadr uchun mavzuga mos 1080x1920 sifatli kadrni yuklaydi yoki chizadi."""
+        """Kadr uchun mavzuga mos sifatli kadrni yuklaydi yoki chizadi."""
         if seed is None:
             seed = random.randint(10000, 999999)
 
@@ -204,7 +232,7 @@ class VisualEngine:
         img.save(output_path, "JPEG", quality=95)
 
     def _apply_cinematic_grade(self, image_path: str):
-        """1080x1920 aniq o'lcham, vinyetka va kinoviy rang kontrast qo'shish."""
+        """Kinoviy vinyetka va rang kontrast qo'shish."""
         try:
             with Image.open(image_path) as im:
                 im_ratio = im.width / im.height
@@ -222,7 +250,6 @@ class VisualEngine:
                 top = (new_height - self.height) // 2
                 cropped = resized.crop((left, top, left + self.width, top + self.height))
 
-                # Kinoviy vinyetka (burchaklarni mayin qoraytirib diqqatni markazga burish)
                 vignette = Image.new("RGBA", (self.width, self.height), (0, 0, 0, 0))
                 draw_v = ImageDraw.Draw(vignette)
                 draw_v.rectangle([0, 0, self.width, self.height], fill=(0, 0, 0, 35))
@@ -231,7 +258,6 @@ class VisualEngine:
 
                 composited = Image.alpha_composite(cropped.convert("RGBA"), vignette).convert("RGB")
 
-                # Kristalldek tiniqlik (Sharpness & Contrast)
                 enhancer = ImageEnhance.Sharpness(composited)
                 sharpened = enhancer.enhance(1.22)
                 enhancer_c = ImageEnhance.Contrast(sharpened)

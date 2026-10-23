@@ -1,6 +1,6 @@
 """
-MuzaffarZed AI Video Bot - Telegram Bot Interfeysi (aiogram 3.x - Ultimate Flagship 3.0)
-To'liq avtomatlashtirilgan, 5 xil menyu sozlamalari, MP3 podkast yuklash, ssenariy ko'rish va xavfsiz navbat.
+MuzaffarZed AI Video Bot - Telegram Bot Interfeysi (aiogram 3.x - Titanium 4.0 Supreme)
+Foydalanuvchi rasmlarini qabul qilish, ko'p formatlar (9:16, 16:9, 1:1), davomiylik tanlovi, MP3 eksport va statistika.
 Muallif: MuzaffarZed
 """
 import os
@@ -27,12 +27,17 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from config import (
     BASE_DIR,
     TELEGRAM_BOT_TOKEN,
+    USER_UPLOADS_DIR,
     VOICES,
     DEFAULT_VOICE,
     VOICE_MODES,
     DEFAULT_VOICE_MODE,
     VIDEO_STYLES,
     DEFAULT_VIDEO_STYLE,
+    DURATIONS,
+    DEFAULT_DURATION,
+    FORMATS,
+    DEFAULT_FORMAT,
     SUBTITLE_THEMES,
     DEFAULT_SUBTITLE_THEME,
     MUSIC_GENRES,
@@ -46,32 +51,42 @@ logger = logging.getLogger(__name__)
 
 # Foydalanuvchilar sozlamalari bazasi (JSON)
 USER_DB_FILE = BASE_DIR / "user_db.json"
+STATS_FILE = BASE_DIR / "bot_stats.json"
 
-def load_user_db() -> dict:
-    if USER_DB_FILE.exists():
+def load_json(file_path: Path, default_data: dict) -> dict:
+    if file_path.exists():
         try:
-            with open(USER_DB_FILE, "r", encoding="utf-8") as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception:
-            return {}
-    return {}
+            return default_data
+    return default_data
 
-def save_user_db(db: dict):
+def save_json(file_path: Path, data: dict):
     try:
-        with open(USER_DB_FILE, "w", encoding="utf-8") as f:
-            json.dump(db, f, ensure_ascii=False, indent=2)
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
     except Exception as e:
-        logger.error(f"User DB saqlashda xato: {e}")
+        logger.error(f"Fayl saqlashda xato ({file_path}): {e}")
 
-user_settings = load_user_db()
+user_settings = load_json(USER_DB_FILE, {})
+bot_stats = load_json(STATS_FILE, {"total_videos": 0, "total_users": 0, "users_list": []})
 user_active_requests = set()
+user_pending_photos = {}
+job_cache = {}
 pipeline = VideoPipeline()
-
-# Server CPU barqarorligi uchun yagona Render Lock
 render_lock = asyncio.Lock()
 
-# So'nggi yaratilgan video ma'lumotlari kesh xotirasi (MP3 va ssenariy yuborish uchun)
-job_cache = {}
+def record_user(user_id: int):
+    uid = str(user_id)
+    if uid not in bot_stats["users_list"]:
+        bot_stats["users_list"].append(uid)
+        bot_stats["total_users"] = len(bot_stats["users_list"])
+        save_json(STATS_FILE, bot_stats)
+
+def record_video_generation():
+    bot_stats["total_videos"] = bot_stats.get("total_videos", 0) + 1
+    save_json(STATS_FILE, bot_stats)
 
 def get_user_pref(user_id: int, key: str, default: str) -> str:
     uid = str(user_id)
@@ -84,26 +99,31 @@ def set_user_pref(user_id: int, key: str, value: str):
     if uid not in user_settings:
         user_settings[uid] = {}
     user_settings[uid][key] = value
-    save_user_db(user_settings)
+    save_json(USER_DB_FILE, user_settings)
 
-# ==================== KLAAVIATURALAR (KEYBOARDS) ====================
+# ==================== KLAAVIATURALAR ====================
 
 def get_main_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="🎙 Ovoz tanlash", callback_data="menu_voice"),
-        InlineKeyboardButton(text="⚡ Tezlik & Tonalite", callback_data="menu_modes")
+        InlineKeyboardButton(text="🎙 Ovoz", callback_data="menu_voice"),
+        InlineKeyboardButton(text="⚡ Tezlik & Rejim", callback_data="menu_modes")
     )
     builder.row(
-        InlineKeyboardButton(text="🎛 Video Uslubi", callback_data="menu_styles"),
-        InlineKeyboardButton(text="🎨 Subtitr Rangi", callback_data="menu_themes")
+        InlineKeyboardButton(text="🎛 Uslub", callback_data="menu_styles"),
+        InlineKeyboardButton(text="🎨 Subtitr", callback_data="menu_themes")
+    )
+    builder.row(
+        InlineKeyboardButton(text="📱 Format (9:16/16:9)", callback_data="menu_formats"),
+        InlineKeyboardButton(text="⏱ Davomiylik", callback_data="menu_duration")
     )
     builder.row(
         InlineKeyboardButton(text="🎵 Fon Musiqasi", callback_data="menu_music"),
         InlineKeyboardButton(text="💡 Tezkor Mavzular", callback_data="menu_topics")
     )
     builder.row(
-        InlineKeyboardButton(text="ℹ️ Bot haqida", callback_data="menu_about")
+        InlineKeyboardButton(text="ℹ️ Bot haqida", callback_data="menu_about"),
+        InlineKeyboardButton(text="📊 Statistika", callback_data="menu_stats")
     )
     return builder.as_markup()
 
@@ -128,6 +148,22 @@ def get_styles_keyboard(current: str) -> InlineKeyboardMarkup:
     for key, s in VIDEO_STYLES.items():
         check = "✅ " if key == current else ""
         builder.row(InlineKeyboardButton(text=f"{check}{s['name']}", callback_data=f"set_style:{key}"))
+    builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
+    return builder.as_markup()
+
+def get_formats_keyboard(current: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for key, f in FORMATS.items():
+        check = "✅ " if key == current else ""
+        builder.row(InlineKeyboardButton(text=f"{check}{f['name']}", callback_data=f"set_format:{key}"))
+    builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
+    return builder.as_markup()
+
+def get_duration_keyboard(current: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for key, d in DURATIONS.items():
+        check = "✅ " if key == current else ""
+        builder.row(InlineKeyboardButton(text=f"{check}{d['name']}", callback_data=f"set_duration:{key}"))
     builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
     return builder.as_markup()
 
@@ -181,27 +217,28 @@ dp = Dispatcher()
 @dp.message(CommandStart())
 async def cmd_start(message: types.Message):
     user_id = message.from_user.id
+    record_user(user_id)
+
     cur_voice = get_user_pref(user_id, "voice", DEFAULT_VOICE)
-    cur_mode = get_user_pref(user_id, "mode", DEFAULT_VOICE_MODE)
     cur_style = get_user_pref(user_id, "style", DEFAULT_VIDEO_STYLE)
-    cur_theme = get_user_pref(user_id, "theme", DEFAULT_SUBTITLE_THEME)
+    cur_fmt = get_user_pref(user_id, "format", DEFAULT_FORMAT)
 
     v_name = VOICES.get(cur_voice, VOICES[DEFAULT_VOICE])["name"]
-    m_name = VOICE_MODES.get(cur_mode, VOICE_MODES[DEFAULT_VOICE_MODE])["name"]
     s_name = VIDEO_STYLES.get(cur_style, VIDEO_STYLES[DEFAULT_VIDEO_STYLE])["name"]
-    t_name = SUBTITLE_THEMES.get(cur_theme, SUBTITLE_THEMES[DEFAULT_SUBTITLE_THEME])["name"]
+    f_name = FORMATS.get(cur_fmt, FORMATS[DEFAULT_FORMAT])["name"]
 
     welcome_text = (
         f"👋 Assalomu alaykum, <b>{html.escape(message.from_user.full_name)}</b>!\n\n"
-        f"🎬 <b>MuzaffarZed Professional AI Video Bot 3.0 Flagship</b>ga xush kelibsiz!\n\n"
-        f"Men bir zumda <b>Full HD (9:16) Reels/Shorts/TikTok</b> video montaj qilib beraman:\n"
+        f"🎬 <b>MuzaffarZed Professional AI Video Bot 4.0 Titanium</b>ga xush kelibsiz!\n\n"
+        f"Men bir zumda yuqori sifatli video montaj qilib beraman:\n"
         f"• 🎙 <b>Ovoz:</b> {v_name}\n"
-        f"• ⚡ <b>Rejim:</b> {m_name}\n"
         f"• 🎛 <b>Uslub:</b> {s_name}\n"
-        f"• 🎨 <b>Subtitr:</b> {t_name}\n"
+        f"• 📱 <b>Format:</b> {f_name}\n"
         f"• 🎚 <b>Studio DSP:</b> <i>EBU R128 + Sidechain Audio Ducking</i>\n"
         f"• 🎥 <b>Dinamika:</b> <i>Dynamic Zoom & Pan + Oltin progress chizig'i</i>\n\n"
-        f"🚀 <b>Video yaratish uchun shunchaki mavzuni yozib yuboring</b> yoki quyidagi tugmalar yordamida sozlang:\n\n"
+        f"🚀 <b>Qanday ishlatiladi:</b>\n"
+        f"1. Shunchaki video mavzusini yozib yuboring;\n"
+        f"2. Yoki <b>o'z rasmingizni</b> yuboring — bot sizning rasmingiz bilan video montaj qiladi!\n\n"
         f"<i>{WATERMARK_TEXT}</i>"
     )
     await message.answer(welcome_text, reply_markup=get_main_keyboard(), parse_mode="HTML")
@@ -210,13 +247,14 @@ async def cmd_start(message: types.Message):
 async def cmd_help(message: types.Message):
     help_text = (
         "📖 <b>Botdan foydalanish qo'llanmasi:</b>\n\n"
-        "1. Video yaratish uchun ixtiyoriy mavzuni yozing (masalan: <i>Qora tuynuklar siri</i> yoki <i>Muvaffaqiyat qoidalari</i>).\n"
-        "2. Bot avtomatik tarzda AI ssenariy tuzadi, professional ovoz beradi, 4K vertikal tasvirlarni tanlaydi va musiqaga montaj qiladi.\n"
-        "3. Tayyor Full HD video va uning MP3 podkast audio fayli sizga yuboriladi!\n\n"
+        "• <b>Matndan video:</b> Mavzuni yozing (masalan: <i>Qora tuynuklar siri</i>) — bot 1 daqiqada video tayyorlaydi.\n"
+        "• <b>Rasmdan video:</b> Botga ixtiyoriy fotosurat yuboring. Bot uni 1-kadr sifatida olib, ajoyib video montaj qiladi.\n"
+        "• <b>Podkast MP3:</b> Har bir video ostida ovoz va musiqali alohida MP3 yuklab olish imkoniyati mavjud.\n\n"
         "Buyruqlar:\n"
-        "/start - Bosh menyuni ochish\n"
+        "/start - Bosh menyu\n"
         "/settings - Sozlamalar paneli\n"
-        "/help - Yordam va ko'rsatmalar\n\n"
+        "/stats - Bot statistikasi\n"
+        "/help - Qo'llanma\n\n"
         f"<i>{WATERMARK_TEXT}</i>"
     )
     await message.answer(help_text, reply_markup=get_main_keyboard(), parse_mode="HTML")
@@ -225,6 +263,35 @@ async def cmd_help(message: types.Message):
 async def cmd_settings(message: types.Message):
     await message.answer("⚙️ <b>Sozlamalar paneli:</b> Quyidagi menyulardan birini tanlang:", reply_markup=get_main_keyboard(), parse_mode="HTML")
 
+@dp.message(Command("stats"))
+async def cmd_stats(message: types.Message):
+    total_u = bot_stats.get("total_users", len(bot_stats.get("users_list", [])))
+    total_v = bot_stats.get("total_videos", 0)
+    stats_text = (
+        "📊 <b>MuzaffarZed AI Video Bot Statistikasi:</b>\n\n"
+        f"👥 <b>Jami foydalanuvchilar:</b> {total_u} ta\n"
+        f"🎬 <b>Yaratilgan videolar:</b> {total_v} ta\n"
+        f"☁️ <b>Server holati:</b> 24/7 Bulutda Faol (GitHub Actions)\n"
+        f"💎 <b>Dvigatel:</b> Titanium 4.0 Supreme\n\n"
+        f"<i>{WATERMARK_TEXT}</i>"
+    )
+    await message.answer(stats_text, parse_mode="HTML")
+
+@dp.callback_query(F.data == "menu_stats")
+async def cb_stats(callback: types.CallbackQuery):
+    total_u = bot_stats.get("total_users", len(bot_stats.get("users_list", [])))
+    total_v = bot_stats.get("total_videos", 0)
+    stats_text = (
+        "📊 <b>Bot Statistikasi:</b>\n\n"
+        f"👥 <b>Foydalanuvchilar:</b> {total_u} ta\n"
+        f"🎬 <b>Yaratilgan videolar:</b> {total_v} ta\n"
+        f"☁️ <b>Server:</b> 24/7 Bulutda Faol\n\n"
+        f"<i>{WATERMARK_TEXT}</i>"
+    )
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
+    await callback.message.edit_text(stats_text, reply_markup=builder.as_markup(), parse_mode="HTML")
+
 @dp.callback_query(F.data == "menu_main")
 async def cb_main(callback: types.CallbackQuery):
     await callback.message.edit_text(
@@ -232,6 +299,34 @@ async def cb_main(callback: types.CallbackQuery):
         reply_markup=get_main_keyboard(),
         parse_mode="HTML"
     )
+
+# --- Format menyusi ---
+@dp.callback_query(F.data == "menu_formats")
+async def cb_formats_menu(callback: types.CallbackQuery):
+    cur = get_user_pref(callback.from_user.id, "format", DEFAULT_FORMAT)
+    await callback.message.edit_text("📱 <b>Video formatini tanlang:</b>", reply_markup=get_formats_keyboard(cur), parse_mode="HTML")
+
+@dp.callback_query(F.data.startswith("set_format:"))
+async def cb_set_format(callback: types.CallbackQuery):
+    key = callback.data.split(":")[1]
+    set_user_pref(callback.from_user.id, "format", key)
+    f_name = FORMATS[key]["name"]
+    await callback.answer(f"Format: {f_name}")
+    await callback.message.edit_text(f"✅ Format o'rnatildi: <b>{f_name}</b>", reply_markup=get_formats_keyboard(key), parse_mode="HTML")
+
+# --- Davomiylik menyusi ---
+@dp.callback_query(F.data == "menu_duration")
+async def cb_duration_menu(callback: types.CallbackQuery):
+    cur = get_user_pref(callback.from_user.id, "duration", DEFAULT_DURATION)
+    await callback.message.edit_text("⏱ <b>Video davomiyligini tanlang:</b>", reply_markup=get_duration_keyboard(cur), parse_mode="HTML")
+
+@dp.callback_query(F.data.startswith("set_duration:"))
+async def cb_set_duration(callback: types.CallbackQuery):
+    key = callback.data.split(":")[1]
+    set_user_pref(callback.from_user.id, "duration", key)
+    d_name = DURATIONS[key]["name"]
+    await callback.answer(f"Davomiylik: {d_name}")
+    await callback.message.edit_text(f"✅ Davomiylik o'rnatildi: <b>{d_name}</b>", reply_markup=get_duration_keyboard(key), parse_mode="HTML")
 
 # --- Ovoz menyusi ---
 @dp.callback_query(F.data == "menu_voice")
@@ -245,7 +340,7 @@ async def cb_set_voice(callback: types.CallbackQuery):
     set_user_pref(callback.from_user.id, "voice", key)
     v_name = VOICES[key]["name"]
     await callback.answer(f"Ovoz: {v_name}")
-    await callback.message.edit_text(f"✅ Ovoz o'rnatildi: <b>{v_name}</b>\n\nEndi mavzuni yozib yuborishingiz mumkin:", reply_markup=get_voice_keyboard(key), parse_mode="HTML")
+    await callback.message.edit_text(f"✅ Ovoz o'rnatildi: <b>{v_name}</b>", reply_markup=get_voice_keyboard(key), parse_mode="HTML")
 
 # --- Tezlik menyusi ---
 @dp.callback_query(F.data == "menu_modes")
@@ -275,7 +370,7 @@ async def cb_set_style(callback: types.CallbackQuery):
     await callback.answer(f"Uslub: {s_name}")
     await callback.message.edit_text(f"✅ Video uslubi o'rnatildi: <b>{s_name}</b>", reply_markup=get_styles_keyboard(key), parse_mode="HTML")
 
-# --- Subtitr dizayn menyusi ---
+# --- Subtitr menyusi ---
 @dp.callback_query(F.data == "menu_themes")
 async def cb_themes_menu(callback: types.CallbackQuery):
     cur = get_user_pref(callback.from_user.id, "theme", DEFAULT_SUBTITLE_THEME)
@@ -311,12 +406,13 @@ async def cb_topics_menu(callback: types.CallbackQuery):
 @dp.callback_query(F.data == "menu_about")
 async def cb_about_menu(callback: types.CallbackQuery):
     about_text = (
-        "💎 <b>MuzaffarZed Professional AI Video Generator 3.0 Flagship</b>\n\n"
-        "• <b>Ovoz:</b> Microsoft Neural + Studio Broadcast DSP (EBU R128, Warmth, Limiter)\n"
+        "💎 <b>MuzaffarZed Professional AI Video Generator 4.0 Titanium</b>\n\n"
+        "• <b>Formatlar:</b> 9:16 Vertikal, 16:9 Gorizontal, 1:1 Kvadrat\n"
+        "• <b>Ovoz:</b> Microsoft Neural + Studio Broadcast DSP (EBU R128, Warmth)\n"
         "• <b>Video Dvigateli:</b> Dynamic Zoom & Pan + Oltin progress chizig'i + Kinoviy vinyetka\n"
         "• <b>Subtitr:</b> Alex Hormozi Karaoke 2.0 (4 xil rang, 118% pop kattalashuv)\n"
         "• <b>Musiqa:</b> 4 ta janr + Sidechain Audio Ducking + Whoosh SFX\n"
-        "• <b>Qo'shimcha:</b> Alohida MP3 podkast audio va ssenariy eksporti\n\n"
+        "• <b>Qo'shimcha:</b> Foydalanuvchi rasmini qabul qilish, MP3 podkast audio va ssenariy eksporti\n\n"
         f"<i>{WATERMARK_TEXT}</i>"
     )
     builder = InlineKeyboardBuilder()
@@ -363,11 +459,44 @@ async def cb_view_script(callback: types.CallbackQuery):
     else:
         await callback.answer("⚠️ Ssenariy topilmadi.", show_alert=True)
 
+# ==================== FOYDALANUVCHI RASMI (PHOTO) HANDLERI ====================
+
+@dp.message(F.photo)
+async def msg_handle_photo(message: types.Message, bot: Bot):
+    user_id = message.from_user.id
+    record_user(user_id)
+
+    # Eng katta sifatdagi rasmni tanlab yuklab olish
+    photo = message.photo[-1]
+    file_info = await bot.get_file(photo.file_id)
+    file_ext = os.path.splitext(file_info.file_path)[1] or ".jpg"
+    saved_path = USER_UPLOADS_DIR / f"user_{user_id}_{int(time.time())}{file_ext}"
+
+    await bot.download_file(file_info.file_path, destination=saved_path)
+
+    # Agar rasm ostida matn (caption) yozilgan bo'lsa darhol video yasash
+    if message.caption and len(message.caption.strip()) >= 3:
+        topic = message.caption.strip()
+        await handle_video_creation(message, topic, user_id, custom_image_path=str(saved_path))
+    else:
+        user_pending_photos[user_id] = str(saved_path)
+        await message.answer(
+            "📸 <b>Ajoyib rasm qabul qilindi!</b>\n\n"
+            "Endi ushbu rasm asosida video yaratish uchun <b>mavzu yoki gap yozib yuboring</b> "
+            "(masalan: <i>Muvaffaqiyat kaliti</i>):",
+            parse_mode="HTML"
+        )
+
+# ==================== MATN HANDLERI ====================
+
 @dp.message(F.text)
 async def msg_handle_text(message: types.Message):
     topic = message.text.strip()
     if topic.startswith("/"):
         return
+
+    user_id = message.from_user.id
+    record_user(user_id)
 
     if len(topic) < 3 or topic.lower() in ["salom", "qalesan", "qalaysiz", "hi", "hello"]:
         await message.answer(
@@ -377,11 +506,13 @@ async def msg_handle_text(message: types.Message):
         )
         return
 
-    await handle_video_creation(message, topic, message.from_user.id)
+    # Agar avval rasm yuborilgan bo'lsa, o'sha rasm bilan yasash
+    custom_img = user_pending_photos.pop(user_id, None)
+    await handle_video_creation(message, topic, user_id, custom_image_path=custom_img)
 
-# ==================== VIDEO YARATISH LOGIKASI ====================
+# ==================== ASOSIY VIDEO YARATISH LOGIKASI ====================
 
-async def handle_video_creation(message: types.Message, topic: str, user_id: int):
+async def handle_video_creation(message: types.Message, topic: str, user_id: int, custom_image_path: str = None):
     if user_id in user_active_requests:
         await message.answer("⚠️ Hozirda sizning videongiz tayyorlanmoqda, iltimos u yakunlanishini kuting!")
         return
@@ -392,13 +523,17 @@ async def handle_video_creation(message: types.Message, topic: str, user_id: int
     cur_style = get_user_pref(user_id, "style", DEFAULT_VIDEO_STYLE)
     cur_theme = get_user_pref(user_id, "theme", DEFAULT_SUBTITLE_THEME)
     cur_music = get_user_pref(user_id, "music", DEFAULT_MUSIC_GENRE)
+    cur_duration = get_user_pref(user_id, "duration", DEFAULT_DURATION)
+    cur_format = get_user_pref(user_id, "format", DEFAULT_FORMAT)
+
+    fmt_info = FORMATS.get(cur_format, FORMATS[DEFAULT_FORMAT])
 
     status_msg = await message.answer(
         f"🎬 <b>Yangi video yaratish boshlandi!</b>\n\n"
         f"📌 <b>Mavzu:</b> <i>{html.escape(topic)}</i>\n"
         f"🎙 <b>Ovoz:</b> <i>{VOICES[cur_voice]['name']}</i>\n"
-        f"🎛 <b>Uslub:</b> <i>{VIDEO_STYLES[cur_style]['name']}</i>\n"
-        f"🎨 <b>Subtitr:</b> <i>{SUBTITLE_THEMES[cur_theme]['name']}</i>\n\n"
+        f"📱 <b>Format:</b> <i>{fmt_info['name']}</i>\n"
+        f"🎛 <b>Uslub:</b> <i>{VIDEO_STYLES[cur_style]['name']}</i>\n\n"
         f"⏳ <i>Iltimos kuting, montaj navbatiga qo'shilmoqda...</i>",
         parse_mode="HTML"
     )
@@ -435,6 +570,9 @@ async def handle_video_creation(message: types.Message, topic: str, user_id: int
                 style_key=cur_style,
                 theme_key=cur_theme,
                 music_key=cur_music,
+                duration_key=cur_duration,
+                format_key=cur_format,
+                custom_image_path=custom_image_path,
                 progress_callback=progress_notifier
             )
 
@@ -446,7 +584,8 @@ async def handle_video_creation(message: types.Message, topic: str, user_id: int
         music_genre = result.get("music_genre", "ambient_chill")
         genre_name = MUSIC_GENRES.get(music_genre, music_genre)
 
-        # Keshga saqlash
+        record_video_generation()
+
         if task_id:
             job_cache[task_id] = {
                 "topic": topic,
@@ -468,8 +607,8 @@ async def handle_video_creation(message: types.Message, topic: str, user_id: int
             f"🎙 <b>Ovoz:</b> {VOICES[cur_voice]['name']} | {VOICE_MODES[cur_mode]['name']}\n"
             f"🎛 <b>Uslub:</b> {VIDEO_STYLES[cur_style]['name']}\n"
             f"🎵 <b>Musiqa:</b> {genre_name} (Sidechain Ducking)\n"
-            f"⏱ <b>Davomiyligi:</b> {dur:.1f}s | 📱 <b>Format:</b> 1080x1920 Full HD\n"
-            f"💎 <b>Sifat:</b> Studio DSP + Hormozi Dynamic Karaoke 3.0\n\n"
+            f"⏱ <b>Davomiyligi:</b> {dur:.1f}s | 📱 <b>Format:</b> {fmt_info['name']}\n"
+            f"💎 <b>Sifat:</b> Studio DSP + Hormozi Dynamic Karaoke 4.0\n\n"
             f"<i>{WATERMARK_TEXT}</i>"
         )
 
@@ -479,8 +618,8 @@ async def handle_video_creation(message: types.Message, topic: str, user_id: int
                 await message.answer_video(
                     video=video_file,
                     caption=caption_text,
-                    width=1080,
-                    height=1920,
+                    width=fmt_info["width"],
+                    height=fmt_info["height"],
                     supports_streaming=True,
                     reply_markup=get_post_video_keyboard(task_id),
                     parse_mode="HTML"
@@ -499,7 +638,6 @@ async def handle_video_creation(message: types.Message, topic: str, user_id: int
         except Exception:
             pass
 
-        # Faqat vaqtinchalik xom fayllarni tozalash (yakuniy video va MP3 saqlanadi)
         if task_id:
             pipeline.cleanup_task_files(task_id)
 
@@ -525,8 +663,8 @@ async def main():
 
     bot = Bot(token=token)
     print("=" * 65)
-    print("🤖 MUZAFFARZED AI VIDEO BOT (ULTIMATE FLAGSHIP 3.0) ISHGA TUSHDI!")
-    print("Multi-style, Multi-theme, Audio MP3 export va barqaror navbat faol...")
+    print("🤖 MUZAFFARZED AI VIDEO BOT (TITANIUM 4.0 SUPREME) ISHGA TUSHDI!")
+    print("Multi-Format, Custom Photo, Dynamic Scenes va 24/7 navbat faol...")
     print("=" * 65)
     await dp.start_polling(bot)
 
