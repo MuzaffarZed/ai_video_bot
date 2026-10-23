@@ -1,5 +1,5 @@
 """
-MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Audio Studio 2.0)
+MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Ultimate Studio 2.5)
 Muallif: MuzaffarZed
 """
 import os
@@ -22,32 +22,32 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_
 # Ovozlar ro'yxati (Edge-TTS)
 VOICES = {
     "uz_sardor": {
-        "name": "Sardor (O'zbekcha Erkak)",
+        "name": "🇺🇿 Sardor (O'zbekcha Erkak)",
         "id": "uz-UZ-SardorNeural",
         "lang": "uz"
     },
     "uz_madina": {
-        "name": "Madina (O'zbekcha Ayol)",
+        "name": "🇺🇿 Madina (O'zbekcha Ayol)",
         "id": "uz-UZ-MadinaNeural",
         "lang": "uz"
     },
     "ru_dmitry": {
-        "name": "Dmitriy (Ruscha Erkak)",
+        "name": "🇷🇺 Dmitriy (Ruscha Erkak)",
         "id": "ru-RU-DmitryNeural",
         "lang": "ru"
     },
     "ru_svetlana": {
-        "name": "Svetlana (Ruscha Ayol)",
+        "name": "🇷🇺 Svetlana (Ruscha Ayol)",
         "id": "ru-RU-SvetlanaNeural",
         "lang": "ru"
     },
     "en_christopher": {
-        "name": "Christopher (Inglizcha Erkak)",
+        "name": "🇺🇸 Christopher (Inglizcha Erkak)",
         "id": "en-US-ChristopherNeural",
         "lang": "en"
     },
     "en_aria": {
-        "name": "Aria (Inglizcha Ayol)",
+        "name": "🇺🇸 Aria (Inglizcha Ayol)",
         "id": "en-US-AriaNeural",
         "lang": "en"
     }
@@ -63,7 +63,7 @@ VOICE_MODES = {
     },
     "cinematic_deep": {
         "name": "🎬 Kinematik Chuqur (-3Hz bas)",
-        "rate": "+6%",
+        "rate": "+5%",
         "pitch": "-3Hz"
     },
     "natural_clean": {
@@ -79,6 +79,15 @@ VOICE_MODES = {
 }
 DEFAULT_VOICE_MODE = "reels_fast"
 
+# Fon musiqasi janrlari
+MUSIC_GENRES = {
+    "ambient_chill": "🌌 Koinot / Tinch Ambient",
+    "cosmic_deep": "🪐 Chuqur Sirli / Kosmik Bas",
+    "epic_inspiration": "🔥 Epik Motivatsiya / Ilhom",
+    "tech_modern": "🤖 Zamonaviy Kiber / Lo-Fi"
+}
+DEFAULT_MUSIC_GENRE = "ambient_chill"
+
 # Video parametrlari (Standart: Reels/Shorts 9:16)
 FORMATS = {
     "9:16": {"width": 1080, "height": 1920, "name": "Reels / Shorts (9:16)"},
@@ -87,5 +96,8 @@ FORMATS = {
 }
 DEFAULT_FORMAT = "9:16"
 FPS = 30
+
+# Instagram / TikTok xavfsiz zonasi (Safe Margin)
+SUBTITLE_SAFE_MARGIN_V = 480
 
 WATERMARK_TEXT = "Dasturchi: MuzaffarZed"

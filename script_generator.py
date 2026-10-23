@@ -1,9 +1,10 @@
 """
-MuzaffarZed AI Video Bot - Ssenariy Generatori (Version 2.0 Viral Hooks)
-Mavzudan jozibali 3-5 kadrli ssenariy va kadrlar vizual promptlarini tuzadi.
+MuzaffarZed AI Video Bot - Ssenariy Generatori (Version 2.5 Viral Retention)
+Mavzudan jozibali 3 kadrli yuqori ushlab qoluvchi (Hook, Insight, CTA) ssenariy tuzadi.
 Muallif: MuzaffarZed
 """
 import os
+import re
 import json
 import random
 from typing import List, Dict
@@ -42,16 +43,16 @@ class ScriptGenerator:
         }.get(lang, "O'zbek tilida")
 
         prompt = f"""
-Siz jahon darajasidagi viral video produserisiz (MrBeast va Hormozi uslubida).
+Siz jahon darajasidagi viral video produserisiz (MrBeast va Alex Hormozi uslubida).
 Mavzu: "{topic}"
 Til: {lang_prompt}
 
-Ushbu mavzu bo'yicha 3 ta ketma-ket kadrli ultra-dinamik (18-25 soniyalik) TikTok/Reels ssenariysini tuzing.
-1-kadr (Hook): Birinchi 2 soniyada tomoshabinni lol qoldiradigan keskin savol yoki kutilmagan sir.
-2-kadr (Body): Asosiy sir, hayratlanarli ilmiy yoki amaliy dalil.
-3-kadr (CTA): Fikrni o'zgartiruvchi xulosa va harakatga chaqiruv.
+Ushbu mavzu bo'yicha 3 ta ketma-ket kadrli ultra-dinamik (18-24 soniyalik) TikTok/Reels ssenariysini tuzing.
+1-kadr (Hook, 4 soniya): Tomoshabinni lol qoldiradigan keskin savol yoki sir.
+2-kadr (Body/Insight, 8 soniya): Asosiy sir, hayratlanarli ilmiy yoki amaliy fakt.
+3-kadr (CTA/Action, 5 soniya): Fikrni o'zgartiruvchi xulosa va harakatga chaqiruv.
 
-Javobni FAQAT quyidagi JSON formatida qaytaring:
+Javobni FAQAT quyidagi JSON massivida qaytaring, ortiqcha so'z yoki markdown yozmang:
 [
   {{
     "scene_num": 1,
@@ -72,36 +73,46 @@ Javobni FAQAT quyidagi JSON formatida qaytaring:
 """
         response = self.model.generate_content(prompt)
         text = response.text.strip()
+
+        # Robust Regex Parser (JSONDecodeError dan mutlaq himoya)
+        json_match = re.search(r'\[\s*\{.*\}\s*\]', text, re.DOTALL)
+        if json_match:
+            raw_json = json_match.group(0)
+            return json.loads(raw_json)
+
+        # Tozalash
         if text.startswith("```json"):
             text = text[7:]
         if text.startswith("```"):
             text = text[3:]
         if text.endswith("```"):
             text = text[:-3]
-        text = text.strip()
-        return json.loads(text)
+        return json.loads(text.strip())
 
     def _generate_procedural(self, topic: str, lang: str) -> List[Dict]:
         """
-        Ultra-jozibali viral qoliplar (API kalitsiz 100% Zero-Defect).
+        Yuqori darajadagi viral qoliplar (API kalitisiz 100% Zero-Defect).
         """
         clean_topic = topic.strip()
 
         if lang == "uz":
             hooks = [
-                f"99% insonlar {clean_topic} haqidagi bu haqiqatni bilishmaydi! Diqqat bilan eshiting:",
-                f"To'xtang! Agar siz {clean_topic} haqida eshitgan bo'lsangiz, asl haqiqat sizni lol qoldiradi!",
-                f"Siz hech {clean_topic} insoniyat tarixini qanday o'zgartirganini o'ylab ko'rganmisiz? Bu aqlbovar qilmas sir!"
+                f"99% insonlar {clean_topic} haqidagi bu sirni bilishmaydi! Diqqat bilan tinglang:",
+                f"To'xtang! Agar siz {clean_topic} haqida eshitgan bo'lsangiz, asl haqiqat sizni hayratda qoldiradi!",
+                f"Siz hech o'ylab ko'rganmisiz, {clean_topic} hayotimizni qanchalik o'zgartirishi mumkin? Bu aqlbovar qilmas sir!",
+                f"Bir daqiqa! Aynan bugun {clean_topic} haqida bilishingiz kerak bo'lgan eng muhim haqiqat ochiladi!"
             ]
             bodies = [
-                f"Olimlar va soha mutaxassislarining so'nggi kashfiyotiga ko'ra, {clean_topic} biz o'ylagandan 10 barobar kuchliroq ta'sirga ega.",
-                f"Eng qizig'i shundaki, {clean_topic} zamonaviy dunyoda eng buyuk imkoniyatlar kalitiga aylanib bormoqda.",
-                f"Chuqur tahlillar shuni ko'rsatadiki, {clean_topic} ning asl qudrati uning yashirin qonuniyatlarida yotadi."
+                f"Olimlar va yetakchi soha mutaxassislarining so'nggi tahlillari shuni ko'rsatadiki, {clean_topic} biz o'ylagandan 10 barobar kuchliroq ta'sirga ega.",
+                f"Eng hayratlanarlisi shundaki, {clean_topic} ning yashirin mexanizmlari bugungi kunda eng buyuk imkoniyatlar kalitiga aylanmoqda.",
+                f"Tadqiqotlarga ko'ra, kimki {clean_topic} qonuniyatlarini tushunib yetsa, u o'z sohasida mutlaq ustunlikka erishadi.",
+                f"Chuqur o'rganishlar natijasida ma'lum bo'lishicha, {clean_topic} kelajak texnologiyalari va tafakkurining asosi hisoblanadi."
             ]
             conclusions = [
-                f"Ushbu videoni saqlab oling va do'stlaringizga ham ulashing! Yangi bilimlardan xabardor bo'ling!",
-                f"Siz bu haqda qanday fikrdasiz? Fikringizni izohlarda yozib qoldiring va bizga obuna bo'ling!",
-                f"Kelajak aynan shunday kashfiyotlar qo'lida. Ko'proq bilish uchun kuzatib boring!"
+                f"Ushbu videoni saqlab oling va do'stlaringizga ham ulashing! Yangi bilimlardan har doim xabardor bo'ling!",
+                f"Siz bu haqda qanday fikrdasiz? Fikringizni izohlarda yozib qoldiring va bizga obuna bo'lishni unutmang!",
+                f"Kelajak aynan shunday yangiliklar qo'lida. O'z imkoniyatlaringizni oshirish uchun bizni kuzatib boring!",
+                f"Hayotingizni o'zgartirish uchun bugunoq harakat qiling! Kanalimizga a'zo bo'ling va eng so'nggi bilimlarga ega bo'ling!"
             ]
 
             h = random.choice(hooks)
@@ -112,7 +123,7 @@ Javobni FAQAT quyidagi JSON formatida qaytaring:
                 {
                     "scene_num": 1,
                     "text": h,
-                    "visual_prompt": f"cinematic mysterious vertical shot of {clean_topic}, dramatic volumetric lighting, 8k, hyperrealistic"
+                    "visual_prompt": f"cinematic mysterious vertical shot of {clean_topic}, dramatic volumetric lighting, 8k, photorealistic"
                 },
                 {
                     "scene_num": 2,
@@ -134,12 +145,12 @@ Javobni FAQAT quyidagi JSON formatida qaytaring:
                 },
                 {
                     "scene_num": 2,
-                    "text": f"Учёные доказали, что {clean_topic} меняет законы привычного мира и открывает невероятные возможности.",
+                    "text": f"Учёные доказали, что {clean_topic} меняет привычные законы и открывает невероятные возможности.",
                     "visual_prompt": f"epic visual concept of {clean_topic}, futuristic energy glow, 8k vertical"
                 },
                 {
                     "scene_num": 3,
-                    "text": f"Сохраняйте это видео и делитесь с друзьями, чтобы не потерять!",
+                    "text": f"Сохраняйте это видео и делитесь с друзьями, чтобы не потерять ценные знания!",
                     "visual_prompt": f"inspiring majestic vertical visual about {clean_topic}, golden rays, 8k"
                 }
             ]
@@ -152,12 +163,12 @@ Javobni FAQAT quyidagi JSON formatida qaytaring:
                 },
                 {
                     "scene_num": 2,
-                    "text": f"Recent scientific breakthroughs prove that {clean_topic} is ten times more powerful than anyone ever imagined.",
+                    "text": f"Recent breakthroughs prove that {clean_topic} is ten times more impactful than anyone imagined.",
                     "visual_prompt": f"epic visual concept of {clean_topic}, cosmic futuristic energy, vibrant colors, vertical"
                 },
                 {
                     "scene_num": 3,
-                    "text": f"Save this video right now and share it with someone who needs to hear this!",
+                    "text": f"Save this video right now and follow for more groundbreaking insights every single day!",
                     "visual_prompt": f"inspiring majestic vertical scene about {clean_topic}, golden sunlight, hyper-detailed, 8k"
                 }
             ]

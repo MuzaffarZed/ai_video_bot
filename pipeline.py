@@ -1,6 +1,6 @@
 """
-MuzaffarZed AI Video Bot - Yagona Boshqaruv Konveyeri (Pipeline)
-Barcha bosqichlarni (Ssenariy, Ovoz, Kadrlar, Musiqa, Subtitr, Video) uyg'unlashtiradi.
+MuzaffarZed AI Video Bot - Yagona Boshqaruv Konveyeri (Pipeline 2.5)
+Barcha bosqichlarni (Ssenariy, Ovoz, Tematik Kadrlar, Musiqa, Subtitr, Video) uyg'unlashtiradi.
 Muallif: MuzaffarZed
 """
 import os
@@ -39,7 +39,7 @@ class VideoPipeline:
         progress_callback: Optional[Callable[[int, int, str], None]] = None
     ) -> Dict:
         """
-        To'liq siklda video tayyorlaydi (Audio Studio 2.0 bilan).
+        To'liq professional siklda video tayyorlaydi (Studio 2.5).
         """
         task_id = f"job_{int(time.time())}_{uuid.uuid4().hex[:6]}"
         total_steps = 5
@@ -55,34 +55,36 @@ class VideoPipeline:
                     print(f"[Callback Error] {e}")
 
         # 1-Bosqich: Ssenariy
-        await notify(1, "🧠 1/5: AI ssenariy va kadrlar taqsimoti tuzilmoqda...")
+        await notify(1, "🧠 1/5: AI ssenariy va viral kadrlar tuzilmoqda...")
         lang = VOICES.get(voice_key, {}).get("lang", "uz")
         scenes = await asyncio.to_thread(self.script_gen.generate, topic, lang)
 
         # 2-Bosqich: Ovozlashtirish & Studiya DSP
-        await notify(2, "🎙 2/5: Studiya DSP ovozi (Warmth + Presence) yozilmoqda...")
+        await notify(2, "🎙 2/5: Studiya DSP ovozi (EBU R128 + Warmth) yozilmoqda...")
         tts = TTSEngine(voice_key=voice_key, mode_key=voice_mode)
         processed_scenes = await tts.process_all_scenes(scenes, task_id=task_id)
 
-        # 3-Bosqich: Kadrlar Generatsiyasi
-        await notify(3, "🎨 3/5: Har bir kadr uchun yuqori aniqlikdagi AI tasvirlar chizilmoqda...")
+        # 3-Bosqich: Mavzuga mos vizual kadrlar
+        await notify(3, "🎨 3/5: Mavzuga mos 4K vertikal tasvirlar tanlanmoqda...")
+        category = self.visual_eng.detect_category(topic)
         for sc in processed_scenes:
             img_path = str(TEMP_DIR / f"{task_id}_img_{sc['scene_num']}.jpg")
             prompt = sc.get("visual_prompt") or topic
             await asyncio.to_thread(self.visual_eng.get_scene_visual, prompt, img_path, None, sc["scene_num"])
             sc["image_path"] = img_path
 
-        # 4-Bosqich: Musiqa & Audio Ducking & Subtitrlar
-        await notify(4, "🎵 4/5: Fon musiqasi (Audio Ducking) va Karaoke subtitrlar tayyorlanmoqda...")
+        # 4-Bosqich: Mavzuga mos fon musiqasi & Sidechain Ducking & Subtitrlar
+        await notify(4, "🎵 4/5: Fon musiqasi (Sidechain Ducking) va Karaoke tayyorlanmoqda...")
         voice_files = [sc["audio_path"] for sc in processed_scenes]
         master_audio = str(TEMP_DIR / f"{task_id}_master_audio.wav")
-        await asyncio.to_thread(self.audio_mixer.mix, voice_files, master_audio)
+        music_genre = self.visual_eng.get_music_genre_for_category(category)
+        await asyncio.to_thread(self.audio_mixer.mix, voice_files, master_audio, genre=music_genre)
 
         ass_path = str(TEMP_DIR / f"{task_id}_subtitles.ass")
         await asyncio.to_thread(self.subtitle_eng.generate_ass, processed_scenes, ass_path)
 
         # 5-Bosqich: Kliplarni render qilish va Final montaj
-        await notify(5, "🎬 5/5: Kinematografik harakat va montaj yakunlanmoqda...")
+        await notify(5, "🎬 5/5: Dynamic Zoom & Pan va oltin progress-bar montaj qilinmoqda...")
         scene_clips = []
         for sc in processed_scenes:
             clip_path = str(TEMP_DIR / f"{task_id}_clip_{sc['scene_num']}.mp4")
@@ -111,12 +113,14 @@ class VideoPipeline:
             "video_path": output_final,
             "duration": total_duration,
             "scenes": processed_scenes,
-            "task_id": task_id
+            "task_id": task_id,
+            "category": category,
+            "music_genre": music_genre
         }
 
     @staticmethod
     def cleanup_task_files(task_id: str):
-        """Vaqtincha render fayllarini diskdan xavfsiz tozalash."""
+        """Vaqtincha render fayllarini diskdan tozalash."""
         try:
             for item in TEMP_DIR.glob(f"{task_id}_*"):
                 try: item.unlink(missing_ok=True)

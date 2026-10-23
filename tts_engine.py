@@ -1,6 +1,6 @@
 """
-MuzaffarZed AI Video Bot - Ovozlashtirish va Studiya DSP Dvigateli (Audio 2.0)
-Edge-TTS + Studio Broadcast DSP (Ekvalayzer, Kompressiya, Warmth, Rezonans)
+MuzaffarZed AI Video Bot - Ovozlashtirish va Studiya DSP Dvigateli (Audio 2.5)
+Edge-TTS + Studio Broadcast DSP (Ekvalayzer, Kompressiya, EBU R128 Loudnorm)
 Muallif: MuzaffarZed
 """
 import os
@@ -24,23 +24,26 @@ class TTSEngine:
 
     async def generate_scene_audio(self, text: str, output_path: str) -> float:
         """
-        Bitta kadr matnini ovozlashtiradi, Studiya DSP filtri bilan boyitadi va saqlaydi.
+        Bitta kadr matnini ovozlashtiradi, Studiya DSP filtri va EBU R128 bilan boyitadi va saqlaydi.
         """
         temp_raw = output_path + ".raw.mp3"
         comm = edge_tts.Communicate(text, self.voice_id, rate=self.rate, pitch=self.pitch)
         await comm.save(temp_raw)
 
         # Studiya Broadcast DSP zanjiri:
-        # 1. 80Hz pastki shovqinlarni kesish
+        # 1. 80Hz pastki mikrofon shovqinlarini kesish
         # 2. 220Hz ko'krak rezonansi (iliq bas)
         # 3. 3600Hz nutq ravshanligi va konsonantlar tiniqligi
         # 4. Compand dinamik kompressor (bir xil qalin va barqaror studiya ovozi)
+        # 5. afade boshida 18ms va oxirida 20ms silliq ulanish (klik va shovqinlarni yo'qotish)
+        # 6. loudnorm EBU R128 (-16 LUFS standart Reels/YouTube)
         dsp_filter = (
             "highpass=f=80,"
             "equalizer=f=220:t=q:w=1.2:g=2.8,"
             "equalizer=f=3600:t=q:w=1.0:g=3.2,"
             "compand=attacks=0.02:decays=0.1:points=-80/-80|-25/-15|-10/-5|0/0:soft-knee=6,"
-            "volume=1.25"
+            "afade=t=in:st=0:d=0.018,"
+            "loudnorm=I=-16:TP=-1.5:LRA=11"
         )
 
         cmd = [
@@ -48,13 +51,14 @@ class TTSEngine:
             "-i", temp_raw,
             "-af", dsp_filter,
             "-c:a", "pcm_s16le",
+            "-ar", "44100",
             output_path
         ]
         try:
             subprocess.run(cmd, capture_output=True, check=True, timeout=30)
         except Exception as e:
             # Fallback
-            cmd_fb = ["ffmpeg", "-nostdin", "-y", "-i", temp_raw, "-c:a", "pcm_s16le", output_path]
+            cmd_fb = ["ffmpeg", "-nostdin", "-y", "-i", temp_raw, "-c:a", "pcm_s16le", "-ar", "44100", output_path]
             subprocess.run(cmd_fb, capture_output=True, check=True, timeout=30)
         finally:
             if os.path.exists(temp_raw):
@@ -79,7 +83,7 @@ class TTSEngine:
             return float(res.stdout.strip())
         except Exception as e:
             print(f"[Error ffprobe] {e}")
-            return 3.5
+            return 4.0
 
     def build_word_timings(self, text: str, start_offset: float, total_duration: float) -> List[Dict]:
         """
@@ -89,21 +93,21 @@ class TTSEngine:
         if not words:
             return []
 
-        vowels = set("aeiouyаеёиоуыэюя")
+        vowels = set("aeiouyаеёиоуыэюяo'g'")
         
-        # Har bir so'zning bo'g'in og'irligi (unli harflar + harf uzunligi)
+        # Har bir so'zning bo'g'in og'irligi
         word_weights = []
         for w in words:
             w_clean = w.lower()
             syllables = sum(1 for c in w_clean if c in vowels)
-            weight = max(1.0, syllables * 1.5 + len(w_clean) * 0.4)
+            weight = max(1.0, syllables * 1.6 + len(w_clean) * 0.35)
             word_weights.append(weight)
 
         total_weight = sum(word_weights)
 
-        # Gap boshidagi va oxiridagi mayin nafas pauzasi
-        lead_pad = min(0.10, total_duration * 0.03)
-        tail_pad = min(0.12, total_duration * 0.04)
+        # Nafas va ulanish pauzalari
+        lead_pad = min(0.08, total_duration * 0.02)
+        tail_pad = min(0.10, total_duration * 0.03)
         active_duration = max(0.4, total_duration - lead_pad - tail_pad)
 
         word_timings = []
@@ -113,14 +117,14 @@ class TTSEngine:
             fraction = word_weights[i] / total_weight
             base_dur = active_duration * fraction
 
-            # Tinish belgilariga qarab mayin pauza qo'shish
+            # Tinish belgilariga qarab silliq pauza
             extra_pause = 0.0
             if word.endswith((",", ";", "-")):
-                extra_pause = min(0.14, base_dur * 0.25)
+                extra_pause = min(0.12, base_dur * 0.22)
             elif word.endswith((".", "!", "?", ":")):
-                extra_pause = min(0.24, base_dur * 0.35)
+                extra_pause = min(0.22, base_dur * 0.32)
 
-            actual_word_dur = max(0.15, base_dur - extra_pause)
+            actual_word_dur = max(0.16, base_dur - extra_pause)
             w_start = round(current_time, 3)
             w_end = round(current_time + actual_word_dur, 3)
 

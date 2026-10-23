@@ -1,15 +1,15 @@
 """
-MuzaffarZed AI Video Bot - Zamonaviy Karaoke Subtitrlar Generatori (Version 2.0)
-Hormozi / Reels uslubidagi neon karaoke, emojilar va mualliflik muhri.
+MuzaffarZed AI Video Bot - Zamonaviy Karaoke Subtitrlar Generatori (Version 2.5)
+Alex Hormozi 2.0 dinamik neon karaoke, Instagram/TikTok xavfsiz zonasi va mualliflik muhri.
 Muallif: MuzaffarZed
 """
 import os
 import sys
 from typing import List, Dict
-from config import WATERMARK_TEXT
+from config import WATERMARK_TEXT, SUBTITLE_SAFE_MARGIN_V
 
 class SubtitleEngine:
-    def __init__(self, font_name: str = None, font_size: int = 74):
+    def __init__(self, font_name: str = None, font_size: int = 76):
         if font_name is None:
             self.font_name = "DejaVu Sans" if sys.platform != "win32" else "Arial"
         else:
@@ -29,6 +29,8 @@ class SubtitleEngine:
         Barcha kadrlar so'zlarini zamonaviy dinamik karaoke tarzida ASS formatiga yozadi.
         """
         watermark_font = "DejaVu Sans" if sys.platform != "win32" else "Segoe UI"
+        margin_v = SUBTITLE_SAFE_MARGIN_V
+
         ass_header = f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: 1080
@@ -37,7 +39,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Karaoke,{self.font_name},{self.font_size},&H00FFFFFF,&H0000D7FF,&H00000000,&H80000000,-1,0,0,0,100,100,1,0,1,5,3,2,60,60,420,1
+Style: Karaoke,{self.font_name},{self.font_size},&H00FFFFFF,&H0000D7FF,&H00000000,&H80000000,-1,0,0,0,100,100,1,0,1,6,3,2,60,60,{margin_v},1
 Style: Watermark,{watermark_font},34,&H75FFFFFF,&H00000000,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1,0,9,40,40,75,1
 
 [Events]
@@ -49,20 +51,19 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         start_str_full = self._format_time(0.0)
         end_str_full = self._format_time(total_duration)
 
-        # 1. Doimiy nafis mualliflik imzosi (Dasturchi: MuzaffarZed)
+        # 1. Doimiy nafis mualliflik muhri (Dasturchi: MuzaffarZed)
         events.append(f"Dialogue: 1,{start_str_full},{end_str_full},Watermark,,0,0,0,,{WATERMARK_TEXT}")
 
-        # Emojilar to'plami
         emojis = ["🔥", "💡", "🧠", "✨", "🚀", "⚡", "🎯", "💎"]
 
-        # 2. So'zlarni 2-3 tadan guruhlab (Hormozi / MrBeast ritmi)
+        # 2. Hormozi 2-3 so'zli dinamik pop karaoke
         for sc_idx, sc in enumerate(scenes):
             words = sc.get("words", [])
             if not words:
                 continue
 
             scene_emoji = emojis[sc_idx % len(emojis)]
-            chunk_size = 3  # Mobil ekran uchun eng optimal (2-3 so'z)
+            chunk_size = 3  # Mobil ekran uchun eng ideal ritm
             for i in range(0, len(words), chunk_size):
                 chunk = words[i:i + chunk_size]
 
@@ -77,7 +78,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     for idx, part in enumerate(chunk):
                         word_text = part["word"]
                         if idx == active_idx:
-                            # Oltin-neon sariq va 118% pop-effekti
+                            # Oltin-neon sariq (&H00D7FF&) va 118% pop kattalashuv
                             line_parts.append(f"{{\\c&H00D7FF&\\fscx118\\fscy118}}{word_text}{{\\rKaraoke}}")
                         else:
                             line_parts.append(f"{{\\c&HFFFFFF&}}{word_text}")

@@ -1,17 +1,16 @@
 """
-MuzaffarZed AI Video Bot - Kengaytirilgan Vizual Kadrlar Dvigateli (Visual Studio 2.0)
-Mavzuga mos tematik 1080x1920 4K fotosuratlar, Pixabay/Unsplash integratsiyasi va oflayn grafika.
+MuzaffarZed AI Video Bot - Kengaytirilgan Vizual Kadrlar Dvigateli (Visual Studio 2.5)
+8 ta toifada saralangan 1080x1920 4K fotosuratlar, Unsplash / Picsum va Oflayn Premium Grafika.
 Muallif: MuzaffarZed
 """
 import os
 import random
 import urllib.request
 import urllib.parse
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageEnhance
 from config import TEMP_DIR
 
 class VisualEngine:
-    # Mavzular bo'yicha saralangan eng yuqori sifatli 1080x1920 vertikal fotolar bazasi
     CURATED_THEMES = {
         "space": [
             "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1080&h=1920&fit=crop&q=80",
@@ -51,6 +50,16 @@ class VisualEngine:
             "https://images.unsplash.com/photo-1507413245164-6160d8298b31?w=1080&h=1920&fit=crop&q=80",
             "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1080&h=1920&fit=crop&q=80",
             "https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=1080&h=1920&fit=crop&q=80"
+        ],
+        "tech": [
+            "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=1080&h=1920&fit=crop&q=80"
+        ],
+        "sport": [
+            "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1080&h=1920&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=1080&h=1920&fit=crop&q=80"
         ]
     }
 
@@ -65,21 +74,35 @@ class VisualEngine:
         t = text.lower()
         if any(w in t for w in ["koinot", "yulduz", "sayyora", "galaktika", "tuynuk", "mars", "quyosh", "space", "astronom"]):
             return "space"
-        elif any(w in t for w in ["ai", "sun'iy", "intellekt", "robot", "kelajak", "texnologiya", "dastur", "kod", "kompyuter", "kiber"]):
+        elif any(w in t for w in ["ai", "sun'iy", "intellekt", "robot", "neyron", "gemini", "gpt"]):
             return "ai"
-        elif any(w in t for w in ["muvaffaqiyat", "boylik", "pul", "biznes", "moliya", "investitsiya", "maqsad", "boy"]):
+        elif any(w in t for w in ["kod", "dastur", "kompyuter", "kiber", "texnologiya", "it", "xaker", "smartfon"]):
+            return "tech"
+        elif any(w in t for w in ["muvaffaqiyat", "boylik", "pul", "biznes", "moliya", "investitsiya", "daromad", "boy"]):
             return "business"
-        elif any(w in t for w in ["tarix", "qadimgi", "piramida", "jumboq", "sivilizatsiya", "arxeolog", "rim", "misr"]):
+        elif any(w in t for w in ["sport", "mashq", "fitnes", "kuch", "salomatlik", "intizom", "yugurish"]):
+            return "sport"
+        elif any(w in t for w in ["tarix", "qadimgi", "piramida", "jumboq", "sivilizatsiya", "arxeolog", "rim", "misr", "imperiya"]):
             return "history"
-        elif any(w in t for w in ["miya", "ong", "psixologiya", "fikr", "xotira", "aqlli", "odam", "inson"]):
+        elif any(w in t for w in ["miya", "ong", "psixologiya", "fikr", "xotira", "aqlli", "odam", "inson", "tafakkur"]):
             return "mind"
-        elif any(w in t for w in ["dengiz", "okean", "tog'", "tabiat", "suv", "o'rmon", "hayot", "jonivor"]):
+        elif any(w in t for w in ["dengiz", "okean", "tog'", "tabiat", "suv", "o'rmon", "hayot", "jonivor", "daraxt"]):
             return "nature"
         return "space"
 
+    def get_music_genre_for_category(self, cat: str) -> str:
+        if cat in ["space", "history"]:
+            return "cosmic_deep"
+        elif cat in ["ai", "tech"]:
+            return "tech_modern"
+        elif cat in ["business", "sport"]:
+            return "epic_inspiration"
+        else:
+            return "ambient_chill"
+
     def get_scene_visual(self, prompt: str, output_path: str, seed: int = None, scene_num: int = 1) -> str:
         """
-        Kadr uchun mavzuga 100% mos 1080x1920 sifatli kadrni yuklaydi yoki chizadi.
+        Kadr uchun mavzuga mos 1080x1920 sifatli kadrni yuklaydi yoki chizadi.
         """
         if seed is None:
             seed = random.randint(10000, 999999)
@@ -87,21 +110,18 @@ class VisualEngine:
         cat = self.detect_category(prompt)
         curated_urls = self.CURATED_THEMES.get(cat, self.CURATED_THEMES["space"])
         
-        # Har bir kadr uchun har xil rasm tanlash
         target_url = curated_urls[(scene_num - 1 + seed) % len(curated_urls)]
 
         success = self._download_image(target_url, output_path)
         if not success or not os.path.exists(output_path) or os.path.getsize(output_path) < 2000:
-            # Zaxira: Picsum seeded URL
             clean_seed = f"v_{cat}_{seed}_{scene_num}"
             picsum_url = f"https://picsum.photos/seed/{clean_seed}/{self.width}/{self.height}"
             success = self._download_image(picsum_url, output_path)
 
         if not success or not os.path.exists(output_path) or os.path.getsize(output_path) < 2000:
-            # 3-bosqich: To'liq oflayn estetik grafika
-            self._generate_fallback_graphic(prompt, output_path)
+            self._generate_fallback_graphic(cat, output_path)
 
-        self._ensure_exact_dimensions(output_path)
+        self._ensure_exact_dimensions_and_sharpness(output_path)
         return output_path
 
     def _download_image(self, url: str, output_path: str) -> bool:
@@ -117,68 +137,77 @@ class VisualEngine:
             print(f"[Visual Download] {e}")
             return False
 
-    def _generate_fallback_graphic(self, prompt: str, output_path: str):
+    def _generate_fallback_graphic(self, category: str, output_path: str):
         """
-        Oflayn kosmik va tumanlik fon generatsiyasi.
+        Oflayn ko'p qatlamli kinoviy grafika generatsiyasi.
         """
         img = Image.new("RGB", (self.width, self.height), color="#080C16")
         draw = ImageDraw.Draw(img)
 
-        palettes = [
-            ("#050811", "#150D2A"),
-            ("#030A1A", "#0A1F3D"),
-            ("#0F0024", "#00102B")
-        ]
-        c1, c2 = random.choice(palettes)
+        palette_map = {
+            "space": ("#040714", "#120926", (0, 190, 255), (255, 0, 140)),
+            "ai": ("#020B14", "#091D33", (0, 240, 255), (80, 0, 255)),
+            "business": ("#0A0F0D", "#1C2417", (255, 215, 0), (0, 200, 120)),
+            "sport": ("#120505", "#2B0B0B", (255, 60, 0), (255, 200, 0)),
+            "tech": ("#030914", "#08182B", (0, 150, 255), (0, 255, 180)),
+            "nature": ("#03120A", "#0C2E1A", (0, 230, 110), (0, 180, 220))
+        }
+        bg1, bg2, glow1, glow2 = palette_map.get(category, palette_map["space"])
 
         for y in range(self.height):
             ratio = y / self.height
-            r = int(int(c1[1:3], 16) * (1 - ratio) + int(c2[1:3], 16) * ratio)
-            g = int(int(c1[3:5], 16) * (1 - ratio) + int(c2[3:5], 16) * ratio)
-            b = int(int(c1[5:7], 16) * (1 - ratio) + int(c2[5:7], 16) * ratio)
+            r = int(int(bg1[1:3], 16) * (1 - ratio) + int(bg2[1:3], 16) * ratio)
+            g = int(int(bg1[3:5], 16) * (1 - ratio) + int(bg2[3:5], 16) * ratio)
+            b = int(int(bg1[5:7], 16) * (1 - ratio) + int(bg2[5:7], 16) * ratio)
             draw.line([(0, y), (self.width, y)], fill=(r, g, b))
 
         overlay = Image.new("RGBA", (self.width, self.height), (0, 0, 0, 0))
         d_overlay = ImageDraw.Draw(overlay)
 
         d_overlay.ellipse(
-            [self.width * 0.1, self.height * 0.25, self.width * 0.9, self.height * 0.65],
-            fill=(0, 190, 255, 40)
+            [self.width * 0.1, self.height * 0.22, self.width * 0.9, self.height * 0.65],
+            fill=(glow1[0], glow1[1], glow1[2], 45)
         )
         d_overlay.ellipse(
             [self.width * 0.2, self.height * 0.45, self.width * 0.8, self.height * 0.85],
-            fill=(255, 0, 140, 30)
+            fill=(glow2[0], glow2[1], glow2[2], 35)
         )
-        overlay = overlay.filter(ImageFilter.GaussianBlur(100))
+        overlay = overlay.filter(ImageFilter.GaussianBlur(110))
         img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
 
         draw_stars = ImageDraw.Draw(img)
-        for _ in range(90):
+        for _ in range(100):
             sx = random.randint(0, self.width)
             sy = random.randint(0, self.height)
-            b_val = random.randint(180, 255)
+            b_val = random.randint(190, 255)
             draw_stars.point((sx, sy), fill=(b_val, b_val, b_val))
 
         img.save(output_path, "JPEG", quality=95)
 
-    def _ensure_exact_dimensions(self, image_path: str):
+    def _ensure_exact_dimensions_and_sharpness(self, image_path: str):
         try:
             with Image.open(image_path) as im:
-                if im.size != (self.width, self.height):
-                    im_ratio = im.width / im.height
-                    target_ratio = self.width / self.height
+                im_ratio = im.width / im.height
+                target_ratio = self.width / self.height
 
-                    if im_ratio > target_ratio:
-                        new_height = self.height
-                        new_width = int(new_height * im_ratio)
-                    else:
-                        new_width = self.width
-                        new_height = int(new_width / im_ratio)
+                if im_ratio > target_ratio:
+                    new_height = self.height
+                    new_width = int(new_height * im_ratio)
+                else:
+                    new_width = self.width
+                    new_height = int(new_width / im_ratio)
 
-                    resized = im.resize((new_width, new_height), Image.Resampling.LANCZOS)
-                    left = (new_width - self.width) // 2
-                    top = (new_height - self.height) // 2
-                    cropped = resized.crop((left, top, left + self.width, top + self.height))
-                    cropped.save(image_path, "JPEG", quality=95)
+                resized = im.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                left = (new_width - self.width) // 2
+                top = (new_height - self.height) // 2
+                cropped = resized.crop((left, top, left + self.width, top + self.height))
+
+                # Kristalldek tiniq qilish (Unsharp Mask & Contrast)
+                enhancer = ImageEnhance.Sharpness(cropped)
+                sharpened = enhancer.enhance(1.25)
+                enhancer_c = ImageEnhance.Contrast(sharpened)
+                final_img = enhancer_c.enhance(1.05)
+
+                final_img.save(image_path, "JPEG", quality=95)
         except Exception as e:
             print(f"[Visual Dimension Error] {e}")
