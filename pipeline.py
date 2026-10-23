@@ -9,6 +9,7 @@ import time
 import uuid
 import random
 import asyncio
+import subprocess
 from pathlib import Path
 
 current_dir = str(Path(__file__).resolve().parent)
@@ -22,6 +23,8 @@ from config import (
     DEFAULT_VOICE,
     VOICES,
     DEFAULT_VOICE_MODE,
+    AUDIO_EFFECTS,
+    DEFAULT_AUDIO_EFFECT,
     DEFAULT_VIDEO_STYLE,
     DEFAULT_SUBTITLE_THEME,
     DEFAULT_SUBTITLE_SIZE,
@@ -53,6 +56,7 @@ class VideoPipeline:
         topic: str,
         voice_key: str = DEFAULT_VOICE,
         voice_mode: str = DEFAULT_VOICE_MODE,
+        effect_key: str = DEFAULT_AUDIO_EFFECT,
         style_key: str = DEFAULT_VIDEO_STYLE,
         theme_key: str = DEFAULT_SUBTITLE_THEME,
         music_key: str = DEFAULT_MUSIC_GENRE,
@@ -68,7 +72,7 @@ class VideoPipeline:
         progress_callback: Optional[Callable[[int, int, str], None]] = None
     ) -> Dict:
         """
-        To'liq professional siklda video, MP3 va SEO paketini tayyorlaydi (Zenith 6.0).
+        To'liq professional siklda video, MP3 va SEO paketini tayyorlaydi (Zenith 16.0).
         """
         task_id = f"job_{int(time.time())}_{uuid.uuid4().hex[:6]}"
         total_steps = 5
@@ -92,11 +96,11 @@ class VideoPipeline:
             scenes = custom_scenes
         else:
             scenes = await asyncio.to_thread(self.script_gen.generate, topic, lang, style_key, duration_key)
-        seo_data = await asyncio.to_thread(self.script_gen.generate_viral_seo_package, topic, lang)
+        seo_data = await asyncio.to_thread(self.script_gen.generate_viral_seo_package, topic, lang, scenes)
 
         # 2-Bosqich: Ovozlashtirish & Studiya DSP
         await notify(2, "🎙 2/5: Studiya DSP ovozi (EBU R128 + Warmth) yozilmoqda...")
-        tts = TTSEngine(voice_key=voice_key, mode_key=voice_mode)
+        tts = TTSEngine(voice_key=voice_key, mode_key=voice_mode, effect_key=effect_key)
         processed_scenes = await tts.process_all_scenes(scenes, task_id=task_id)
 
         # 3-Bosqich: 8K AI tasvirlar (Pollinations AI + 4K Unsplash)
@@ -397,3 +401,32 @@ class VideoPipeline:
                 except Exception: pass
         except Exception as e:
             print(f"[Cleanup Notice] {e}")
+
+    @staticmethod
+    async def extract_story_snippet(video_path: str, output_path: str, duration: float = 15.0) -> str:
+        """
+        Telegram va WhatsApp Stories uchun videoning birinchi 15 soniyasini
+        o'ta tezkor (fast re-encode) tarzda qirqib beradi.
+        """
+        if not os.path.exists(video_path):
+            raise FileNotFoundError(f"Video fayli topilmadi: {video_path}")
+
+        cmd = [
+            "ffmpeg", "-nostdin", "-y",
+            "-ss", "00:00:00",
+            "-i", video_path,
+            "-t", str(duration),
+            "-c:v", "libx264",
+            "-preset", "ultrafast",
+            "-crf", "22",
+            "-c:a", "aac",
+            "-b:a", "192k",
+            "-movflags", "+faststart",
+            output_path
+        ]
+
+        def run_ffmpeg():
+            subprocess.run(cmd, capture_output=True, check=True, timeout=45)
+
+        await asyncio.to_thread(run_ffmpeg)
+        return output_path

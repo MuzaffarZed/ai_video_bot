@@ -9,7 +9,7 @@ import json
 import random
 import urllib.request
 import urllib.parse
-from typing import List, Dict
+from typing import List, Dict, Optional
 from config import GEMINI_API_KEY, VIDEO_STYLES, DEFAULT_VIDEO_STYLE, DURATIONS, DEFAULT_DURATION
 
 def transliterate_uzbek(text: str) -> str:
@@ -381,10 +381,10 @@ Javobni FAQAT quyidagi JSON massivida qaytaring, ortiqcha hech qanday matn qo'sh
 
         return scenes
 
-    def generate_viral_seo_package(self, topic: str, lang: str = "uz") -> Dict:
+    def generate_viral_seo_package(self, topic: str, lang: str = "uz", scenes: Optional[List[Dict]] = None) -> Dict:
         """
         Instagram Reels, TikTok va YouTube Shorts uchun tayyor SEO sarlavha,
-        tavsif matni va 15 ta eng yuqori qamrovli (viral) hashtaglar to'plami.
+        tavsif matni, YouTube Chapters (vaqt belgilari) va 15 ta eng yuqori qamrovli (viral) hashtaglar to'plami.
         """
         clean_t = topic.strip()
         tags_uz = ["#reels", "#uzbekistan", "#toshkent", "#faktlar", "#sirlar", "#bilim", "#top", "#foydali", "#shorts", "#trend", "#uzb", "#motivatsiya", "#qiziqarli", "#rek", "#uz"]
@@ -401,9 +401,38 @@ Javobni FAQAT quyidagi JSON massivida qaytaring, ortiqcha hech qanday matn qo'sh
             caption = f"🔥 {clean_t} haqida 99% insonlar bilmaydigan haqiqat! Videoni saqlab oling va do'stlaringizga ulashing!"
             tags = " ".join(tags_uz)
 
+        # YouTube Chapters (Vaqt belgilari va kadrma-kadr mavzular)
+        if scenes:
+            chapters = []
+            curr_sec = 0.0
+            for idx, sc in enumerate(scenes):
+                m = int(curr_sec // 60)
+                s = int(curr_sec % 60)
+                ts = f"{m:02d}:{s:02d}"
+                raw_text = sc.get("text", f"Scene {idx+1}").strip()
+                short_text = raw_text[:35].rsplit(" ", 1)[0] if len(raw_text) > 35 else raw_text
+                if idx == 0:
+                    label = f"Kirish (Hook): {short_text}" if lang == "uz" else (f"Введение: {short_text}" if lang == "ru" else f"Hook: {short_text}")
+                elif idx == len(scenes) - 1:
+                    label = f"Xulosa: {short_text}" if lang == "uz" else (f"Итог: {short_text}" if lang == "ru" else f"CTA: {short_text}")
+                else:
+                    label = short_text
+                chapters.append(f"{ts} - {label}")
+                dur = float(sc.get("duration", 4.5))
+                curr_sec += dur
+            youtube_chapters = "\n".join(chapters)
+        else:
+            if lang == "ru":
+                youtube_chapters = "00:00 - Введение (Hook)\n00:05 - Основные факты\n00:15 - Итог и подписка"
+            elif lang == "en":
+                youtube_chapters = "00:00 - Intro (Hook)\n00:05 - Main Revelations\n00:15 - Final CTA & Subscribe"
+            else:
+                youtube_chapters = "00:00 - Kirish (Hook)\n00:05 - Asosiy sirlar va voqealar\n00:15 - Xulosa va Obuna bo'lish"
+
         return {
             "caption": caption,
             "hashtags": tags,
+            "youtube_chapters": youtube_chapters,
             "best_time": "18:30 - 21:30 (Eng yuqori faollik vaqti)"
         }
 

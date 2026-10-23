@@ -1,5 +1,5 @@
 """
-MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Singularity 15.0 Supreme Omnipresence)
+MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Singularity 16.0 Zenith Singularity)
 Muallif: MuzaffarZed
 """
 import os
@@ -79,6 +79,27 @@ VOICE_MODES = {
     }
 }
 DEFAULT_VOICE_MODE = "reels_fast"
+
+# 2.1 Ovoz Akustikasi va Studiya DSP Effektlari (Audio Effects)
+AUDIO_EFFECTS = {
+    "studio_warmth": {
+        "name": "🎙 Studiya Issiqligi (Broadcast EBU R128)",
+        "filter": "highpass=f=80,equalizer=f=220:t=q:w=1.2:g=2.8,equalizer=f=3600:t=q:w=1.0:g=3.2,compand=attacks=0.02:decays=0.1:points=-80/-80|-25/-15|-10/-5|0/0:soft-knee=6,loudnorm=I=-16:TP=-1.5:LRA=11"
+    },
+    "deep_trailer": {
+        "name": "🎬 Gollivud Treyleri (Sub-Bass + Reverb)",
+        "filter": "highpass=f=60,equalizer=f=120:t=q:w=1.2:g=4.5,equalizer=f=3400:t=q:w=1.0:g=3.0,aecho=0.8:0.88:35:0.22,loudnorm=I=-16:TP=-1.5:LRA=11"
+    },
+    "radio_broadcast": {
+        "name": "📻 Jonli Radio Efiri (FM Radio Filter)",
+        "filter": "bandpass=f=1700:width_type=h:w=2400,equalizer=f=1200:t=q:w=1.0:g=3.0,compand=attacks=0.01:decays=0.08:points=-80/-80|-20/-6|0/0:soft-knee=6,loudnorm=I=-16:TP=-1.5:LRA=9"
+    },
+    "vintage_tape": {
+        "name": "📼 Vintage Kassetasi (Lo-Fi Tape + Warmth)",
+        "filter": "lowpass=f=4500,highpass=f=140,equalizer=f=320:t=q:w=1.2:g=2.2,loudnorm=I=-16:TP=-1.5:LRA=10"
+    }
+}
+DEFAULT_AUDIO_EFFECT = "studio_warmth"
 
 # 3. Video Uslublari (Video Styles)
 VIDEO_STYLES = {

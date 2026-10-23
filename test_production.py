@@ -7,7 +7,7 @@ sys.path.insert(0, r'C:\Users\MuzaffarZed\ai_workspace\ai_video_bot')
 from config import (
     VOICES, VIDEO_STYLES, VISUAL_FILTERS, SUBTITLE_THEMES, SUBTITLE_SIZES,
     FORMATS, DURATIONS, MUSIC_GENRES, ART_STYLES, STUDIO_PRESETS, MUSIC_VOLUMES,
-    CAMERA_MOTIONS, DEFAULT_CAMERA_MOTION, TEMP_DIR
+    CAMERA_MOTIONS, DEFAULT_CAMERA_MOTION, AUDIO_EFFECTS, DEFAULT_AUDIO_EFFECT, TEMP_DIR
 )
 from script_generator import ScriptGenerator, transliterate_uzbek
 from visual_engine import VisualEngine
@@ -195,6 +195,34 @@ class TestSingularity10(unittest.TestCase):
         self.assertIsNotNone(pipeline.video_eng)
         self.assertIsNotNone(pipeline.visual_eng)
         self.assertTrue(hasattr(pipeline, "reroll_visuals_for_video"))
+
+    def test_audio_effects_dsp_config(self):
+        self.assertIn("studio_warmth", AUDIO_EFFECTS)
+        self.assertIn("deep_trailer", AUDIO_EFFECTS)
+        self.assertIn("radio_broadcast", AUDIO_EFFECTS)
+        self.assertIn("vintage_tape", AUDIO_EFFECTS)
+        self.assertEqual(DEFAULT_AUDIO_EFFECT, "studio_warmth")
+
+        tts = TTSEngine(effect_key="deep_trailer")
+        self.assertEqual(tts.effect_key, "deep_trailer")
+        self.assertIn("aecho", tts.dsp_filter)
+
+    def test_youtube_chapters_generation(self):
+        sg = ScriptGenerator()
+        scenes = [
+            {"scene_num": 1, "text": "Qora tuynuk nima?", "duration": 5.0},
+            {"scene_num": 2, "text": "U qanday hosil bo'ladi?", "duration": 6.0},
+            {"scene_num": 3, "text": "Bizga obuna bo'ling!", "duration": 4.0}
+        ]
+        seo = sg.generate_viral_seo_package("Qora tuynuklar", lang="uz", scenes=scenes)
+        self.assertIn("youtube_chapters", seo)
+        chapters = seo["youtube_chapters"]
+        self.assertIn("00:00 - Kirish", chapters)
+        self.assertIn("00:05 - ", chapters)
+        self.assertIn("00:11 - Xulosa", chapters)
+
+    def test_extract_story_snippet_method(self):
+        self.assertTrue(hasattr(VideoPipeline, "extract_story_snippet"))
 
 if __name__ == "__main__":
     unittest.main()

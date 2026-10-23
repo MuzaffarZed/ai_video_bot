@@ -9,7 +9,7 @@ import subprocess
 import json
 from typing import List, Dict
 import edge_tts
-from config import TEMP_DIR, VOICES, DEFAULT_VOICE, VOICE_MODES, DEFAULT_VOICE_MODE
+from config import TEMP_DIR, VOICES, DEFAULT_VOICE, VOICE_MODES, DEFAULT_VOICE_MODE, AUDIO_EFFECTS, DEFAULT_AUDIO_EFFECT
 from script_generator import transliterate_uzbek
 
 VOICE_DEMO_TEXTS = {
@@ -22,7 +22,7 @@ VOICE_DEMO_TEXTS = {
 }
 
 class TTSEngine:
-    def __init__(self, voice_key: str = DEFAULT_VOICE, mode_key: str = DEFAULT_VOICE_MODE):
+    def __init__(self, voice_key: str = DEFAULT_VOICE, mode_key: str = DEFAULT_VOICE_MODE, effect_key: str = DEFAULT_AUDIO_EFFECT):
         if voice_key not in VOICES:
             voice_key = DEFAULT_VOICE
         self.voice_info = VOICES[voice_key]
@@ -31,6 +31,11 @@ class TTSEngine:
         mode_data = VOICE_MODES.get(mode_key, VOICE_MODES[DEFAULT_VOICE_MODE])
         self.rate = mode_data.get("rate", "+12%")
         self.pitch = mode_data.get("pitch", "-1Hz")
+
+        if effect_key not in AUDIO_EFFECTS:
+            effect_key = DEFAULT_AUDIO_EFFECT
+        self.effect_key = effect_key
+        self.dsp_filter = AUDIO_EFFECTS[self.effect_key]["filter"]
 
     @classmethod
     async def generate_voice_demo(cls, voice_key: str, output_path: str) -> str:
@@ -114,21 +119,10 @@ class TTSEngine:
         comm = edge_tts.Communicate(clean_text, chosen_voice_id, rate=rate_val, pitch=pitch_val)
         await comm.save(temp_raw)
 
-        # Studiya Broadcast DSP zanjiri:
-        # 1. 80Hz pastki mikrofon shovqinlarini kesish
-        # 2. 220Hz ko'krak rezonansi (iliq bas)
-        # 3. 3600Hz nutq ravshanligi va konsonantlar tiniqligi
-        # 4. Compand dinamik kompressor (bir xil qalin va barqaror studiya ovozi)
-        # 5. afade boshida 18ms va oxirida 20ms silliq ulanish (klik va shovqinlarni yo'qotish)
-        # 6. loudnorm EBU R128 (-16 LUFS standart Reels/YouTube)
-        dsp_filter = (
-            "highpass=f=80,"
-            "equalizer=f=220:t=q:w=1.2:g=2.8,"
-            "equalizer=f=3600:t=q:w=1.0:g=3.2,"
-            "compand=attacks=0.02:decays=0.1:points=-80/-80|-25/-15|-10/-5|0/0:soft-knee=6,"
-            "afade=t=in:st=0:d=0.018,"
-            "loudnorm=I=-16:TP=-1.5:LRA=11"
-        )
+        # Studiya Broadcast DSP zanjiri (Tanlangan DSP profili bo'yicha)
+        dsp_filter = self.dsp_filter
+        if "loudnorm" in dsp_filter and "afade" not in dsp_filter:
+            dsp_filter = dsp_filter.replace("loudnorm", "afade=t=in:st=0:d=0.018,loudnorm")
 
         cmd = [
             "ffmpeg", "-nostdin", "-y",
