@@ -29,6 +29,7 @@ from config import (
     DEFAULT_FORMAT,
     DEFAULT_VISUAL_FILTER,
     DEFAULT_ART_STYLE,
+    DEFAULT_CAMERA_MOTION,
     FORMATS
 )
 from script_generator import ScriptGenerator
@@ -57,6 +58,7 @@ class VideoPipeline:
         duration_key: str = DEFAULT_DURATION,
         format_key: str = DEFAULT_FORMAT,
         filter_key: str = DEFAULT_VISUAL_FILTER,
+        motion_key: str = DEFAULT_CAMERA_MOTION,
         size_key: str = DEFAULT_SUBTITLE_SIZE,
         art_style: str = DEFAULT_ART_STYLE,
         bgm_volume: float = 0.15,
@@ -118,7 +120,15 @@ class VideoPipeline:
         if final_music_genre == "auto" or not final_music_genre:
             final_music_genre = visual_eng.get_music_genre_for_category(category)
 
-        await asyncio.to_thread(self.audio_mixer.mix, voice_files, master_audio, genre=final_music_genre, bgm_volume=bgm_volume)
+        transition_points = [sc["end_time"] for sc in processed_scenes[:-1]] if len(processed_scenes) > 1 else []
+        await asyncio.to_thread(
+            self.audio_mixer.mix,
+            voice_files,
+            master_audio,
+            genre=final_music_genre,
+            transition_points=transition_points,
+            bgm_volume=bgm_volume
+        )
 
         # Alohida MP3 podkast
         output_mp3 = str(OUTPUT_DIR / f"{task_id}_podcast.mp3")
@@ -155,7 +165,8 @@ class VideoPipeline:
                 clip_path,
                 sc["scene_num"],
                 format_key,
-                filter_key
+                filter_key,
+                motion_key
             )
             scene_clips.append(clip_path)
 
@@ -188,7 +199,8 @@ class VideoPipeline:
             "category": category,
             "music_genre": final_music_genre,
             "format_key": format_key,
-            "filter_key": filter_key
+            "filter_key": filter_key,
+            "motion_key": motion_key
         }
 
     @staticmethod

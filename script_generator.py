@@ -408,3 +408,60 @@ Javobni FAQAT quyidagi JSON massivida qaytaring, ortiqcha hech qanday matn qo'sh
             all_ideas.extend(cat_list)
         random.shuffle(all_ideas)
         return [{"title": t, "tag": tag} for t, tag in all_ideas[:6]]
+
+    def translate_script(self, scenes: List[Dict], target_lang: str) -> List[Dict]:
+        """
+        Mavjud ssenariy kadrlarining matnini boshqa tilga (uz, ru, en) professional tarzda tarjima qiladi.
+        """
+        if not scenes:
+            return scenes
+
+        lang_names = {"uz": "Uzbek (Lotin)", "ru": "Russian", "en": "English"}
+        target_name = lang_names.get(target_lang, "Uzbek")
+
+        texts = [s.get("text", "") for s in scenes]
+        translated_texts = None
+
+        if self.has_gemini:
+            try:
+                prompt = (
+                    f"You are a professional viral video scriptwriter and translator. "
+                    f"Translate the following {len(texts)} narration lines into high-energy, engaging {target_name}. "
+                    f"Preserve the emotional rhythm, hooks, and punchiness. "
+                    f"Return ONLY a valid JSON array of {len(texts)} strings.\n\n"
+                    f"Original lines:\n{json.dumps(texts, ensure_ascii=False)}"
+                )
+                response = self.model.generate_content(prompt)
+                raw_text = response.text.strip()
+                if "```json" in raw_text:
+                    raw_text = raw_text.split("```json")[1].split("```")[0].strip()
+                elif "```" in raw_text:
+                    raw_text = raw_text.split("```")[1].split("```")[0].strip()
+                data = json.loads(raw_text)
+                if isinstance(data, list) and len(data) == len(scenes):
+                    translated_texts = [str(t).strip() for t in data]
+            except Exception as e:
+                print(f"[Gemini Translate Notice] {e}")
+
+        if not translated_texts:
+            try:
+                combined = " ||| ".join(texts)
+                query = urllib.parse.quote(f"Translate these separated lines to {target_name}. Keep separator ' ||| ': {combined}")
+                req_url = f"https://text.pollinations.ai/{query}?model=openai"
+                req = urllib.request.Request(req_url, headers={"User-Agent": "Mozilla/5.0"})
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    raw = response.read().decode("utf-8").strip()
+                parts = raw.split("|||")
+                if len(parts) == len(texts):
+                    translated_texts = [p.strip() for p in parts]
+            except Exception as e:
+                print(f"[Pollinations Translate Notice] {e}")
+
+        new_scenes = []
+        for idx, sc in enumerate(scenes):
+            new_sc = dict(sc)
+            if translated_texts and idx < len(translated_texts) and len(translated_texts[idx]) > 3:
+                new_text = transliterate_uzbek(translated_texts[idx]) if target_lang == "uz" else translated_texts[idx]
+                new_sc["text"] = new_text
+            new_scenes.append(new_sc)
+        return new_scenes

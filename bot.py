@@ -60,6 +60,8 @@ from config import (
     MUSIC_VOLUMES,
     DEFAULT_MUSIC_VOLUME,
     STUDIO_PRESETS,
+    CAMERA_MOTIONS,
+    DEFAULT_CAMERA_MOTION,
     WATERMARK_TEXT,
     BRAND_NAME
 )
@@ -148,11 +150,14 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="🎚 Musiqa Ovozi", callback_data="menu_music_vol")
     )
     builder.row(
-        InlineKeyboardButton(text="🎵 Fon Musiqasi", callback_data="menu_music"),
-        InlineKeyboardButton(text="💡 Trend Mavzular", callback_data="menu_topics")
+        InlineKeyboardButton(text="🎥 Kamera Harakati", callback_data="menu_camera"),
+        InlineKeyboardButton(text="🎵 Fon Musiqasi", callback_data="menu_music")
     )
     builder.row(
-        InlineKeyboardButton(text="👤 Profilim", callback_data="menu_profile"),
+        InlineKeyboardButton(text="💡 Trend Mavzular", callback_data="menu_topics"),
+        InlineKeyboardButton(text="👤 Profilim", callback_data="menu_profile")
+    )
+    builder.row(
         InlineKeyboardButton(text="📊 Statistika", callback_data="menu_stats")
     )
     return builder.as_markup()
@@ -161,6 +166,14 @@ def get_presets_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for key, p in STUDIO_PRESETS.items():
         builder.row(InlineKeyboardButton(text=p["name"], callback_data=f"apply_preset:{key}"))
+    builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
+    return builder.as_markup()
+
+def get_camera_keyboard(current: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for key, c in CAMERA_MOTIONS.items():
+        check = "✅ " if key == current else ""
+        builder.row(InlineKeyboardButton(text=f"{check}{c['name']}", callback_data=f"set_camera:{key}"))
     builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
     return builder.as_markup()
 
@@ -309,29 +322,32 @@ async def cmd_start(message: types.Message):
     cur_style = get_user_pref(user_id, "style", DEFAULT_VIDEO_STYLE)
     cur_fmt = get_user_pref(user_id, "format", DEFAULT_FORMAT)
     cur_filter = get_user_pref(user_id, "filter", DEFAULT_VISUAL_FILTER)
+    cur_motion = get_user_pref(user_id, "camera_motion", DEFAULT_CAMERA_MOTION)
 
     v_name = VOICES.get(cur_voice, VOICES[DEFAULT_VOICE])["name"]
     s_name = VIDEO_STYLES.get(cur_style, VIDEO_STYLES[DEFAULT_VIDEO_STYLE])["name"]
     f_name = FORMATS.get(cur_fmt, FORMATS[DEFAULT_FORMAT])["name"]
     lut_name = VISUAL_FILTERS.get(cur_filter, VISUAL_FILTERS[DEFAULT_VISUAL_FILTER])["name"]
+    cam_name = CAMERA_MOTIONS.get(cur_motion, CAMERA_MOTIONS[DEFAULT_CAMERA_MOTION])["name"]
 
     welcome_text = (
         f"👋 Assalomu alaykum, <b>{html.escape(message.from_user.full_name)}</b>!\n\n"
-        f"🎬 <b>{BRAND_NAME} (Quantum 9.0 Apex Supreme)</b>ga xush kelibsiz!\n\n"
+        f"🎬 <b>{BRAND_NAME} (Singularity 11.0 Omniscient Genesis)</b>ga xush kelibsiz!\n\n"
         f"Men to'liq avtonom va jahon darajasidagi video kontent yarataman:\n"
         f"• 🎙 <b>Ovoz:</b> {v_name} <i>(+ Ikki kishilik Podkast)</i>\n"
         f"• 🎛 <b>Uslub:</b> {s_name}\n"
         f"• 📱 <b>Format:</b> {f_name}\n"
         f"• 🎬 <b>Rang (LUT):</b> {lut_name}\n"
+        f"• 🎥 <b>Kamera Harakati:</b> {cam_name}\n"
         f"• 🎨 <b>AI Vizual:</b> <i>Real-Time Pollinations Flux 8K + 4K Unsplash</i>\n"
-        f"• 🎚 <b>Studio DSP:</b> <i>EBU R128 + Sidechain Audio Ducking</i>\n"
+        f"• 🎚 <b>Studio DSP:</b> <i>EBU R128 + Sidechain Audio Ducking + SFX</i>\n"
         f"• 📄 <b>Eksport:</b> <i>Full HD Video, MP3 Podkast va .SRT Subtitr</i>\n\n"
         f"🚀 <b>Qanday ishlatiladi:</b>\n"
         f"1. ✍️ <b>Matn yozing:</b> Mavzuni yozing va video oling;\n"
         f"2. 💡 <b>/ideas:</b> Trenddagi viral g'oyalardan video yasang;\n"
         f"3. 📝 <b>/script:</b> O'z shaxsiy matningizdan video montaj qiling;\n"
         f"4. 📸 <b>Rasm yuboring:</b> O'z suratingizdan Reels yasang;\n"
-        f"5. 🎙 <b>Ovozli xabar:</b> Ovozli xabaringizdan video oling!\n\n"
+        f"5. 🎙 <b>Ovozli xabar:</b> Jonli neon audiogram video oling!\n\n"
         f"<i>{WATERMARK_TEXT}</i>"
     )
     await message.answer(welcome_text, reply_markup=get_main_keyboard(), parse_mode="HTML")
@@ -346,6 +362,7 @@ async def cmd_profile(message: types.Message):
     cur_f = FORMATS.get(get_user_pref(user_id, "format", DEFAULT_FORMAT), {})["name"]
     cur_d = DURATIONS.get(get_user_pref(user_id, "duration", DEFAULT_DURATION), {})["name"]
     cur_l = VISUAL_FILTERS.get(get_user_pref(user_id, "filter", DEFAULT_VISUAL_FILTER), {})["name"]
+    cur_cam = CAMERA_MOTIONS.get(get_user_pref(user_id, "camera_motion", DEFAULT_CAMERA_MOTION), {})["name"]
     cur_art = ART_STYLES.get(get_user_pref(user_id, "art_style", DEFAULT_ART_STYLE), {})["name"]
     cur_vol = MUSIC_VOLUMES.get(get_user_pref(user_id, "music_vol", DEFAULT_MUSIC_VOLUME), {})["name"]
     cur_t = SUBTITLE_THEMES.get(get_user_pref(user_id, "theme", DEFAULT_SUBTITLE_THEME), {})["name"]
@@ -359,6 +376,7 @@ async def cmd_profile(message: types.Message):
         f"• 📱 <b>Format:</b> {cur_f}\n"
         f"• ⏱ <b>Davomiylik:</b> {cur_d}\n"
         f"• 🎬 <b>Rang (LUT):</b> {cur_l}\n"
+        f"• 🎥 <b>Kamera:</b> {cur_cam}\n"
         f"• 🎨 <b>Rasm Uslubi:</b> {cur_art}\n"
         f"• 🎚 <b>Musiqa:</b> {cur_vol}\n"
         f"• 💬 <b>Subtitr:</b> {cur_t}\n"
@@ -414,13 +432,15 @@ async def cb_profile(callback: types.CallbackQuery):
     cur_s = VIDEO_STYLES.get(get_user_pref(user_id, "style", DEFAULT_VIDEO_STYLE), {})["name"]
     cur_f = FORMATS.get(get_user_pref(user_id, "format", DEFAULT_FORMAT), {})["name"]
     cur_l = VISUAL_FILTERS.get(get_user_pref(user_id, "filter", DEFAULT_VISUAL_FILTER), {})["name"]
+    cur_cam = CAMERA_MOTIONS.get(get_user_pref(user_id, "camera_motion", DEFAULT_CAMERA_MOTION), {})["name"]
 
     prof_text = (
         f"👤 <b>Sizning Sozlamalaringiz:</b>\n\n"
         f"• 🎙 <b>Ovoz:</b> {cur_v}\n"
         f"• 🎛 <b>Uslub:</b> {cur_s}\n"
         f"• 📱 <b>Format:</b> {cur_f}\n"
-        f"• 🎬 <b>Rang:</b> {cur_l}\n\n"
+        f"• 🎬 <b>Rang:</b> {cur_l}\n"
+        f"• 🎥 <b>Kamera:</b> {cur_cam}\n\n"
         f"<i>{WATERMARK_TEXT}</i>"
     )
     builder = InlineKeyboardBuilder()
@@ -709,6 +729,20 @@ async def cb_set_music_vol(callback: types.CallbackQuery):
     await callback.answer(f"Ovoz: {v_name}")
     await callback.message.edit_text(f"✅ Musiqa balandligi: <b>{v_name}</b>", reply_markup=get_music_vol_keyboard(key), parse_mode="HTML")
 
+# --- Kamera Harakati menyusi ---
+@dp.callback_query(F.data == "menu_camera")
+async def cb_camera_menu(callback: types.CallbackQuery):
+    cur = get_user_pref(callback.from_user.id, "camera_motion", DEFAULT_CAMERA_MOTION)
+    await callback.message.edit_text("🎥 <b>Kameraning kinematografik harakat uslubini tanlang:</b>", reply_markup=get_camera_keyboard(cur), parse_mode="HTML")
+
+@dp.callback_query(F.data.startswith("set_camera:"))
+async def cb_set_camera(callback: types.CallbackQuery):
+    key = callback.data.split(":")[1]
+    set_user_pref(callback.from_user.id, "camera_motion", key)
+    c_name = CAMERA_MOTIONS[key]["name"]
+    await callback.answer(f"Kamera: {c_name}")
+    await callback.message.edit_text(f"✅ Kamera harakati o'rnatildi: <b>{c_name}</b>", reply_markup=get_camera_keyboard(key), parse_mode="HTML")
+
 # --- Mavzular menyusi ---
 @dp.callback_query(F.data == "menu_topics")
 async def cb_topics_menu(callback: types.CallbackQuery):
@@ -813,7 +847,7 @@ async def cb_re_render(callback: types.CallbackQuery):
     await callback.answer(f"Format: {new_fmt} ga o'tkazilmoqda...")
     await handle_video_creation(callback.message, topic, callback.from_user.id)
 
-# --- Xalqaro tilga 1-bosishda o'tkazish ---
+# --- Xalqaro tilga 1-bosishda o'tkazish (Auto-Translation bilan) ---
 @dp.callback_query(F.data.startswith("lang_switch:"))
 async def cb_lang_switch(callback: types.CallbackQuery):
     parts = callback.data.split(":")
@@ -825,10 +859,19 @@ async def cb_lang_switch(callback: types.CallbackQuery):
         return
 
     topic = job_info["topic"]
+    cached_scenes = job_info.get("scenes")
+    target_lang = VOICES.get(new_voice, {}).get("lang", "uz")
+
+    translated_scenes = None
+    if cached_scenes:
+        await callback.answer("🌐 Ssenariy yangi tilga tarjima qilinmoqda...")
+        translated_scenes = await asyncio.to_thread(pipeline.script_gen.translate_script, cached_scenes, target_lang)
+    else:
+        v_name = VOICES.get(new_voice, {}).get("name", new_voice)
+        await callback.answer(f"Til: {v_name} ga o'tkazilmoqda...")
+
     set_user_pref(callback.from_user.id, "voice", new_voice)
-    v_name = VOICES.get(new_voice, {}).get("name", new_voice)
-    await callback.answer(f"Til: {v_name} ga o'tkazilmoqda...")
-    await handle_video_creation(callback.message, topic, callback.from_user.id)
+    await handle_video_creation(callback.message, topic, callback.from_user.id, custom_scenes=translated_scenes)
 
 # ==================== INLINE QUERY HANDLERI ====================
 
@@ -906,29 +949,39 @@ async def msg_handle_voice(message: types.Message, bot: Bot):
         await asyncio.to_thread(pipeline.audio_mixer.mix, [str(clean_wav)], master_audio, genre="ambient_chill")
 
         img_path = str(TEMP_DIR / f"{task_id}_img.jpg")
-        await asyncio.to_thread(pipeline.visual_eng.get_scene_visual, "voice podcast storytelling cinematic", img_path)
+        await asyncio.to_thread(pipeline.visual_eng.get_scene_visual, "voice podcast storytelling cinematic neon waveform", img_path)
 
-        clip_path = str(TEMP_DIR / f"{task_id}_clip.mp4")
         cur_filter = get_user_pref(user_id, "filter", DEFAULT_VISUAL_FILTER)
-        await asyncio.to_thread(pipeline.video_eng.render_scene_clip, img_path, total_dur, clip_path, 1, cur_format, cur_filter)
-
-        await asyncio.to_thread(
-            pipeline.video_eng.assemble_final_video,
-            [clip_path],
-            master_audio,
-            "",
-            str(out_video),
-            total_dur,
-            "gold",
-            cur_format
-        )
+        try:
+            await asyncio.to_thread(
+                pipeline.video_eng.render_voice_waveform_video,
+                img_path,
+                master_audio,
+                str(out_video),
+                cur_format
+            )
+        except Exception as e:
+            logger.warning(f"Waveform video fallback: {e}")
+            clip_path = str(TEMP_DIR / f"{task_id}_clip.mp4")
+            await asyncio.to_thread(pipeline.video_eng.render_scene_clip, img_path, total_dur, clip_path, 1, cur_format, cur_filter)
+            await asyncio.to_thread(
+                pipeline.video_eng.assemble_final_video,
+                [clip_path],
+                master_audio,
+                "",
+                str(out_video),
+                total_dur,
+                "gold",
+                cur_format
+            )
 
         record_video_generation()
         video_file = FSInputFile(str(out_video))
         caption_text = (
-            f"🎙 <b>Sizning Ovozli Xabaringizdan Video Reels</b>\n\n"
-            f"⏱ <b>Davomiyligi:</b> {total_dur:.1f}s | 📱 <b>Format:</b> {fmt_info['name']}\n"
-            f"💎 <b>Sifat:</b> Studio DSP Mastering + Dynamic Ambient\n\n"
+            f"🎙 <b>Sizning Ovozli Xabaringizdan Neon Audiogram Reels</b>\n\n"
+            f"🌊 <b>Vizual:</b> Jonli Neon Audio To'lqini (Dynamic Waveform)\n"
+            f"🎧 <b>DSP:</b> Studiya EBU R128 + Dynamic Highpass\n"
+            f"⏱ <b>Davomiyligi:</b> {total_dur:.1f}s | 📱 <b>Format:</b> {fmt_info['name']}\n\n"
             f"<i>{WATERMARK_TEXT}</i>"
         )
 
@@ -1020,11 +1073,13 @@ async def handle_video_creation(
     cur_format = get_user_pref(user_id, "format", DEFAULT_FORMAT)
     cur_filter = get_user_pref(user_id, "filter", DEFAULT_VISUAL_FILTER)
     cur_art_style = get_user_pref(user_id, "art_style", DEFAULT_ART_STYLE)
+    cur_motion = get_user_pref(user_id, "camera_motion", DEFAULT_CAMERA_MOTION)
     cur_music_vol = get_user_pref(user_id, "music_vol", DEFAULT_MUSIC_VOLUME)
     cur_sub_size = get_user_pref(user_id, "sub_size", DEFAULT_SUBTITLE_SIZE)
 
     bgm_vol = MUSIC_VOLUMES.get(cur_music_vol, {}).get("vol", 0.15)
     fmt_info = FORMATS.get(cur_format, FORMATS[DEFAULT_FORMAT])
+    motion_info = CAMERA_MOTIONS.get(cur_motion, CAMERA_MOTIONS[DEFAULT_CAMERA_MOTION])
 
     status_msg = await message.answer(
         f"🎬 <b>Yangi video yaratish boshlandi!</b>\n\n"
@@ -1032,6 +1087,7 @@ async def handle_video_creation(
         f"🎙 <b>Ovoz:</b> <i>{VOICES[cur_voice]['name']}</i>\n"
         f"📱 <b>Format:</b> <i>{fmt_info['name']}</i>\n"
         f"🎬 <b>Rang:</b> <i>{VISUAL_FILTERS[cur_filter]['name']}</i>\n"
+        f"🎥 <b>Kamera:</b> <i>{motion_info['name']}</i>\n"
         f"🎨 <b>Rasm Uslubi:</b> <i>{ART_STYLES[cur_art_style]['name']}</i>\n\n"
         f"⏳ <i>Iltimos kuting, montaj navbatiga qo'shilmoqda...</i>",
         parse_mode="HTML"
@@ -1072,6 +1128,7 @@ async def handle_video_creation(
                 duration_key=cur_duration,
                 format_key=cur_format,
                 filter_key=cur_filter,
+                motion_key=cur_motion,
                 size_key=cur_sub_size,
                 art_style=cur_art_style,
                 bgm_volume=bgm_vol,
@@ -1099,7 +1156,8 @@ async def handle_video_creation(
                 "script_text": script_text,
                 "seo_package": seo_data,
                 "format_key": cur_format,
-                "voice_key": cur_voice
+                "voice_key": cur_voice,
+                "scenes": result.get("scenes")
             }
 
         try:
@@ -1118,10 +1176,11 @@ async def handle_video_creation(
             f"🎬 <b>{html.escape(topic)}</b>\n\n"
             f"🎙 <b>Ovoz:</b> {VOICES[cur_voice]['name']} | {VOICE_MODES[cur_mode]['name']}\n"
             f"🎬 <b>LUT:</b> {VISUAL_FILTERS[cur_filter]['name']}\n"
+            f"🎥 <b>Kamera:</b> {motion_info['name']}\n"
             f"🎨 <b>Art:</b> {ART_STYLES[cur_art_style]['name']}\n"
-            f"🎵 <b>Musiqa:</b> {genre_name} (Sidechain Ducking)\n"
+            f"🎵 <b>Musiqa:</b> {genre_name} (Sidechain Ducking + SFX)\n"
             f"⏱ <b>Davomiyligi:</b> {dur:.1f}s | 📱 <b>Format:</b> {fmt_info['name']}\n"
-            f"💎 <b>Sifat:</b> Studio DSP + Alex Hormozi Karaoke 9.0\n\n"
+            f"💎 <b>Sifat:</b> Singularity 11.0 Omniscient Genesis\n\n"
             f"<i>{WATERMARK_TEXT}</i>"
         )
 

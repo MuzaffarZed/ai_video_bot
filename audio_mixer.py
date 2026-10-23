@@ -27,6 +27,12 @@ class AudioMixer:
         self.default_whoosh = SFX_DIR / "whoosh.wav"
         if not self.default_whoosh.exists():
             self._generate_whoosh(str(self.default_whoosh))
+        self.default_boom = SFX_DIR / "impact_boom.wav"
+        if not self.default_boom.exists():
+            self._generate_impact_boom(str(self.default_boom))
+        self.default_shutter = SFX_DIR / "camera_shutter.wav"
+        if not self.default_shutter.exists():
+            self._generate_shutter(str(self.default_shutter))
 
     @staticmethod
     def _synthesize_track(genre: str, file_path: str, duration: float = 65.0):
@@ -115,6 +121,90 @@ class AudioMixer:
             wf.setframerate(sr)
             wf.writeframes(audio.tobytes())
 
+    @staticmethod
+    def _generate_impact_boom(file_path: str):
+        sr = 44100
+        dur = 0.85
+        t = np.linspace(0, dur, int(sr * dur), endpoint=False)
+        freq = 36.0 + 104.0 * np.exp(-t / 0.24)
+        phase = 2 * np.pi * np.cumsum(freq) / sr
+        sine_wave = np.sin(phase)
+        click = np.random.uniform(-1, 1, len(t)) * np.exp(-t / 0.025)
+        env = np.exp(-t / 0.28)
+        audio = (sine_wave * 0.88 + click * 0.12) * env
+        audio = (audio * 0.65 * 32767).astype(np.int16)
+        with wave.open(file_path, 'w') as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(sr)
+            wf.writeframes(audio.tobytes())
+
+    @staticmethod
+    def _generate_shutter(file_path: str):
+        sr = 44100
+        dur = 0.25
+        t = np.linspace(0, dur, int(sr * dur), endpoint=False)
+        click1 = np.random.uniform(-1, 1, len(t)) * np.exp(-((t - 0.04) ** 2) / (2 * (0.010 ** 2)))
+        click2 = np.random.uniform(-1, 1, len(t)) * np.exp(-((t - 0.13) ** 2) / (2 * (0.012 ** 2)))
+        audio = (click1 * 0.65 + click2 * 0.85)
+        audio = (audio * 0.50 * 32767).astype(np.int16)
+        with wave.open(file_path, 'w') as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(sr)
+            wf.writeframes(audio.tobytes())
+
+    def _build_sfx_track(self, transition_points: List[float], total_dur: float, sfx_output_path: str) -> bool:
+        """
+        Sahna o'tishlari uchun whoosh va boshlanish uchun cinematic impact boom SFX yo'lagini yaratadi.
+        """
+        sr = 44100
+        total_samples = int(sr * total_dur)
+        if total_samples <= 0:
+            return False
+
+        sfx_track = np.zeros(total_samples, dtype=np.float32)
+
+        # 1. 0.0s da Cinematic Hook Impact Boom
+        if self.default_boom.exists():
+            try:
+                with wave.open(str(self.default_boom), 'r') as wf:
+                    boom_data = np.frombuffer(wf.readframes(wf.getnframes()), dtype=np.int16).astype(np.float32) / 32767.0
+                add_len = min(len(boom_data), total_samples)
+                sfx_track[:add_len] += boom_data[:add_len] * 0.38
+            except Exception as e:
+                print(f"[SFX Boom Notice] {e}")
+
+        # 2. Sahna o'tishlarida Whoosh SFX
+        if transition_points and self.default_whoosh.exists():
+            try:
+                with wave.open(str(self.default_whoosh), 'r') as wf:
+                    whoosh_data = np.frombuffer(wf.readframes(wf.getnframes()), dtype=np.int16).astype(np.float32) / 32767.0
+                whoosh_len = len(whoosh_data)
+                half_whoosh = int(sr * 0.14)
+
+                for tp in transition_points:
+                    st_sample = int(tp * sr) - half_whoosh
+                    if st_sample < 0:
+                        st_sample = 0
+                    end_sample = min(st_sample + whoosh_len, total_samples)
+                    actual_len = end_sample - st_sample
+                    if actual_len > 0:
+                        sfx_track[st_sample:end_sample] += whoosh_data[:actual_len] * 0.28
+            except Exception as e:
+                print(f"[SFX Whoosh Notice] {e}")
+
+        np.clip(sfx_track, -1.0, 1.0, out=sfx_track)
+        audio_int16 = (sfx_track * 32767).astype(np.int16)
+
+        with wave.open(sfx_output_path, 'w') as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(sr)
+            wf.writeframes(audio_int16.tobytes())
+
+        return True
+
     def mix(
         self,
         voice_files: List[str],
@@ -162,38 +252,78 @@ class AudioMixer:
         res = subprocess.run(dur_cmd, capture_output=True, text=True, check=True, timeout=20)
         total_dur = float(res.stdout.strip())
 
+        # SFX yo'lagi (Cinematic Hook Boom + Scene Transition Whoosh)
+        sfx_path = str(TEMP_DIR / f"sfx_layer_{os.path.basename(output_master_path)}.wav")
+        has_sfx = self._build_sfx_track(transition_points or [], total_dur, sfx_path)
+
+        fade_out_start = max(0.0, total_dur - 1.2)
+
         # Agar musiqasiz rejim tanlangan bo'lsa
         if bgm_volume <= 0.001 or genre == "mute":
-            cmd_clean = [
+            if has_sfx and os.path.exists(sfx_path):
+                filter_complex = (
+                    f"[0:a]aresample=44100,aformat=channel_layouts=stereo,volume=1.0[voice];"
+                    f"[1:a]aresample=44100,aformat=channel_layouts=stereo,volume=1.0[sfx];"
+                    f"[voice][sfx]amix=inputs=2:duration=first:dropout_transition=2[outa]"
+                )
+                cmd_mix = [
+                    "ffmpeg", "-nostdin", "-y",
+                    "-i", merged_voice,
+                    "-i", sfx_path,
+                    "-filter_complex", filter_complex,
+                    "-map", "[outa]",
+                    "-c:a", "pcm_s16le",
+                    "-ar", "44100",
+                    output_master_path
+                ]
+            else:
+                cmd_mix = [
+                    "ffmpeg", "-nostdin", "-y",
+                    "-i", merged_voice,
+                    "-c:a", "pcm_s16le",
+                    "-ar", "44100",
+                    output_master_path
+                ]
+            subprocess.run(cmd_mix, capture_output=True, check=True, timeout=60)
+            return output_master_path
+
+        # Audio Ducking va SFX miks
+        if has_sfx and os.path.exists(sfx_path):
+            filter_complex = (
+                f"[0:a]aresample=44100,aformat=channel_layouts=stereo,volume=1.0[voice];"
+                f"[1:a]aresample=44100,aformat=channel_layouts=stereo,volume={bgm_volume:.3f},"
+                f"atrim=0:{total_dur:.3f},afade=t=in:st=0:d=0.8,afade=t=out:st={fade_out_start:.3f}:d=1.2[bgm];"
+                f"[2:a]aresample=44100,aformat=channel_layouts=stereo,volume=1.0[sfx];"
+                f"[voice][bgm][sfx]amix=inputs=3:duration=first:dropout_transition=2[outa]"
+            )
+            cmd_mix = [
                 "ffmpeg", "-nostdin", "-y",
                 "-i", merged_voice,
+                "-stream_loop", "-1", "-i", bgm_path,
+                "-i", sfx_path,
+                "-filter_complex", filter_complex,
+                "-map", "[outa]",
                 "-c:a", "pcm_s16le",
                 "-ar", "44100",
                 output_master_path
             ]
-            subprocess.run(cmd_clean, capture_output=True, check=True, timeout=60)
-            return output_master_path
-
-        fade_out_start = max(0.0, total_dur - 1.2)
-        
-        # Audio Ducking filter complex
-        filter_complex = (
-            f"[0:a]aresample=44100,aformat=channel_layouts=stereo,volume=1.0[voice];"
-            f"[1:a]aresample=44100,aformat=channel_layouts=stereo,volume={bgm_volume:.3f},"
-            f"atrim=0:{total_dur:.3f},afade=t=in:st=0:d=0.8,afade=t=out:st={fade_out_start:.3f}:d=1.2[bgm];"
-            f"[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[outa]"
-        )
-
-        cmd_mix = [
-            "ffmpeg", "-nostdin", "-y",
-            "-i", merged_voice,
-            "-stream_loop", "-1", "-i", bgm_path,
-            "-filter_complex", filter_complex,
-            "-map", "[outa]",
-            "-c:a", "pcm_s16le",
-            "-ar", "44100",
-            output_master_path
-        ]
+        else:
+            filter_complex = (
+                f"[0:a]aresample=44100,aformat=channel_layouts=stereo,volume=1.0[voice];"
+                f"[1:a]aresample=44100,aformat=channel_layouts=stereo,volume={bgm_volume:.3f},"
+                f"atrim=0:{total_dur:.3f},afade=t=in:st=0:d=0.8,afade=t=out:st={fade_out_start:.3f}:d=1.2[bgm];"
+                f"[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[outa]"
+            )
+            cmd_mix = [
+                "ffmpeg", "-nostdin", "-y",
+                "-i", merged_voice,
+                "-stream_loop", "-1", "-i", bgm_path,
+                "-filter_complex", filter_complex,
+                "-map", "[outa]",
+                "-c:a", "pcm_s16le",
+                "-ar", "44100",
+                output_master_path
+            ]
         subprocess.run(cmd_mix, capture_output=True, check=True, timeout=60)
         return output_master_path
 

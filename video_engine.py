@@ -17,6 +17,8 @@ from config import (
     DEFAULT_SUBTITLE_THEME,
     VISUAL_FILTERS,
     DEFAULT_VISUAL_FILTER,
+    CAMERA_MOTIONS,
+    DEFAULT_CAMERA_MOTION,
     BRAND_NAME,
     WATERMARK_TEXT
 )
@@ -32,10 +34,11 @@ class VideoEngine:
         output_clip_path: str,
         scene_idx: int = 1,
         format_key: str = DEFAULT_FORMAT,
-        filter_key: str = DEFAULT_VISUAL_FILTER
+        filter_key: str = DEFAULT_VISUAL_FILTER,
+        motion_key: str = DEFAULT_CAMERA_MOTION
     ) -> str:
         """
-        Bitta rasmdan kinematografik suzuvchi kamera harakati (Dynamic Zoom & Pan)
+        Bitta rasmdan kinematografik suzuvchi kamera harakati (Dynamic Drift, Shok Punch, Static)
         va tanlangan rang filtri (LUT) bilan Full HD klip hosil qiladi.
         """
         fmt = FORMATS.get(format_key, FORMATS[DEFAULT_FORMAT])
@@ -45,15 +48,22 @@ class VideoEngine:
         clean_img = os.path.relpath(image_path, BASE_DIR).replace("\\", "/")
         clean_out = os.path.relpath(output_clip_path, BASE_DIR).replace("\\", "/")
 
-        scaled_w = int(target_w * 1.15)
-        scaled_h = int(target_h * 1.15)
+        motion_data = CAMERA_MOTIONS.get(motion_key, CAMERA_MOTIONS.get(DEFAULT_CAMERA_MOTION, {"zoom": 1.15, "speed": 1.0}))
+        zoom_val = motion_data.get("zoom", 1.15)
+        speed_factor = motion_data.get("speed", 1.0)
 
-        if scene_idx % 2 == 1:
-            drift_x = f"(in_w-out_w)/2 + sin(t*1.1)*{int(target_w * 0.035)}"
-            drift_y = f"(in_h-out_h)/2 + (t/10)*{int(target_h * 0.015)}"
+        scaled_w = int(target_w * zoom_val)
+        scaled_h = int(target_h * zoom_val)
+
+        if speed_factor <= 0.001:
+            drift_x = "(in_w-out_w)/2"
+            drift_y = "(in_h-out_h)/2"
+        elif scene_idx % 2 == 1:
+            drift_x = f"(in_w-out_w)/2 + sin(t*{1.1 * speed_factor:.2f})*{int(target_w * 0.035 * speed_factor)}"
+            drift_y = f"(in_h-out_h)/2 + (t/10)*{int(target_h * 0.015 * speed_factor)}"
         else:
-            drift_x = f"(in_w-out_w)/2 - sin(t*1.1)*{int(target_w * 0.035)}"
-            drift_y = f"(in_h-out_h)/2 - (t/10)*{int(target_h * 0.012)}"
+            drift_x = f"(in_w-out_w)/2 - sin(t*{1.1 * speed_factor:.2f})*{int(target_w * 0.035 * speed_factor)}"
+            drift_y = f"(in_h-out_h)/2 - (t/10)*{int(target_h * 0.012 * speed_factor)}"
 
         filter_data = VISUAL_FILTERS.get(filter_key, VISUAL_FILTERS[DEFAULT_VISUAL_FILTER])
         color_filter = filter_data.get("filter", "eq=contrast=1.06:saturation=1.14")
@@ -175,3 +185,55 @@ class VideoEngine:
         ]
         subprocess.run(cmd_fb, cwd=str(BASE_DIR), capture_output=True, check=True, timeout=120)
         return output_final_path
+
+    def render_voice_waveform_video(
+        self,
+        image_path: str,
+        audio_path: str,
+        output_video_path: str,
+        format_key: str = DEFAULT_FORMAT
+    ) -> str:
+        """
+        Ovozli xabar yoki podkast uchun jonli animatsiyali neon to'lqin (Audiogram waveform)
+        va kinematografik fon bilan yuqori sifatli video yaratadi.
+        """
+        fmt = FORMATS.get(format_key, FORMATS[DEFAULT_FORMAT])
+        target_w = fmt["width"]
+        target_h = fmt["height"]
+
+        wave_w = int(target_w * 0.82)
+        wave_h = int(target_h * 0.15)
+        wave_y = int(target_h * 0.68)
+
+        clean_img = os.path.relpath(image_path, BASE_DIR).replace("\\", "/")
+        clean_aud = os.path.relpath(audio_path, BASE_DIR).replace("\\", "/")
+        clean_out = os.path.relpath(output_video_path, BASE_DIR).replace("\\", "/")
+
+        wave_filter = (
+            f"[1:a]showwaves=s={wave_w}x{wave_h}:mode=line:colors=0x00FFFF@0.85|0x00FF7F@0.85[wave];"
+            f"[0:v]scale={target_w}:{target_h}:force_original_aspect_ratio=increase,crop={target_w}:{target_h},"
+            f"boxblur=luma_radius=10:luma_power=2,eq=contrast=1.08:brightness=-0.04[bg];"
+            f"[bg][wave]overlay=(W-w)/2:{wave_y}[v1];"
+            f"[v1]drawbox=x=0:y=ih-12:w=iw:h=12:color=0x00FFFF@0.8:t=fill,"
+            f"drawtext=text='{BRAND_NAME}':x=(w-text_w)/2:y={int(target_h*0.14)}:fontsize={int(target_w*0.045)}:fontcolor=white:shadowcolor=black@0.7:shadowx=2:shadowy=2,"
+            f"drawtext=text='{WATERMARK_TEXT}':x=(w-text_w)/2:y=h-{int(target_h*0.06)}:fontsize={int(target_w*0.032)}:fontcolor=white@0.7[vout]"
+        )
+
+        cmd = [
+            "ffmpeg", "-nostdin", "-y",
+            "-loop", "1", "-i", clean_img,
+            "-i", clean_aud,
+            "-filter_complex", wave_filter,
+            "-map", "[vout]", "-map", "1:a",
+            "-c:v", "libx264",
+            "-preset", "veryfast",
+            "-threads", "2",
+            "-pix_fmt", "yuv420p",
+            "-c:a", "aac",
+            "-b:a", "192k",
+            "-shortest",
+            "-movflags", "+faststart",
+            clean_out
+        ]
+        subprocess.run(cmd, cwd=str(BASE_DIR), capture_output=True, check=True, timeout=120)
+        return output_video_path

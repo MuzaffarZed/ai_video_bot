@@ -6,7 +6,8 @@ sys.path.insert(0, r'C:\Users\MuzaffarZed\ai_workspace\ai_video_bot')
 
 from config import (
     VOICES, VIDEO_STYLES, VISUAL_FILTERS, SUBTITLE_THEMES, SUBTITLE_SIZES,
-    FORMATS, DURATIONS, MUSIC_GENRES, ART_STYLES, STUDIO_PRESETS, MUSIC_VOLUMES, TEMP_DIR
+    FORMATS, DURATIONS, MUSIC_GENRES, ART_STYLES, STUDIO_PRESETS, MUSIC_VOLUMES,
+    CAMERA_MOTIONS, DEFAULT_CAMERA_MOTION, TEMP_DIR
 )
 from script_generator import ScriptGenerator, transliterate_uzbek
 from visual_engine import VisualEngine
@@ -100,6 +101,39 @@ class TestSingularity10(unittest.TestCase):
             self.assertTrue(os.path.exists(test_wav))
             try: os.remove(test_wav)
             except Exception: pass
+
+    def test_camera_motions_and_sfx(self):
+        self.assertIn("dynamic_drift", CAMERA_MOTIONS)
+        self.assertIn("rapid_punch", CAMERA_MOTIONS)
+        self.assertIn("static_crisp", CAMERA_MOTIONS)
+        self.assertEqual(DEFAULT_CAMERA_MOTION, "dynamic_drift")
+
+        mixer = AudioMixer()
+        self.assertTrue(mixer.default_boom.exists())
+        self.assertTrue(mixer.default_shutter.exists())
+        self.assertTrue(mixer.default_whoosh.exists())
+
+        test_sfx = str(TEMP_DIR / "test_sfx_track.wav")
+        built = mixer._build_sfx_track([1.5, 3.0], 4.0, test_sfx)
+        self.assertTrue(built)
+        self.assertTrue(os.path.exists(test_sfx))
+        try: os.remove(test_sfx)
+        except Exception: pass
+
+    def test_script_translation(self):
+        sg = ScriptGenerator()
+        scenes = [
+            {"scene_num": 1, "text": "Koinot cheksizdir", "visual_prompt": "space"},
+            {"scene_num": 2, "text": "Yulduzlar porlaydi", "visual_prompt": "stars"}
+        ]
+        # Test translation structure
+        res = sg.translate_script(scenes, "uz")
+        self.assertEqual(len(res), 2)
+        self.assertEqual(res[0]["scene_num"], 1)
+
+    def test_video_engine_waveform_method(self):
+        ve = VideoEngine()
+        self.assertTrue(hasattr(ve, "render_voice_waveform_video"))
 
     def test_pipeline_attributes(self):
         pipeline = VideoPipeline()

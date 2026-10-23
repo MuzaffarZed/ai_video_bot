@@ -1,5 +1,5 @@
 """
-MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Singularity 10.0 Omnipresent Titan)
+MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Singularity 11.0 Omniscient Genesis)
 Muallif: MuzaffarZed
 """
 import os
@@ -327,6 +327,26 @@ STUDIO_PRESETS = {
         }
     }
 }
+
+# 13. Kamera Harakati (Camera Motion)
+CAMERA_MOTIONS = {
+    "dynamic_drift": {
+        "name": "🎬 Kinematik Drift (1.15x Mayin suzish)",
+        "zoom": 1.15,
+        "speed": 1.0
+    },
+    "rapid_punch": {
+        "name": "⚡️ Shok Zoom Punch (1.28x Tezkor)",
+        "zoom": 1.28,
+        "speed": 1.6
+    },
+    "static_crisp": {
+        "name": "📸 Tiniq Statik (1.02x Qimirlamasdan)",
+        "zoom": 1.02,
+        "speed": 0.0
+    }
+}
+DEFAULT_CAMERA_MOTION = "dynamic_drift"
 
 WATERMARK_TEXT = "Dasturchi: MuzaffarZed"
 BRAND_NAME = "MuzaffarZed AI Studios"
