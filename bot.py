@@ -1,6 +1,6 @@
 """
-MuzaffarZed AI Video Bot - Telegram Bot Interfeysi (aiogram 3.x)
-To'liq avtomatlashtirilgan, interaktiv inline panelli va jonli progressga ega bot.
+MuzaffarZed AI Video Bot - Telegram Bot Interfeysi (aiogram 3.x - Audio Studio 2.0)
+To'liq avtomatlashtirilgan, Studiya DSP ovozi, tezlik/tonalite sozlamalari bilan.
 Muallif: MuzaffarZed
 """
 import os
@@ -21,14 +21,12 @@ from aiogram.filters import CommandStart, Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, FSInputFile
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from config import TELEGRAM_BOT_TOKEN, VOICES, DEFAULT_VOICE, WATERMARK_TEXT
+from config import TELEGRAM_BOT_TOKEN, VOICES, DEFAULT_VOICE, VOICE_MODES, DEFAULT_VOICE_MODE, WATERMARK_TEXT
 from pipeline import VideoPipeline
 
-# Logging sozlash
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-# Foydalanuvchilar sozlamalari (xotirada)
 user_settings = {}
 active_tasks = set()
 pipeline = VideoPipeline()
@@ -36,10 +34,11 @@ pipeline = VideoPipeline()
 def get_main_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="🎙 Ovozni tanlash", callback_data="menu_voice"),
-        InlineKeyboardButton(text="💡 Tezkor Mavzular", callback_data="menu_topics")
+        InlineKeyboardButton(text="🎙 Ovoz tanlash", callback_data="menu_voice"),
+        InlineKeyboardButton(text="⚡ Ovoz Tezligi & Tonalite", callback_data="menu_modes")
     )
     builder.row(
+        InlineKeyboardButton(text="💡 Tezkor Mavzular", callback_data="menu_topics"),
         InlineKeyboardButton(text="ℹ️ Bot haqida", callback_data="menu_about")
     )
     return builder.as_markup()
@@ -49,6 +48,14 @@ def get_voice_keyboard(current_voice: str) -> InlineKeyboardMarkup:
     for key, v in VOICES.items():
         check = "✅ " if key == current_voice else ""
         builder.row(InlineKeyboardButton(text=f"{check}{v['name']}", callback_data=f"set_voice:{key}"))
+    builder.row(InlineKeyboardButton(text="⬅️ Orqaga", callback_data="menu_main"))
+    return builder.as_markup()
+
+def get_modes_keyboard(current_mode: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for key, m in VOICE_MODES.items():
+        check = "✅ " if key == current_mode else ""
+        builder.row(InlineKeyboardButton(text=f"{check}{m['name']}", callback_data=f"set_mode:{key}"))
     builder.row(InlineKeyboardButton(text="⬅️ Orqaga", callback_data="menu_main"))
     return builder.as_markup()
 
@@ -72,17 +79,19 @@ dp = Dispatcher()
 async def cmd_start(message: types.Message):
     user_id = message.from_user.id
     if user_id not in user_settings:
-        user_settings[user_id] = {"voice": DEFAULT_VOICE}
+        user_settings[user_id] = {"voice": DEFAULT_VOICE, "mode": DEFAULT_VOICE_MODE}
+
+    cur_voice = VOICES[user_settings[user_id]["voice"]]["name"]
+    cur_mode = VOICE_MODES[user_settings[user_id]["mode"]]["name"]
 
     welcome_text = (
-        f"👋 Assalomu alaykum, <b>{message.from_user.full_name}</b>!\n\n"
-        f"🎬 <b>MuzaffarZed AI Video Bot</b>ga xush kelibsiz!\n\n"
-        f"Men bir necha soniyada istalgan mavzuda professional <b>Full HD (9:16) Reels/Shorts</b> video tayyorlab bera olaman:\n"
-        f"• 🧠 <i>Viral ssenariy va kadrlar taqsimoti</i>\n"
-        f"• 🎙 <i>Neyron audio (O'zbek, Rus, Ingliz)</i>\n"
-        f"• 🎨 <i>AI chizgan 8K vertikal tasvirlar</i>\n"
-        f"• 🎵 <i>Fon musiqasi (Audio Ducking)</i>\n"
-        f"• 📝 <i>Zamonaviy Karaoke subtitrlar</i>\n\n"
+        f"👋 Assalomu alaykum, <b>{html.escape(message.from_user.full_name)}</b>!\n\n"
+        f"🎬 <b>MuzaffarZed AI Video Bot (Audio Studio 2.0)</b>ga xush kelibsiz!\n\n"
+        f"Men professional <b>Full HD (9:16) Reels/Shorts</b> video tayyorlab beraman:\n"
+        f"• 🎙 <b>Studiya DSP Ovozi:</b> <i>Broadcast kompressor, iliq ko'krak rezonansi va tiniqlik</i>\n"
+        f"• ⚡ <b>Hozirgi sozlama:</b> {cur_voice} | {cur_mode}\n"
+        f"• 🎥 <b>Kamera Harakati:</b> <i>Kinematografik drift va oltin progress chizig'i</i>\n"
+        f"• 📝 <b>Karaoke:</b> <i>Yorqin neon sariq yonuvchi subtitrlar va emojilar</i>\n\n"
         f"🚀 <b>Video yaratish uchun shunchaki mavzuni yozib yuboring</b> yoki quyidagi tugmalardan birini tanlang:\n\n"
         f"<i>{WATERMARK_TEXT}</i>"
     )
@@ -91,8 +100,9 @@ async def cmd_start(message: types.Message):
 @dp.callback_query(F.data == "menu_main")
 async def cb_main(callback: types.CallbackQuery):
     await callback.message.edit_text(
-        "🎬 Bosh menyu: Video mavzusini yozib yuboring yoki quyidagilardan tanlang:",
-        reply_markup=get_main_keyboard()
+        "🎬 <b>Bosh menyu:</b> Video mavzusini yozib yuboring yoki quyidagilardan tanlang:",
+        reply_markup=get_main_keyboard(),
+        parse_mode="HTML"
     )
 
 @dp.callback_query(F.data == "menu_voice")
@@ -110,13 +120,39 @@ async def cb_set_voice(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     voice_key = callback.data.split(":")[1]
     if user_id not in user_settings:
-        user_settings[user_id] = {}
+        user_settings[user_id] = {"mode": DEFAULT_VOICE_MODE}
     user_settings[user_id]["voice"] = voice_key
     voice_name = VOICES[voice_key]["name"]
-    await callback.answer(f"Tanlandi: {voice_name}")
+    await callback.answer(f"Ovoz tanlandi: {voice_name}")
     await callback.message.edit_text(
-        f"✅ Ovoz o'zgartirildi: <b>{voice_name}</b>\n\nEndi videongiz mavzusini yozing:",
+        f"✅ Ovoz o'rnatildi: <b>{voice_name}</b>\n\nEndi mavzu yozishingiz mumkin:",
         reply_markup=get_voice_keyboard(voice_key),
+        parse_mode="HTML"
+    )
+
+@dp.callback_query(F.data == "menu_modes")
+async def cb_modes_menu(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    cur_mode = user_settings.get(user_id, {}).get("mode", DEFAULT_VOICE_MODE)
+    await callback.message.edit_text(
+        "⚡ <b>Ovoz tezligi va tonalitesini tanlang:</b>\n\n"
+        "<i>Reels Dinamik (+12% tezlik) uslubi tavsiya etiladi — nutq baquvvat va jonli eshitiladi.</i>",
+        reply_markup=get_modes_keyboard(cur_mode),
+        parse_mode="HTML"
+    )
+
+@dp.callback_query(F.data.startswith("set_mode:"))
+async def cb_set_mode(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    mode_key = callback.data.split(":")[1]
+    if user_id not in user_settings:
+        user_settings[user_id] = {"voice": DEFAULT_VOICE}
+    user_settings[user_id]["mode"] = mode_key
+    mode_name = VOICE_MODES[mode_key]["name"]
+    await callback.answer(f"Rejim: {mode_name}")
+    await callback.message.edit_text(
+        f"✅ Ovoz rejimi o'rnatildi: <b>{mode_name}</b>\n\nEndi mavzuni yozing:",
+        reply_markup=get_modes_keyboard(mode_key),
         parse_mode="HTML"
     )
 
@@ -131,12 +167,11 @@ async def cb_topics_menu(callback: types.CallbackQuery):
 @dp.callback_query(F.data == "menu_about")
 async def cb_about_menu(callback: types.CallbackQuery):
     about_text = (
-        "💎 <b>MuzaffarZed Professional AI Video Generator</b>\n\n"
-        "Ushbu tizim eng ilg'or sun'iy intellekt texnologiyalarini o'zida birlashtirgan:\n"
-        "• <b>Video Dvigateli:</b> FFmpeg 60 FPS + Ken Burns Dynamics\n"
-        "• <b>Ovoz:</b> Microsoft Neural Edge-TTS High-Definition\n"
-        "• <b>Vizual:</b> Pollinations AI Diffusion 8K Photorealistic\n"
-        "• <b>Subtitr:</b> Dynamic Millisecond Karaoke Text Render\n\n"
+        "💎 <b>MuzaffarZed Professional AI Video Generator 2.0</b>\n\n"
+        "• <b>Ovoz:</b> Microsoft Neural + Studio Broadcast DSP (Warmth, Presence, Limiter)\n"
+        "• <b>Video Dvigateli:</b> Kinematografik drift + Oltin progress chizig'i\n"
+        "• <b>Subtitr:</b> Dynamic Karaoke Neon Highlight + Emojilar\n"
+        "• <b>Musiqa:</b> Intelligent Audio Ducking\n\n"
         f"<i>{WATERMARK_TEXT}</i>"
     )
     builder = InlineKeyboardBuilder()
@@ -163,11 +198,13 @@ async def handle_video_creation(message: types.Message, topic: str, user_id: int
 
     active_tasks.add(user_id)
     cur_voice = user_settings.get(user_id, {}).get("voice", DEFAULT_VOICE)
+    cur_mode = user_settings.get(user_id, {}).get("mode", DEFAULT_VOICE_MODE)
 
     status_msg = await message.answer(
         f"🎬 <b>Yangi video yaratish boshlandi!</b>\n\n"
-        f"📌 <b>Mavzu:</b> <i>{topic}</i>\n"
-        f"🎙 <b>Ovoz:</b> <i>{VOICES[cur_voice]['name']}</i>\n\n"
+        f"📌 <b>Mavzu:</b> <i>{html.escape(topic)}</i>\n"
+        f"🎙 <b>Ovoz:</b> <i>{VOICES[cur_voice]['name']}</i>\n"
+        f"⚡ <b>Rejim:</b> <i>{VOICE_MODES[cur_mode]['name']}</i>\n\n"
         f"⏳ <i>Iltimos kuting, montaj jarayoni ketmoqda...</i>",
         parse_mode="HTML"
     )
@@ -182,7 +219,7 @@ async def handle_video_creation(message: types.Message, topic: str, user_id: int
                 progress_bar = "▓" * (step * 2) + "░" * ((total - step) * 2)
                 await status_msg.edit_text(
                     f"🎬 <b>Video yaratilmoqda... [{step}/{total}]</b>\n\n"
-                    f"📌 <b>Mavzu:</b> <i>{topic}</i>\n"
+                    f"📌 <b>Mavzu:</b> <i>{html.escape(topic)}</i>\n"
                     f"<code>[{progress_bar}]</code>\n\n"
                     f"<b>{status_text}</b>\n\n"
                     f"<i>{WATERMARK_TEXT}</i>",
@@ -195,24 +232,26 @@ async def handle_video_creation(message: types.Message, topic: str, user_id: int
         result = await pipeline.create_video(
             topic=topic,
             voice_key=cur_voice,
+            voice_mode=cur_mode,
             progress_callback=progress_notifier
         )
 
         video_path = result["video_path"]
         dur = result["duration"]
 
-        await status_msg.edit_text(
-            f"✨ <b>Video muvaffaqiyatli tayyorlandi!</b>\n\n"
-            f"🚀 Telegramga yuklanmoqda...",
-            parse_mode="HTML"
-        )
+        try:
+            await status_msg.edit_text(
+                "✨ <b>Video muvaffaqiyatli tayyorlandi!</b>\n\n🚀 Telegramga yuklanmoqda...",
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
 
-        # Videoni yuborish
         video_file = FSInputFile(video_path)
         caption_text = (
-            f"🎬 <b>{topic}</b>\n\n"
-            f"⏱ Davomiyligi: {dur:.1f} soniya\n"
-            f"📱 Formati: 1080x1920 (9:16 Full HD)\n\n"
+            f"🎬 <b>{html.escape(topic)}</b>\n\n"
+            f"🎙 <i>{VOICES[cur_voice]['name']} | Studio DSP</i>\n"
+            f"⏱ Davomiyligi: {dur:.1f}s | 📱 1080x1920 Full HD\n\n"
             f"<i>{WATERMARK_TEXT}</i>"
         )
 
@@ -224,7 +263,10 @@ async def handle_video_creation(message: types.Message, topic: str, user_id: int
             supports_streaming=True,
             parse_mode="HTML"
         )
-        await status_msg.delete()
+        try:
+            await status_msg.delete()
+        except Exception:
+            pass
 
     except Exception as e:
         logger.exception("Video yaratishda xato")
@@ -241,18 +283,13 @@ async def handle_video_creation(message: types.Message, topic: str, user_id: int
 
 async def main():
     token = TELEGRAM_BOT_TOKEN
-    if not token or token == "YOUR_TELEGRAM_BOT_TOKEN_HERE":
-        print("=" * 65)
-        print("⚠️ DIQQAT: TELEGRAM_BOT_TOKEN sozlanmagan!")
-        print("1. @BotFather dan yangi bot yarating va token oling.")
-        print("2. Tokenni .env fayliga yoki config.py ga joylang:")
-        print("   TELEGRAM_BOT_TOKEN=123456789:ABCdefGhIjk...")
-        print("=" * 65)
+    if not token:
+        print("TELEGRAM_BOT_TOKEN topilmadi")
         sys.exit(1)
 
     bot = Bot(token=token)
     print("=" * 65)
-    print("🤖 MUZAFFARZED AI VIDEO TELEGRAM BOT ISHGA TUSHDI!")
+    print("🤖 MUZAFFARZED AI VIDEO TELEGRAM BOT (AUDIO 2.0) ISHGA TUSHDI!")
     print("Polling rejimi faollashtirildi...")
     print("=" * 65)
     await dp.start_polling(bot)

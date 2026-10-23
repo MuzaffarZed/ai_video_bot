@@ -23,29 +23,32 @@ if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
 
 from pipeline import VideoPipeline
-from config import VOICES, DEFAULT_VOICE
+from config import VOICES, DEFAULT_VOICE, VOICE_MODES, DEFAULT_VOICE_MODE
 
 async def main():
     parser = argparse.ArgumentParser(description="MuzaffarZed AI Video Generator CLI")
     parser.add_argument("--topic", type=str, default="Koinotning eng sirli hodisasi: Qora tuynuklar", help="Video mavzusi")
     parser.add_argument("--voice", type=str, default=DEFAULT_VOICE, choices=list(VOICES.keys()), help="Ovoz tanlovi")
+    parser.add_argument("--mode", type=str, default=DEFAULT_VOICE_MODE, choices=list(VOICE_MODES.keys()), help="Ovoz rejimi")
     args = parser.parse_args()
 
     print("=" * 65)
     print("🎬 MUZAFFARZED AI VIDEO CREATOR - ISHGA TUSHDI")
     print(f"📌 Mavzu: {args.topic}")
     print(f"🎙 Ovoz:  {VOICES[args.voice]['name']}")
+    print(f"⚡ Rejim: {VOICE_MODES[args.mode]['name']}")
     print("=" * 65)
 
     start_time = time.time()
 
-    def on_progress(step, total, msg):
+    async def on_progress(step, total, msg):
         print(f"\n[Qadam {step}/{total}] -> {msg}")
 
     pipeline = VideoPipeline()
     result = await pipeline.create_video(
         topic=args.topic,
         voice_key=args.voice,
+        voice_mode=args.mode,
         progress_callback=on_progress
     )
 

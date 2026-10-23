@@ -15,7 +15,7 @@ if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
 
 from typing import Callable, Optional, Dict
-from config import TEMP_DIR, OUTPUT_DIR, DEFAULT_VOICE, VOICES
+from config import TEMP_DIR, OUTPUT_DIR, DEFAULT_VOICE, VOICES, DEFAULT_VOICE_MODE, VOICE_MODES
 from script_generator import ScriptGenerator
 from tts_engine import TTSEngine
 from visual_engine import VisualEngine
@@ -35,10 +35,11 @@ class VideoPipeline:
         self,
         topic: str,
         voice_key: str = DEFAULT_VOICE,
+        voice_mode: str = DEFAULT_VOICE_MODE,
         progress_callback: Optional[Callable[[int, int, str], None]] = None
     ) -> Dict:
         """
-        To'liq siklda video tayyorlaydi (to'liq asinxron va non-blocking).
+        To'liq siklda video tayyorlaydi (Audio Studio 2.0 bilan).
         """
         task_id = f"job_{int(time.time())}_{uuid.uuid4().hex[:6]}"
         total_steps = 5
@@ -58,9 +59,9 @@ class VideoPipeline:
         lang = VOICES.get(voice_key, {}).get("lang", "uz")
         scenes = await asyncio.to_thread(self.script_gen.generate, topic, lang)
 
-        # 2-Bosqich: Ovozlashtirish & Vaqtlar
-        await notify(2, "🎙 2/5: Tabiiy neyron ovozda nutq va vaqtlar hisoblanmoqda...")
-        tts = TTSEngine(voice_key=voice_key)
+        # 2-Bosqich: Ovozlashtirish & Studiya DSP
+        await notify(2, "🎙 2/5: Studiya DSP ovozi (Warmth + Presence) yozilmoqda...")
+        tts = TTSEngine(voice_key=voice_key, mode_key=voice_mode)
         processed_scenes = await tts.process_all_scenes(scenes, task_id=task_id)
 
         # 3-Bosqich: Kadrlar Generatsiyasi
