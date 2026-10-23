@@ -11,6 +11,9 @@ jobs:
   run-bot:
     runs-on: ubuntu-latest
     timeout-minutes: 340
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      NEEDRESTART_MODE: a
 
     steps:
       - name: 📥 Kodni yuklash (Checkout)
@@ -22,10 +25,10 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
 
-      - name: 🎬 FFmpeg & FFprobe to'liq o'rnatish (Ubuntu Native)
+      - name: 🎬 FFmpeg & FFprobe to'liq o'rnatish (Ubuntu Native Non-Interactive)
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends ffmpeg fonts-dejavu-core
+          sudo -E apt-get install -y --no-install-recommends ffmpeg fonts-dejavu-core
           which ffmpeg
           which ffprobe
           ffmpeg -version | head -n 2
