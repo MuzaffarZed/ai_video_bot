@@ -179,6 +179,14 @@ def phonetic_uzbek_normalize(text: str) -> str:
     # Barcha qolgan mustaqil sonlar
     t = re.sub(r'\b(\d+)\b', lambda m: uzbek_number_to_words(int(m.group(1))), t)
 
+    # Jonli nutq nafas olish pauzalari (Natural breath pauses at coordinating words)
+    t = re.sub(r'([^\s,.;:!?])\s+(chunki|lekin|ammo|biroq|negaki)\b', r'\1, \2', t, flags=re.IGNORECASE)
+
+    # Tinish belgilarini tozalash va ortiqcha bo'shliqlarni olib tashlash
+    t = re.sub(r'\?{2,}', '?', t)
+    t = re.sub(r'!{2,}', '!', t)
+    t = re.sub(r',+', ',', t)
+    t = re.sub(r'\s+([,.;:!?])', r'\1', t)
     t = re.sub(r'\s+', ' ', t).strip()
     return t
 
@@ -393,13 +401,38 @@ Javobni FAQAT quyidagi JSON massivida qaytaring, ortiqcha hech qanday matn qo'sh
 
         if lang == "uz":
             if style == "podcast_dialogue":
-                dialogues = [
-                    (1, f"Bilasanmi, {clean_topic} haqidagi eng hayratlanarli sir nima? 99% insonlar buni bilishmaydi!"),
-                    (2, f"Rostdanmi? Qiziq, aynan qanday sir haqida gapiryapsan?"),
-                    (1, f"Tadqiqotlar shuni ko'rsatadiki, {clean_topic} kuchi insoniyat tasavvuridan 10 barobar ortiq!"),
-                    (2, f"Ajoyib! Demak buni tushunish har birimiz uchun katta natijalar kaliti ekanda!"),
-                    (1, f"Aynan shunday! Do'stlaringizga ham ulashing va har kuni yangi bilimlarga ega bo'lish uchun bizga obuna bo'ling!")
-                ]
+                if voice_mode == "samarqand_epik":
+                    dialogues = [
+                        (1, f"Aytingchi, {clean_topic} ortidagi azaliy hikmat va qadimiy sir nimada?"),
+                        (2, f"Rivoyatlarda aytilishicha, bu insoniyat sabr-bardoshini sinovchi buyuk saboqdir!"),
+                        (1, f"Darhaqiqat, buni anglagan inson hayotida mislsiz najot va yuksaklik topadi."),
+                        (2, f"To'g'ri aytdingiz. Har bir o'tgan kun bizga yangi tafakkur eshigini ochadi!"),
+                        (1, f"Ushbu hikmatni do'stlaringizga ulashing va yangi falsafiy bilimlarga ega bo'lish uchun obuna bo'ling!")
+                    ]
+                elif voice_mode == "vodiy_viral":
+                    dialogues = [
+                        (1, f"Qarang, {clean_topic} haqidagi bu shok sirni eshitganmisiz? Odamlar bu haqda bilishmaydi!"),
+                        (2, f"Yo'g'e, rostdanmi?! Qanaqa sir ekan, tezroq ayting-chi!"),
+                        (1, f"Buni qarang: {clean_topic} kuchi biz o'ylagandan 10 barobar kuchliroq ekan!"),
+                        (2, f"Ana xolos! Demak buni hamma bilishi shart ekan-da!"),
+                        (1, f"Albatta! Do'stlarga ham tezda yuboring va eng drayvli faktlar uchun bizga obuna bo'ling!")
+                    ]
+                elif voice_mode == "city_podcast":
+                    dialogues = [
+                        (1, f"Do'stlar, bugun {clean_topic} haqidagi eng katta mifni ochamiz. Ko'pchilik buni noto'g'ri tushunadi."),
+                        (2, f"Ha, ayniqsa boshlovchilar bu borada eng ko'p xatolarga yo'l qo'yishadi. Sababi nima?"),
+                        (1, f"Sababi oddiy: tizimli yondashuv yo'qligida! {clean_topic} to'g'ri strategiya bilan o'rganilsa, natija 10x bo'ladi."),
+                        (2, f"Mutlaqo qo'shilaman. Zamonaviy bozorda aynan mana shu amaliy tajriba qadrlanadi!"),
+                        (1, f"Kanalimizga obuna bo'ling va eng so'nggi biznes sirlarini biz bilan birga kuzatib boring!")
+                    ]
+                else:
+                    dialogues = [
+                        (1, f"Bilasanmi, {clean_topic} haqidagi eng hayratlanarli sir nima? 99% insonlar buni bilishmaydi!"),
+                        (2, f"Rostdanmi? Qiziq, aynan qanday sir haqida gapiryapsan?"),
+                        (1, f"Tadqiqotlar shuni ko'rsatadiki, {clean_topic} kuchi insoniyat tasavvuridan 10 barobar ortiq!"),
+                        (2, f"Ajoyib! Demak buni tushunish har birimiz uchun katta natijalar kaliti ekanda!"),
+                        (1, f"Aynan shunday! Do'stlaringizga ham ulashing va har kuni yangi bilimlarga ega bo'lish uchun bizga obuna bo'ling!")
+                    ]
                 chosen_pairs = [dialogues[0], dialogues[1], dialogues[-1]] if scene_count <= 3 else dialogues[:scene_count]
                 scenes = []
                 for idx, (spk, text_block) in enumerate(chosen_pairs):

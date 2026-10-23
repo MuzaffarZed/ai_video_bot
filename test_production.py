@@ -478,5 +478,24 @@ class TestSingularity10(unittest.TestCase):
         tts_mystic = TTSEngine(voice_key="uz_sardor", mode_key="koinot_mystic")
         self.assertEqual(tts_mystic.effect_key, "deep_trailer")
 
+    def test_phonetic_breath_pauses_and_sanitation(self):
+        text = "Biz buni bilamiz chunki u muhim lekin amal qilmaymiz???"
+        norm = phonetic_uzbek_normalize(text)
+        self.assertIn("bilamiz, chunki", norm)
+        self.assertIn("muhim, lekin", norm)
+        self.assertTrue(norm.endswith("?"))
+        self.assertNotIn("???", norm)
+
+    def test_cadence_podcast_dialogue(self):
+        sg = ScriptGenerator()
+        sc_sam = sg._generate_procedural("Tarix", "uz", "podcast_dialogue", 3, voice_mode="samarqand_epik")
+        self.assertIn("azaliy hikmat", sc_sam[0]["text"])
+
+        sc_vodiy = sg._generate_procedural("Tarix", "uz", "podcast_dialogue", 3, voice_mode="vodiy_viral")
+        self.assertIn("Qarang", sc_vodiy[0]["text"])
+
+        sc_city = sg._generate_procedural("Tarix", "uz", "podcast_dialogue", 3, voice_mode="city_podcast")
+        self.assertIn("Do'stlar", sc_city[0]["text"])
+
 if __name__ == "__main__":
     unittest.main()
