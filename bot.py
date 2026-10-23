@@ -855,7 +855,7 @@ async def cb_view_script(callback: types.CallbackQuery):
     else:
         await callback.answer("⚠️ Ma'lumot topilmadi.", show_alert=True)
 
-# --- 1-Click Format Re-render ---
+# --- 1-Click Tezkor Format Almashtirish (Fast Transcoding) ---
 @dp.callback_query(F.data.startswith("re_render:"))
 async def cb_re_render(callback: types.CallbackQuery):
     parts = callback.data.split(":")
@@ -867,7 +867,56 @@ async def cb_re_render(callback: types.CallbackQuery):
         return
 
     topic = job_info["topic"]
+    scenes = job_info.get("scenes")
+    master_audio = job_info.get("master_audio_path")
     set_user_pref(callback.from_user.id, "format", new_fmt)
+
+    # Agar keshda mavjud bo'lsa, 3 soniyada tezkor reformat qilamiz!
+    if pipeline.can_fast_reformat(scenes, master_audio):
+        await callback.answer("⚡️ 3 soniyada yangi formatga o'tkazilmoqda...")
+        status_msg = await callback.message.answer(f"⚡️ <b>{new_fmt} formatga montaj qilinmoqda...</b>", parse_mode="HTML")
+        cur_theme = get_user_pref(callback.from_user.id, "theme", DEFAULT_SUBTITLE_THEME)
+        cur_filter = get_user_pref(callback.from_user.id, "filter", DEFAULT_VISUAL_FILTER)
+        cur_motion = get_user_pref(callback.from_user.id, "camera_motion", DEFAULT_CAMERA_MOTION)
+        cur_sub_size = get_user_pref(callback.from_user.id, "sub_size", DEFAULT_SUBTITLE_SIZE)
+
+        res = await pipeline.fast_reformat_video(
+            task_id=task_id,
+            scenes=scenes,
+            master_audio_path=master_audio,
+            new_format_key=new_fmt,
+            theme_key=cur_theme,
+            filter_key=cur_filter,
+            motion_key=cur_motion,
+            size_key=cur_sub_size,
+            topic=topic
+        )
+
+        try: await status_msg.delete()
+        except Exception: pass
+
+        new_video_file = FSInputFile(res["video_path"])
+        new_task_id = res["task_id"]
+        job_cache[new_task_id] = dict(job_info)
+        job_cache[new_task_id]["format_key"] = new_fmt
+        if res.get("poster_path"):
+            job_cache[new_task_id]["poster_path"] = res["poster_path"]
+
+        fmt_info = FORMATS.get(new_fmt, FORMATS[DEFAULT_FORMAT])
+        await callback.message.answer_video(
+            video=new_video_file,
+            caption=(
+                f"🎬 <b>{html.escape(topic)}</b>\n\n"
+                f"📱 <b>Yangi Format:</b> {fmt_info['name']}\n"
+                f"⚡️ <b>Tezkor Reformat:</b> 3 soniyada konvertatsiya qilindi\n\n"
+                f"<i>{WATERMARK_TEXT}</i>"
+            ),
+            reply_markup=get_post_video_keyboard(new_task_id, new_fmt, job_info.get("voice_key", DEFAULT_VOICE)),
+            parse_mode="HTML"
+        )
+        return
+
+    # Fallback to full pipeline
     await callback.answer(f"Format: {new_fmt} ga o'tkazilmoqda...")
     await handle_video_creation(callback.message, topic, callback.from_user.id)
 
@@ -1182,7 +1231,8 @@ async def handle_video_creation(
                 "format_key": cur_format,
                 "voice_key": cur_voice,
                 "scenes": result.get("scenes"),
-                "poster_path": result.get("poster_path")
+                "poster_path": result.get("poster_path"),
+                "master_audio_path": result.get("master_audio_path")
             }
 
         try:
@@ -1205,7 +1255,7 @@ async def handle_video_creation(
             f"🎨 <b>Art:</b> {ART_STYLES[cur_art_style]['name']}\n"
             f"🎵 <b>Musiqa:</b> {genre_name} (Sidechain Ducking + SFX)\n"
             f"⏱ <b>Davomiyligi:</b> {dur:.1f}s | 📱 <b>Format:</b> {fmt_info['name']}\n"
-            f"💎 <b>Sifat:</b> Singularity 11.0 Omniscient Genesis\n\n"
+            f"💎 <b>Sifat:</b> Singularity 13.0 Apex Omniverse\n\n"
             f"<i>{WATERMARK_TEXT}</i>"
         )
 

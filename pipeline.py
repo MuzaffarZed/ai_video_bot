@@ -208,8 +208,103 @@ class VideoPipeline:
             "music_genre": final_music_genre,
             "format_key": format_key,
             "filter_key": filter_key,
-            "motion_key": motion_key
+            "motion_key": motion_key,
+            "master_audio_path": master_audio
         }
+
+    @staticmethod
+    def can_fast_reformat(scenes: List[Dict], master_audio_path: str) -> bool:
+        if not scenes or not master_audio_path or not os.path.exists(master_audio_path):
+            return False
+        for sc in scenes:
+            img = sc.get("image_path")
+            if not img or not os.path.exists(img):
+                return False
+        return True
+
+    async def fast_reformat_video(
+        self,
+        task_id: str,
+        scenes: List[Dict],
+        master_audio_path: str,
+        new_format_key: str,
+        theme_key: str = DEFAULT_SUBTITLE_THEME,
+        filter_key: str = DEFAULT_VISUAL_FILTER,
+        motion_key: str = DEFAULT_CAMERA_MOTION,
+        size_key: str = DEFAULT_SUBTITLE_SIZE,
+        topic: str = "Video"
+    ) -> Dict:
+        """
+        Mavjud ovoz va suratlarni qayta yuklamasdan 3 soniyada yangi formatga (16:9 yoki 9:16) o'giradi.
+        """
+        clean_fmt = new_format_key.replace(":", "_")
+        reformat_task_id = f"{task_id}_{clean_fmt}"
+        visual_eng = VisualEngine(format_key=new_format_key)
+
+        ass_path = str(TEMP_DIR / f"{reformat_task_id}_subtitles.ass")
+        await asyncio.to_thread(
+            self.subtitle_eng.generate_ass,
+            scenes,
+            ass_path,
+            theme_key=theme_key,
+            format_key=new_format_key,
+            size_key=size_key
+        )
+
+        poster_path = str(OUTPUT_DIR / f"{reformat_task_id}_poster.jpg")
+        if scenes:
+            await asyncio.to_thread(visual_eng.generate_cover_poster, scenes[0]["image_path"], topic, poster_path)
+
+        async def render_single_clip(sc):
+            clip_path = str(TEMP_DIR / f"{reformat_task_id}_clip_{sc['scene_num']}.mp4")
+            await asyncio.to_thread(
+                self.video_eng.render_scene_clip,
+                sc["image_path"],
+                sc["duration"],
+                clip_path,
+                sc["scene_num"],
+                new_format_key,
+                filter_key,
+                motion_key
+            )
+            return clip_path
+
+        scene_clips = await asyncio.gather(*[render_single_clip(sc) for sc in scenes])
+
+        total_duration = scenes[-1]["end_time"] if scenes else 0.0
+        output_final = str(OUTPUT_DIR / f"{reformat_task_id}_final.mp4")
+        await asyncio.to_thread(
+            self.video_eng.assemble_final_video,
+            scene_clips,
+            master_audio_path,
+            ass_path,
+            output_final,
+            total_duration,
+            theme_key=theme_key,
+            format_key=new_format_key
+        )
+
+        return {
+            "status": "success",
+            "video_path": output_final,
+            "poster_path": poster_path if os.path.exists(poster_path) else None,
+            "format_key": new_format_key,
+            "duration": total_duration,
+            "task_id": reformat_task_id
+        }
+
+    @staticmethod
+    def cleanup_old_temp_files(max_age_hours: float = 1.0):
+        """1 soatdan eski vaqtinchalik fayllarni xavfsiz tozalash."""
+        now = time.time()
+        cutoff = now - (max_age_hours * 3600)
+        try:
+            for item in TEMP_DIR.iterdir():
+                if item.is_file() and item.stat().st_mtime < cutoff:
+                    try: item.unlink(missing_ok=True)
+                    except Exception: pass
+        except Exception as e:
+            print(f"[Garbage Collection Notice] {e}")
 
     @staticmethod
     def cleanup_task_files(task_id: str):

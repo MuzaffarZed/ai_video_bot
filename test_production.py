@@ -131,6 +131,7 @@ class TestSingularity10(unittest.TestCase):
         self.assertTrue(mixer.default_boom.exists())
         self.assertTrue(mixer.default_shutter.exists())
         self.assertTrue(mixer.default_whoosh.exists())
+        self.assertTrue(mixer.default_riser.exists())
 
         test_sfx = str(TEMP_DIR / "test_sfx_track.wav")
         built = mixer._build_sfx_track([1.5, 3.0], 4.0, test_sfx)
@@ -138,6 +139,15 @@ class TestSingularity10(unittest.TestCase):
         self.assertTrue(os.path.exists(test_sfx))
         try: os.remove(test_sfx)
         except Exception: pass
+
+    def test_smart_category_soundtrack(self):
+        ve = VisualEngine()
+        self.assertEqual(ve.get_music_genre_for_category("ai"), "cyber_action")
+        self.assertEqual(ve.get_music_genre_for_category("nature"), "lofi_vibes")
+        self.assertEqual(ve.get_music_genre_for_category("space"), "cosmic_deep")
+
+    def test_fast_reformat_validation(self):
+        self.assertFalse(VideoPipeline.can_fast_reformat([], "non_existent.wav"))
 
     def test_script_translation(self):
         sg = ScriptGenerator()

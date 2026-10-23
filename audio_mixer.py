@@ -33,6 +33,9 @@ class AudioMixer:
         self.default_shutter = SFX_DIR / "camera_shutter.wav"
         if not self.default_shutter.exists():
             self._generate_shutter(str(self.default_shutter))
+        self.default_riser = SFX_DIR / "riser_sweep.wav"
+        if not self.default_riser.exists():
+            self._generate_riser(str(self.default_riser))
 
     @staticmethod
     def _synthesize_track(genre: str, file_path: str, duration: float = 65.0):
@@ -161,9 +164,27 @@ class AudioMixer:
             wf.setframerate(sr)
             wf.writeframes(audio.tobytes())
 
+    @staticmethod
+    def _generate_riser(file_path: str):
+        sr = 44100
+        dur = 1.2
+        t = np.linspace(0, dur, int(sr * dur), endpoint=False)
+        freq = 180.0 * (1200.0 / 180.0) ** (t / dur)
+        phase = 2 * np.pi * np.cumsum(freq) / sr
+        sweep = np.sin(phase)
+        noise = np.random.uniform(-1, 1, len(t)) * (t / dur) ** 2
+        env = (t / dur) ** 1.8
+        audio = (sweep * 0.70 + noise * 0.30) * env
+        audio = (audio * 0.42 * 32767).astype(np.int16)
+        with wave.open(file_path, 'w') as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(sr)
+            wf.writeframes(audio.tobytes())
+
     def _build_sfx_track(self, transition_points: List[float], total_dur: float, sfx_output_path: str) -> bool:
         """
-        Sahna o'tishlari uchun whoosh va boshlanish uchun cinematic impact boom SFX yo'lagini yaratadi.
+        Sahna o'tishlari uchun whoosh, boshlanish uchun cinematic impact boom va kulminatsiya oldidan riser sweep SFX yo'lagini yaratadi.
         """
         sr = 44100
         total_samples = int(sr * total_dur)
@@ -200,6 +221,19 @@ class AudioMixer:
                         sfx_track[st_sample:end_sample] += whoosh_data[:actual_len] * 0.28
             except Exception as e:
                 print(f"[SFX Whoosh Notice] {e}")
+
+        # 3. Yakuniy kadr (Climax) oldidan kinematik Riser Swell FX
+        if transition_points and len(transition_points) >= 1 and self.default_riser.exists():
+            try:
+                climax_point = transition_points[-1]
+                with wave.open(str(self.default_riser), 'r') as wf:
+                    riser_data = np.frombuffer(wf.readframes(wf.getnframes()), dtype=np.int16).astype(np.float32) / 32767.0
+                riser_len = len(riser_data)
+                riser_start = int(climax_point * sr) - riser_len
+                if riser_start >= 0 and riser_start + riser_len <= total_samples:
+                    sfx_track[riser_start:riser_start + riser_len] += riser_data * 0.30
+            except Exception as e:
+                print(f"[SFX Riser Notice] {e}")
 
         np.clip(sfx_track, -1.0, 1.0, out=sfx_track)
         audio_int16 = (sfx_track * 32767).astype(np.int16)

@@ -117,10 +117,14 @@ class VisualEngine:
     def get_music_genre_for_category(self, cat: str) -> str:
         if cat in ["space", "history"]:
             return "cosmic_deep"
-        elif cat in ["ai", "tech", "crypto", "future"]:
+        elif cat in ["ai", "crypto", "future"]:
+            return "cyber_action"
+        elif cat in ["tech"]:
             return "tech_modern"
         elif cat in ["business", "sport", "motivation", "cars"]:
             return "epic_inspiration"
+        elif cat in ["mind", "nature"]:
+            return "lofi_vibes"
         else:
             return "ambient_chill"
 

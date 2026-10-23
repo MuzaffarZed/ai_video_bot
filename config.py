@@ -1,5 +1,5 @@
 """
-MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Singularity 12.0 Quantum Transcendence)
+MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Singularity 13.0 Apex Omniverse)
 Muallif: MuzaffarZed
 """
 import os
