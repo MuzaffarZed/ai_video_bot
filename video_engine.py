@@ -64,7 +64,10 @@ class VideoEngine:
         fades = f"fade=t=in:st=0:d={fade_d:.3f},fade=t=out:st={fade_out_st:.3f}:d={fade_d:.3f}"
 
         if mode == "zoom_in":
+            scaled_max_w = int(target_w * 1.25)
+            scaled_max_h = int(target_h * 1.25)
             vf_filter = (
+                f"scale={scaled_max_w}:{scaled_max_h}:force_original_aspect_ratio=increase,crop={scaled_max_w}:{scaled_max_h},"
                 f"zoompan=z='min(zoom+0.0016,1.22)':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={target_w}x{target_h}:fps={self.fps},"
                 f"{color_filter},"
                 f"{fades},"

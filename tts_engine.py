@@ -129,7 +129,14 @@ class TTSEngine:
                 await asyncio.sleep(0.8)
 
         if not saved:
-            fb_voice = "uz-UZ-MadinaNeural" if "Sardor" in chosen_voice_id else "uz-UZ-SardorNeural"
+            # Tilga mos muqobil ovoz zaxirasi (Language-consistent failover)
+            if "ru" in chosen_voice_id.lower():
+                fb_voice = "ru-RU-SvetlanaNeural" if "Dmitry" in chosen_voice_id else "ru-RU-DmitryNeural"
+            elif "en" in chosen_voice_id.lower():
+                fb_voice = "en-US-AriaNeural" if "Christopher" in chosen_voice_id else "en-US-ChristopherNeural"
+            else:
+                fb_voice = "uz-UZ-MadinaNeural" if "Sardor" in chosen_voice_id else "uz-UZ-SardorNeural"
+
             try:
                 comm = edge_tts.Communicate(clean_text, fb_voice, rate=rate_val, pitch=pitch_val)
                 await comm.save(temp_raw)

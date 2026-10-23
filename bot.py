@@ -743,15 +743,19 @@ async def cb_listen_voice(callback: types.CallbackQuery):
     v_data = VOICES.get(voice_key, VOICES[DEFAULT_VOICE])
     await callback.answer(f"🎙 {v_data['name']} namunasi yuklanmoqda...")
     demo_path = str(TEMP_DIR / f"voice_demo_{voice_key}.mp3")
-    await TTSEngine.generate_voice_demo(voice_key, demo_path)
-    if os.path.exists(demo_path):
-        voice_file = FSInputFile(demo_path)
-        await callback.message.answer_voice(
-            voice=voice_file,
-            caption=f"🎙 <b>{v_data['name']}</b> diktorlik ovozi namunasi.\n\n<i>{WATERMARK_TEXT}</i>",
-            parse_mode="HTML"
-        )
-    else:
+    try:
+        await TTSEngine.generate_voice_demo(voice_key, demo_path)
+        if os.path.exists(demo_path):
+            voice_file = FSInputFile(demo_path)
+            await callback.message.answer_voice(
+                voice=voice_file,
+                caption=f"🎙 <b>{v_data['name']}</b> diktorlik ovozi namunasi.\n\n<i>{WATERMARK_TEXT}</i>",
+                parse_mode="HTML"
+            )
+        else:
+            await callback.answer("⚠️ Ovoz namunasi tayyorlanmadi, qaytadan urinib ko'ring.", show_alert=True)
+    except Exception as e:
+        logger.error(f"Generate voice demo error: {e}")
         await callback.answer("⚠️ Ovoz namunasini tayyorlashda xatolik yuz berdi.", show_alert=True)
 
 # --- Tezlik menyusi ---
@@ -1005,6 +1009,11 @@ async def cb_dl_poster(callback: types.CallbackQuery):
 # --- 15s Story Snippet yuklab olish ---
 @dp.callback_query(F.data.startswith("dl_story:"))
 async def cb_dl_story(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    if user_id in user_active_requests:
+        await callback.answer("⚠️ Hozirda boshqa vazifa bajarilmoqda, iltimos kuting!", show_alert=True)
+        return
+
     task_id = callback.data.split(":")[1]
     job_info = job_cache.get(task_id)
     video_p = job_info.get("video_path") if job_info else None
@@ -1012,13 +1021,18 @@ async def cb_dl_story(callback: types.CallbackQuery):
         await callback.answer("⚠️ Asosiy video fayl topilmadi.", show_alert=True)
         return
 
+    user_active_requests.add(user_id)
     await callback.answer("📱 15s Story snippet tayyorlanmoqda...")
     story_path = str(TEMP_DIR / f"{task_id}_story15s.mp4")
     try:
         if not os.path.exists(story_path) or os.path.getsize(story_path) < 1000:
-            await pipeline.extract_story_snippet(video_p, story_path, duration=15.0)
+            async with render_lock:
+                await pipeline.extract_story_snippet(video_p, story_path, duration=15.0)
 
         top = job_info.get("topic", "Video")
+        cur_fmt = job_info.get("format_key", DEFAULT_FORMAT)
+        fmt_info = FORMATS.get(cur_fmt, FORMATS[DEFAULT_FORMAT])
+
         video_file = FSInputFile(story_path)
         await callback.message.answer_video(
             video=video_file,
@@ -1027,15 +1041,25 @@ async def cb_dl_story(callback: types.CallbackQuery):
                 f"⚡️ <i>Telegram, WhatsApp va Instagram Stories uchun eng shok va qiziqarli 15 soniya!</i>\n\n"
                 f"<i>{WATERMARK_TEXT}</i>"
             ),
+            width=fmt_info["width"],
+            height=fmt_info["height"],
+            supports_streaming=True,
             parse_mode="HTML"
         )
     except Exception as e:
         logger.error(f"Story snippet error: {e}")
         await callback.message.answer(f"⚠️ Snippet tayyorlashda xatolik: {e}")
+    finally:
+        user_active_requests.discard(user_id)
 
 # --- 1-Click Video Tezligini O'zgartirish (Pacing Multiplier) ---
 @dp.callback_query(F.data.startswith("set_speed:"))
 async def cb_set_speed(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    if user_id in user_active_requests:
+        await callback.answer("⚠️ Hozirda boshqa vazifa bajarilmoqda, iltimos kuting!", show_alert=True)
+        return
+
     parts = callback.data.split(":")
     task_id = parts[1]
     speed = float(parts[2])
@@ -1044,6 +1068,7 @@ async def cb_set_speed(callback: types.CallbackQuery):
         await callback.answer("⚠️ Video fayli topilmadi.", show_alert=True)
         return
 
+    user_active_requests.add(user_id)
     await callback.answer(f"⚡️ {speed}x tezlikka montaj qilinmoqda...")
     status_msg = await callback.message.answer(f"⚡️ <b>Video {speed}x tezlikda montaj qilinmoqda...</b>", parse_mode="HTML")
 
@@ -1051,7 +1076,9 @@ async def cb_set_speed(callback: types.CallbackQuery):
     output_speed_path = str(TEMP_DIR / f"{task_id}_speed_{speed_tag}.mp4")
 
     try:
-        await pipeline.change_video_speed(job_info["video_path"], output_speed_path, speed=speed)
+        async with render_lock:
+            await pipeline.change_video_speed(job_info["video_path"], output_speed_path, speed=speed)
+
         try: await status_msg.delete()
         except Exception: pass
 
@@ -1079,6 +1106,8 @@ async def cb_set_speed(callback: types.CallbackQuery):
         try: await status_msg.delete()
         except Exception: pass
         await callback.message.answer(f"⚠️ Tezlikni o'zgartirishda xatolik: {e}")
+    finally:
+        user_active_requests.discard(user_id)
 
 # --- Ssenariy va SEO matnini ko'rish ---
 @dp.callback_query(F.data.startswith("view_script:"))
@@ -1116,6 +1145,11 @@ async def cb_view_script(callback: types.CallbackQuery):
 # --- 1-Click Tezkor Format Almashtirish (Fast Transcoding) ---
 @dp.callback_query(F.data.startswith("re_render:"))
 async def cb_re_render(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    if user_id in user_active_requests:
+        await callback.answer("⚠️ Hozirda boshqa vazifa bajarilmoqda, iltimos kuting!", show_alert=True)
+        return
+
     parts = callback.data.split(":")
     task_id = parts[1]
     new_fmt = f"{parts[2]}:{parts[3]}"
@@ -1127,57 +1161,68 @@ async def cb_re_render(callback: types.CallbackQuery):
     topic = job_info["topic"]
     scenes = job_info.get("scenes")
     master_audio = job_info.get("master_audio_path")
-    set_user_pref(callback.from_user.id, "format", new_fmt)
+    set_user_pref(user_id, "format", new_fmt)
 
     # Agar keshda mavjud bo'lsa, 3 soniyada tezkor reformat qilamiz!
     if pipeline.can_fast_reformat(scenes, master_audio):
+        user_active_requests.add(user_id)
         await callback.answer("⚡️ 3 soniyada yangi formatga o'tkazilmoqda...")
         status_msg = await callback.message.answer(f"⚡️ <b>{new_fmt} formatga montaj qilinmoqda...</b>", parse_mode="HTML")
-        cur_theme = get_user_pref(callback.from_user.id, "theme", DEFAULT_SUBTITLE_THEME)
-        cur_filter = get_user_pref(callback.from_user.id, "filter", DEFAULT_VISUAL_FILTER)
-        cur_motion = get_user_pref(callback.from_user.id, "camera_motion", DEFAULT_CAMERA_MOTION)
-        cur_sub_size = get_user_pref(callback.from_user.id, "sub_size", DEFAULT_SUBTITLE_SIZE)
+        cur_theme = get_user_pref(user_id, "theme", DEFAULT_SUBTITLE_THEME)
+        cur_filter = get_user_pref(user_id, "filter", DEFAULT_VISUAL_FILTER)
+        cur_motion = get_user_pref(user_id, "camera_motion", DEFAULT_CAMERA_MOTION)
+        cur_sub_size = get_user_pref(user_id, "sub_size", DEFAULT_SUBTITLE_SIZE)
 
-        res = await pipeline.fast_reformat_video(
-            task_id=task_id,
-            scenes=scenes,
-            master_audio_path=master_audio,
-            new_format_key=new_fmt,
-            theme_key=cur_theme,
-            filter_key=cur_filter,
-            motion_key=cur_motion,
-            size_key=cur_sub_size,
-            topic=topic
-        )
+        try:
+            async with render_lock:
+                res = await pipeline.fast_reformat_video(
+                    task_id=task_id,
+                    scenes=scenes,
+                    master_audio_path=master_audio,
+                    new_format_key=new_fmt,
+                    theme_key=cur_theme,
+                    filter_key=cur_filter,
+                    motion_key=cur_motion,
+                    size_key=cur_sub_size,
+                    topic=topic
+                )
 
-        try: await status_msg.delete()
-        except Exception: pass
+            try: await status_msg.delete()
+            except Exception: pass
 
-        new_video_file = FSInputFile(res["video_path"])
-        new_task_id = res["task_id"]
-        new_data = dict(job_info)
-        new_data["format_key"] = new_fmt
-        new_data["video_path"] = res["video_path"]
-        if res.get("poster_path"):
-            new_data["poster_path"] = res["poster_path"]
-        save_job_cache_item(new_task_id, new_data)
+            new_video_file = FSInputFile(res["video_path"])
+            new_task_id = res["task_id"]
+            new_data = dict(job_info)
+            new_data["format_key"] = new_fmt
+            new_data["video_path"] = res["video_path"]
+            if res.get("poster_path"):
+                new_data["poster_path"] = res["poster_path"]
+            save_job_cache_item(new_task_id, new_data)
 
-        fmt_info = FORMATS.get(new_fmt, FORMATS[DEFAULT_FORMAT])
-        await callback.message.answer_video(
-            video=new_video_file,
-            caption=(
-                f"🎬 <b>{html.escape(topic)}</b>\n\n"
-                f"📱 <b>Yangi Format:</b> {fmt_info['name']}\n"
-                f"⚡️ <b>Tezkor Reformat:</b> 3 soniyada konvertatsiya qilindi\n\n"
-                f"<i>{WATERMARK_TEXT}</i>"
-            ),
-            width=fmt_info["width"],
-            height=fmt_info["height"],
-            supports_streaming=True,
-            reply_markup=get_post_video_keyboard(new_task_id, new_fmt, job_info.get("voice_key", DEFAULT_VOICE)),
-            parse_mode="HTML"
-        )
-        return
+            fmt_info = FORMATS.get(new_fmt, FORMATS[DEFAULT_FORMAT])
+            await callback.message.answer_video(
+                video=new_video_file,
+                caption=(
+                    f"🎬 <b>{html.escape(topic)}</b>\n\n"
+                    f"📱 <b>Yangi Format:</b> {fmt_info['name']}\n"
+                    f"⚡️ <b>Tezkor Reformat:</b> 3 soniyada konvertatsiya qilindi\n\n"
+                    f"<i>{WATERMARK_TEXT}</i>"
+                ),
+                width=fmt_info["width"],
+                height=fmt_info["height"],
+                supports_streaming=True,
+                reply_markup=get_post_video_keyboard(new_task_id, new_fmt, job_info.get("voice_key", DEFAULT_VOICE)),
+                parse_mode="HTML"
+            )
+            return
+        except Exception as e:
+            logger.error(f"Fast reformat error: {e}")
+            try: await status_msg.delete()
+            except Exception: pass
+            await callback.message.answer(f"⚠️ Format almashtirishda xatolik: {e}")
+            return
+        finally:
+            user_active_requests.discard(user_id)
 
     # Fallback to full pipeline
     await callback.answer(f"Format: {new_fmt} ga o'tkazilmoqda...")
@@ -1186,12 +1231,18 @@ async def cb_re_render(callback: types.CallbackQuery):
 # --- 1-Click Yangi AI Kadrlarga Almashtirish (Visual Re-Roll) ---
 @dp.callback_query(F.data.startswith("reroll_vis:"))
 async def cb_reroll_visuals(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    if user_id in user_active_requests:
+        await callback.answer("⚠️ Hozirda boshqa vazifa bajarilmoqda, iltimos kuting!", show_alert=True)
+        return
+
     task_id = callback.data.split(":")[1]
     job_info = job_cache.get(task_id)
     if not job_info or not job_info.get("scenes") or not job_info.get("master_audio_path"):
         await callback.answer("⚠️ Ma'lumotlar eskirgan, yangi mavzu yozing.", show_alert=True)
         return
 
+    user_active_requests.add(user_id)
     await callback.answer("🎨 Yangi AI kadrlar chizilmoqda...")
     status_msg = await callback.message.answer("🎨 <b>Yangi AI kadrlar chizilib, qayta montaj qilinmoqda...</b>", parse_mode="HTML")
 
@@ -1199,56 +1250,70 @@ async def cb_reroll_visuals(callback: types.CallbackQuery):
     scenes = job_info["scenes"]
     master_audio = job_info["master_audio_path"]
     cur_fmt = job_info.get("format_key", DEFAULT_FORMAT)
-    cur_theme = get_user_pref(callback.from_user.id, "theme", DEFAULT_SUBTITLE_THEME)
-    cur_filter = get_user_pref(callback.from_user.id, "filter", DEFAULT_VISUAL_FILTER)
-    cur_motion = get_user_pref(callback.from_user.id, "camera_motion", DEFAULT_CAMERA_MOTION)
-    cur_sub_size = get_user_pref(callback.from_user.id, "sub_size", DEFAULT_SUBTITLE_SIZE)
-    cur_art_style = get_user_pref(callback.from_user.id, "art_style", DEFAULT_ART_STYLE)
+    cur_theme = get_user_pref(user_id, "theme", DEFAULT_SUBTITLE_THEME)
+    cur_filter = get_user_pref(user_id, "filter", DEFAULT_VISUAL_FILTER)
+    cur_motion = get_user_pref(user_id, "camera_motion", DEFAULT_CAMERA_MOTION)
+    cur_sub_size = get_user_pref(user_id, "sub_size", DEFAULT_SUBTITLE_SIZE)
+    cur_art_style = get_user_pref(user_id, "art_style", DEFAULT_ART_STYLE)
 
-    res = await pipeline.reroll_visuals_for_video(
-        task_id=task_id,
-        scenes=scenes,
-        master_audio_path=master_audio,
-        format_key=cur_fmt,
-        theme_key=cur_theme,
-        filter_key=cur_filter,
-        motion_key=cur_motion,
-        size_key=cur_sub_size,
-        art_style=cur_art_style,
-        topic=topic
-    )
+    try:
+        async with render_lock:
+            res = await pipeline.reroll_visuals_for_video(
+                task_id=task_id,
+                scenes=scenes,
+                master_audio_path=master_audio,
+                format_key=cur_fmt,
+                theme_key=cur_theme,
+                filter_key=cur_filter,
+                motion_key=cur_motion,
+                size_key=cur_sub_size,
+                art_style=cur_art_style,
+                topic=topic
+            )
 
-    try: await status_msg.delete()
-    except Exception: pass
+        try: await status_msg.delete()
+        except Exception: pass
 
-    new_video_file = FSInputFile(res["video_path"])
-    new_task_id = res["task_id"]
-    new_data = dict(job_info)
-    new_data["scenes"] = res["scenes"]
-    new_data["video_path"] = res["video_path"]
-    if res.get("poster_path"):
-        new_data["poster_path"] = res["poster_path"]
-    save_job_cache_item(new_task_id, new_data)
+        new_video_file = FSInputFile(res["video_path"])
+        new_task_id = res["task_id"]
+        new_data = dict(job_info)
+        new_data["scenes"] = res["scenes"]
+        new_data["video_path"] = res["video_path"]
+        if res.get("poster_path"):
+            new_data["poster_path"] = res["poster_path"]
+        save_job_cache_item(new_task_id, new_data)
 
-    fmt_info = FORMATS.get(cur_fmt, FORMATS[DEFAULT_FORMAT])
-    await callback.message.answer_video(
-        video=new_video_file,
-        caption=(
-            f"🎬 <b>{html.escape(topic)}</b>\n\n"
-            f"🎨 <b>Yangi AI Kadrlar:</b> Muqobil vizual uslub bilan yangilandi\n"
-            f"📱 <b>Format:</b> {fmt_info['name']}\n\n"
-            f"<i>{WATERMARK_TEXT}</i>"
-        ),
-        width=fmt_info["width"],
-        height=fmt_info["height"],
-        supports_streaming=True,
-        reply_markup=get_post_video_keyboard(new_task_id, cur_fmt, job_info.get("voice_key", DEFAULT_VOICE)),
-        parse_mode="HTML"
-    )
+        fmt_info = FORMATS.get(cur_fmt, FORMATS[DEFAULT_FORMAT])
+        await callback.message.answer_video(
+            video=new_video_file,
+            caption=(
+                f"🎬 <b>{html.escape(topic)}</b>\n\n"
+                f"🎨 <b>Yangi AI Kadrlar:</b> Muqobil vizual uslub bilan yangilandi\n"
+                f"📱 <b>Format:</b> {fmt_info['name']}\n\n"
+                f"<i>{WATERMARK_TEXT}</i>"
+            ),
+            width=fmt_info["width"],
+            height=fmt_info["height"],
+            supports_streaming=True,
+            reply_markup=get_post_video_keyboard(new_task_id, cur_fmt, job_info.get("voice_key", DEFAULT_VOICE)),
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        logger.error(f"Reroll visuals error: {e}")
+        try: await status_msg.delete()
+        except Exception: pass
+        await callback.message.answer(f"⚠️ Yangi kadrlar chizishda xatolik: {e}")
+    finally:
+        user_active_requests.discard(user_id)
 
 # --- Xalqaro tilga 1-bosishda o'tkazish (Auto-Translation bilan) ---
 @dp.callback_query(F.data.startswith("lang_switch:"))
 async def cb_lang_switch(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    if user_id in user_active_requests:
+        await callback.answer("⚠️ Hozirda boshqa vazifa bajarilmoqda, iltimos kuting!", show_alert=True)
+        return
+
     parts = callback.data.split(":")
     task_id = parts[1]
     new_voice = parts[2]
@@ -1269,8 +1334,8 @@ async def cb_lang_switch(callback: types.CallbackQuery):
         v_name = VOICES.get(new_voice, {}).get("name", new_voice)
         await callback.answer(f"Til: {v_name} ga o'tkazilmoqda...")
 
-    set_user_pref(callback.from_user.id, "voice", new_voice)
-    await handle_video_creation(callback.message, topic, callback.from_user.id, custom_scenes=translated_scenes)
+    set_user_pref(user_id, "voice", new_voice)
+    await handle_video_creation(callback.message, topic, user_id, custom_scenes=translated_scenes)
 
 # ==================== INLINE QUERY HANDLERI ====================
 

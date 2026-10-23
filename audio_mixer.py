@@ -426,6 +426,8 @@ class AudioMixer:
             "-i", wav_master_path,
             "-c:a", "libmp3lame",
             "-b:a", "192k",
+            "-metadata", "artist=MuzaffarZed AI Studios",
+            "-metadata", "album=MuzaffarZed AI Audio",
             mp3_output_path
         ]
         subprocess.run(cmd, capture_output=True, check=True, timeout=30)

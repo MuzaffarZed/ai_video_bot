@@ -320,5 +320,25 @@ class TestSingularity10(unittest.TestCase):
         res = ve._download_image("https://invalid-non-existent-domain-12345.xyz/img.jpg", str(TEMP_DIR / "never.jpg"), timeout=1)
         self.assertFalse(res)
 
+    def test_subtitle_engine_missing_words_fallback(self):
+        se = SubtitleEngine()
+        # Scene without 'words' key should auto-synthesize and generate valid Dialogue lines
+        scenes = [{"scene_num": 1, "text": "Koinot va yulduzlar jilosi", "start_time": 0.0, "end_time": 3.0}]
+        test_ass = str(TEMP_DIR / "test_missing_words.ass")
+        se.generate_ass(scenes, test_ass)
+        self.assertTrue(os.path.exists(test_ass))
+        with open(test_ass, "r", encoding="utf-8") as f:
+            content = f.read()
+            self.assertIn("Karaoke", content)
+            self.assertIn("Koinot", content)
+        try: os.remove(test_ass)
+        except Exception: pass
+
+    def test_tts_language_failover_logic(self):
+        # Verify voice IDs in VOICES config for Russian, English, Uzbek
+        self.assertEqual(VOICES["ru_dmitry"]["lang"], "ru")
+        self.assertEqual(VOICES["en_christopher"]["lang"], "en")
+        self.assertEqual(VOICES["uz_sardor"]["lang"], "uz")
+
 if __name__ == "__main__":
     unittest.main()

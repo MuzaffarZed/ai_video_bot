@@ -100,6 +100,17 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
         for sc_idx, sc in enumerate(scenes):
             words = sc.get("words", [])
+            if not words and sc.get("text"):
+                st = sc.get("start_time", 0.0)
+                et = sc.get("end_time", st + sc.get("duration", 4.0))
+                words_list = sc["text"].strip().split()
+                if words_list:
+                    w_dur = max(0.15, (et - st) / len(words_list))
+                    words = [
+                        {"word": w, "start": round(st + i * w_dur, 3), "end": round(st + (i + 1) * w_dur, 3)}
+                        for i, w in enumerate(words_list)
+                    ]
+
             if not words:
                 continue
 
