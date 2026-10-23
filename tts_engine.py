@@ -25,6 +25,8 @@ MODE_DEMO_TEXTS = {
     "vodiy_viral": "Qani, do'stlar, buni qarang! Bugun sizlar bilan eng zo'r va viral sirlarni birgalikda kashf qilamiz!",
     "toshkent_adabiy": "Assalomu alaykum, aziz tomoshabinlar. Bugungi ko'rsatuvimizda eng muhim va dolzarb haqiqatlar haqida so'z yuritamiz.",
     "samarqand_epik": "Qadimiy rivoyatlarda aytilishicha, har bir buyuk g'alaba yuksak sabr va cheksiz matonat mevasi bo'lgan.",
+    "xorazm_shirin": "Valaykum assalom, aziz og'a-inilar! Bugun sizlar bilan Xorazmcha samimiy va ajoyib sirlarni kashf qilamiz!",
+    "voha_baxshi": "Ey mardlar eli, quloq tuting! Bugun voha tog'lari va dostonlaridan yetib kelgan buyuk haqiqatlar haqida so'zlaymiz!",
     "city_podcast": "Salom hammaga! Bugun zamonaviy biznes, startaplar va katta maqsadlarga erishish sirlari haqida ochiq gaplashamiz.",
     "koinot_mystic": "Koinotning cheksiz qa'rida insoniyat hali bilmagan, tasavvurga sig'mas sirli jumboqlar yashiringan...",
     "trailer_power": "Hech qachon taslim bo'lma! Bugun o'z kelajaging uchun harakat qiladigan yagona kun!",
@@ -220,6 +222,20 @@ class TTSEngine:
                 pitch_val = "-1Hz"
             elif is_climax:
                 rate_val = "+7%"
+                pitch_val = "-3Hz"
+        elif cadence == "xorazm_flow":
+            if is_hook:
+                rate_val = "+10%"
+                pitch_val = "+2Hz"
+            elif is_climax:
+                rate_val = "+5%"
+                pitch_val = "+0Hz"
+        elif cadence == "voha_epic":
+            if is_hook:
+                rate_val = "+7%"
+                pitch_val = "-1Hz"
+            elif is_climax:
+                rate_val = "+2%"
                 pitch_val = "-3Hz"
         else:
             if is_hook:

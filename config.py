@@ -78,6 +78,20 @@ VOICE_MODES = {
         "cadence": "epic_story",
         "desc": "Afsona, qadimiy rivoyatlar va falsafiy hikoyalar uchun chuqur salobat"
     },
+    "xorazm_shirin": {
+        "name": "🌟 Xorazm Musiqiy (+8% jozibali, samimiy ohang)",
+        "rate": "+8%",
+        "pitch": "+1Hz",
+        "cadence": "xorazm_flow",
+        "desc": "Xorazmcha samimiy, musiqiy va mehmondo'st xalqona intonatsiya"
+    },
+    "voha_baxshi": {
+        "name": "🏔 Voha Baxshiyona (+5% Qashqadaryo & Surxon mardona)",
+        "rate": "+5%",
+        "pitch": "-2Hz",
+        "cadence": "voha_epic",
+        "desc": "Qashqadaryo va Surxondaryo eliga xos mardona, salobatli va baxshiyona ohang"
+    },
     "city_podcast": {
         "name": "🏙 Toshkent City Podkast (+10% biznes & intervyu)",
         "rate": "+10%",

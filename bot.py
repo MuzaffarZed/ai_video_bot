@@ -255,7 +255,11 @@ def get_voice_keyboard(current: str) -> InlineKeyboardMarkup:
 
 def get_modes_keyboard(current: str) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    primary_keys = ["vodiy_viral", "toshkent_adabiy", "samarqand_epik", "city_podcast", "koinot_mystic", "trailer_power"]
+    primary_keys = [
+        "vodiy_viral", "toshkent_adabiy", "samarqand_epik",
+        "xorazm_shirin", "voha_baxshi", "city_podcast",
+        "koinot_mystic", "trailer_power"
+    ]
     for key in primary_keys:
         if key in VOICE_MODES:
             m = VOICE_MODES[key]

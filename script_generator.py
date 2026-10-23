@@ -195,6 +195,8 @@ CADENCE_DIALECT_PROMPTS = {
     "vodiy_viral": "Nutq ohangi: Vodiy jonli va chaqqon Reels drayvi. Jo'shqin, qiziqarli va hissiyotli jumlalar (masalan: 'Qani, do'stlar, buni qarang!', 'Ajoyib-a!', 'Hozirroq sinab ko'ring!').",
     "toshkent_adabiy": "Nutq ohangi: Toshkent adabiy tili me'yori, televideniye va madaniyatli diksiya. Jiddiy, vazmin, sof adabiy va aniq mantiqiy jumlalar (masalan: 'Hurmatli tomoshabinlar...', 'Qayd etish joizki...', 'Xulosa o'rnida...').",
     "samarqand_epik": "Nutq ohangi: Samarqand va Buxoro epik hikoyachilik salobati, qadimiy Sharqona donishmandlik. Vazminlik, falsafiy teranlik va ibratli jumlalar (masalan: 'Qadim zamonlardan buyon...', 'Donolar aytganidek...', 'Tafakkur qiling...').",
+    "xorazm_shirin": "Nutq ohangi: Xorazmcha samimiy, musiqiy va jozibador intonatsiya. Xalqona, iliq va mehmondo'st iboralar (masalan: 'Valaykum assalom, aziz og'alar!', 'Buni qaranglar-a!', 'Bundayini hali ko'rmagansiz!').",
+    "voha_baxshi": "Nutq ohangi: Qashqadaryo va Surxondaryo vohasiga xos mardona, baxshiyona va salobatli doston ohangi (masalan: 'Ey do'st, bu elning sirlaridan xabardormisiz?', 'Mardonavor qadam tashlang!', 'Tog'lar sadosi shuni aytadi...').",
     "city_podcast": "Nutq ohangi: Toshkent City zamonaviy biznes va erkin IT podkast suhbati. Samimiy, do'stona, professional va hayotiy iboralar (masalan: 'Keling, ochiqchasiga gaplashamiz', 'Aslida esa...', 'Ko'rib turganingizdek...').",
     "koinot_mystic": "Nutq ohangi: Koinot sirlari, mistik chuqurlik va hayratlantiruvchi doku intonatsiyasi. Tasavvurni uyg'otuvchi, sirli va ehtiromli jumlalar (masalan: 'Tasavvur qilib ko'ring...', 'Koinotning cheksiz qa'rida...', 'Insoniyat hali yecholmagan jumboq...').",
     "trailer_power": "Nutq ohangi: Gollivudcha jangovar shijoat va qudratli motivatsiya. Qisqa, zarbali, kuchli va qat'iy chaqiriqlar (masalan: 'To'xtama!', 'Bugun sening kuning!', 'G'alaba faqat harakatda!')."
@@ -425,6 +427,22 @@ Javobni FAQAT quyidagi JSON massivida qaytaring, ortiqcha hech qanday matn qo'sh
                         (2, f"Mutlaqo qo'shilaman. Zamonaviy bozorda aynan mana shu amaliy tajriba qadrlanadi!"),
                         (1, f"Kanalimizga obuna bo'ling va eng so'nggi biznes sirlarini biz bilan birga kuzatib boring!")
                     ]
+                elif voice_mode == "xorazm_shirin":
+                    dialogues = [
+                        (1, f"Og'ajon, {clean_topic} haqidagi bu ajabtovur sirni eshitganmidingiz?"),
+                        (2, f"Yo'g'-e, na gap ekan, tezroq aytib bering-chi!"),
+                        (1, f"Qarang-a, {clean_topic} aslida butun dunyoni lol qoldiradigan darajada qudratli ekan!"),
+                        (2, f"Zo'r bo'pti-ku! Barcha og'a-inilarimizga bu bilimlar judayam asqotadi!"),
+                        (1, f"Albatta! Videoni yaqinlarga ham ulashing va bizga obuna bo'ling!")
+                    ]
+                elif voice_mode == "voha_baxshi":
+                    dialogues = [
+                        (1, f"Ey do'stim, {clean_topic} ortidagi mardona haqiqatni bilasizmi?"),
+                        (2, f"Albatta bilishni istayman, bu qanday dostoniy hikmat ekan?"),
+                        (1, f"Tog'lar guvohki, {clean_topic} yo'lidagi har bir qadam insonni buyuklikka yetaklaydi!"),
+                        (2, f"Tasanno! Haqiqiy mardlarga xos qat'iyat mana shunday bo'ladi!"),
+                        (1, f"El-yurtimiz bilan bu bilimlarni baham ko'ring va sahifamizga obuna bo'ling!")
+                    ]
                 else:
                     dialogues = [
                         (1, f"Bilasanmi, {clean_topic} haqidagi eng hayratlanarli sir nima? 99% insonlar buni bilishmaydi!"),
@@ -458,6 +476,10 @@ Javobni FAQAT quyidagi JSON massivida qaytaring, ortiqcha hech qanday matn qo'sh
                     hook_fact = f"To'xtang! {clean_topic} sizning butun kelajagingizni o'zgartirishi mumkin!"
                 elif voice_mode == "toshkent_adabiy":
                     hook_fact = f"Hurmatli tomoshabinlar, bugun {clean_topic} haqidagi eng muhim va ishonchli faktlarni tahlil qilamiz."
+                elif voice_mode == "xorazm_shirin":
+                    hook_fact = f"Valaykum assalom, og'alar va yangalar! Qani qaranglar-a, {clean_topic} haqidagi bu ajoyib sirni!"
+                elif voice_mode == "voha_baxshi":
+                    hook_fact = f"Ey mardlar eli, quloq tuting! {clean_topic} haqidagi bu haqiqat dostonlarga tengdir!"
                 else:
                     hook_fact = f"99% insonlar {clean_topic} haqidagi bu sirni bilishmaydi! Birinchisi: uning kuchi tasavvur qilinganidan 10 barobar ortiq!"
 

@@ -425,7 +425,11 @@ class TestSingularity10(unittest.TestCase):
 
     def test_voice_cadence_modes(self):
         self.assertEqual(DEFAULT_VOICE_MODE, "vodiy_viral")
-        expected_modes = ["vodiy_viral", "toshkent_adabiy", "samarqand_epik", "city_podcast", "koinot_mystic", "trailer_power"]
+        expected_modes = [
+            "vodiy_viral", "toshkent_adabiy", "samarqand_epik",
+            "xorazm_shirin", "voha_baxshi", "city_podcast",
+            "koinot_mystic", "trailer_power"
+        ]
         for m in expected_modes:
             self.assertIn(m, VOICE_MODES)
             self.assertIn("cadence", VOICE_MODES[m])
@@ -437,6 +441,12 @@ class TestSingularity10(unittest.TestCase):
 
         tts_sam = TTSEngine(voice_key="uz_sardor", mode_key="samarqand_epik")
         self.assertEqual(tts_sam.cadence, "epic_story")
+
+        tts_xorazm = TTSEngine(voice_key="uz_sardor", mode_key="xorazm_shirin")
+        self.assertEqual(tts_xorazm.cadence, "xorazm_flow")
+
+        tts_voha = TTSEngine(voice_key="uz_sardor", mode_key="voha_baxshi")
+        self.assertEqual(tts_voha.cadence, "voha_epic")
 
     def test_phonetic_uzbek_advanced(self):
         text1 = "Bahosi 2.5 million so'm va uning maydoni 50 m² atrofida."
@@ -496,6 +506,12 @@ class TestSingularity10(unittest.TestCase):
 
         sc_city = sg._generate_procedural("Tarix", "uz", "podcast_dialogue", 3, voice_mode="city_podcast")
         self.assertIn("Do'stlar", sc_city[0]["text"])
+
+        sc_xorazm = sg._generate_procedural("Tarix", "uz", "podcast_dialogue", 3, voice_mode="xorazm_shirin")
+        self.assertIn("Og'ajon", sc_xorazm[0]["text"])
+
+        sc_voha = sg._generate_procedural("Tarix", "uz", "podcast_dialogue", 3, voice_mode="voha_baxshi")
+        self.assertIn("mardona", sc_voha[0]["text"])
 
 if __name__ == "__main__":
     unittest.main()
