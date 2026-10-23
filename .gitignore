@@ -21,3 +21,8 @@ output/
 .idea/
 Thumbs.db
 .DS_Store
+
+# Runtime cache & databases
+user_db.json
+bot_stats.json
+job_cache.json

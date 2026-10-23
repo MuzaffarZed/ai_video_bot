@@ -133,7 +133,8 @@ class VideoEngine:
         Barcha kadr kliplarini birlashtiradi, ovozni ulaydi,
         zamonaviy progress-barni chizadi va karaoke subtitrni yondiradi.
         """
-        concat_txt = TEMP_DIR / "clips_concat.txt"
+        task_tag = os.path.splitext(os.path.basename(output_final_path))[0]
+        concat_txt = TEMP_DIR / f"clips_concat_{task_tag}.txt"
         with open(concat_txt, "w", encoding="utf-8") as f:
             for clip in scene_clips:
                 clean_path = os.path.abspath(clip).replace("\\", "/")
@@ -142,6 +143,7 @@ class VideoEngine:
         rel_concat = os.path.abspath(str(concat_txt)).replace("\\", "/")
         rel_audio = os.path.abspath(master_audio_path).replace("\\", "/")
         rel_ass = os.path.relpath(ass_subtitle_path, BASE_DIR).replace("\\", "/") if ass_subtitle_path else ""
+        escaped_ass = rel_ass.replace(":", "\\\\:")
         rel_final = os.path.abspath(output_final_path).replace("\\", "/")
 
         bar_colors = {
@@ -157,7 +159,7 @@ class VideoEngine:
         progress_filter = f"{dark_rail},{active_bar}"
 
         if rel_ass and os.path.exists(ass_subtitle_path):
-            full_vf = f"{progress_filter},ass={rel_ass}"
+            full_vf = f"{progress_filter},ass='{escaped_ass}'"
         else:
             full_vf = progress_filter
 
@@ -184,29 +186,29 @@ class VideoEngine:
             if res.returncode == 0 and os.path.exists(output_final_path) and os.path.getsize(output_final_path) > 1000:
                 return output_final_path
             print(f"[VideoEngine Notice] Render xatosi: {res.stderr[:200]}")
-        except Exception as e:
-            print(f"[VideoEngine Notice] Render sinovi: {e}")
-
-        # Fallback
-        cmd_fb = [
-            "ffmpeg", "-nostdin", "-y",
-            "-f", "concat", "-safe", "0",
-            "-i", rel_concat,
-            "-i", rel_audio,
-            "-vf", progress_filter,
-            "-c:v", "libx264",
-            "-preset", "veryfast",
-            "-threads", "2",
-            "-crf", "22",
-            "-pix_fmt", "yuv420p",
-            "-c:a", "aac",
-            "-b:a", "192k",
-            "-shortest",
-            "-movflags", "+faststart",
-            rel_final
-        ]
-        subprocess.run(cmd_fb, cwd=str(BASE_DIR), capture_output=True, check=True, timeout=120)
-        return output_final_path
+            cmd_fb = [
+                "ffmpeg", "-nostdin", "-y",
+                "-f", "concat", "-safe", "0",
+                "-i", rel_concat,
+                "-i", rel_audio,
+                "-vf", progress_filter,
+                "-c:v", "libx264",
+                "-preset", "veryfast",
+                "-threads", "2",
+                "-crf", "22",
+                "-pix_fmt", "yuv420p",
+                "-c:a", "aac",
+                "-b:a", "192k",
+                "-shortest",
+                "-movflags", "+faststart",
+                rel_final
+            ]
+            subprocess.run(cmd_fb, cwd=str(BASE_DIR), capture_output=True, check=True, timeout=120)
+            return output_final_path
+        finally:
+            if os.path.exists(concat_txt):
+                try: os.remove(concat_txt)
+                except Exception: pass
 
     def render_voice_waveform_video(
         self,

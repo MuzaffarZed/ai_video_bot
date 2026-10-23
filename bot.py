@@ -113,12 +113,21 @@ def save_json(file_path: Path, data: dict):
 
 user_settings = load_json(USER_DB_FILE, {})
 bot_stats = load_json(STATS_FILE, {"total_videos": 0, "total_users": 0, "users_list": []})
+JOB_CACHE_FILE = BASE_DIR / "job_cache.json"
+job_cache = load_json(JOB_CACHE_FILE, {})
 user_active_requests = set()
 user_pending_photos = {}
-job_cache = {}
 pipeline = VideoPipeline()
 render_lock = asyncio.Lock()
 START_TIME = time.time()
+
+def save_job_cache_item(task_id: str, data: dict):
+    job_cache[task_id] = data
+    if len(job_cache) > 200:
+        keys_to_del = list(job_cache.keys())[:40]
+        for k in keys_to_del:
+            job_cache.pop(k, None)
+    save_json(JOB_CACHE_FILE, job_cache)
 
 def record_user(user_id: int):
     uid = str(user_id)
@@ -1142,10 +1151,12 @@ async def cb_re_render(callback: types.CallbackQuery):
 
         new_video_file = FSInputFile(res["video_path"])
         new_task_id = res["task_id"]
-        job_cache[new_task_id] = dict(job_info)
-        job_cache[new_task_id]["format_key"] = new_fmt
+        new_data = dict(job_info)
+        new_data["format_key"] = new_fmt
+        new_data["video_path"] = res["video_path"]
         if res.get("poster_path"):
-            job_cache[new_task_id]["poster_path"] = res["poster_path"]
+            new_data["poster_path"] = res["poster_path"]
+        save_job_cache_item(new_task_id, new_data)
 
         fmt_info = FORMATS.get(new_fmt, FORMATS[DEFAULT_FORMAT])
         await callback.message.answer_video(
@@ -1205,10 +1216,12 @@ async def cb_reroll_visuals(callback: types.CallbackQuery):
 
     new_video_file = FSInputFile(res["video_path"])
     new_task_id = res["task_id"]
-    job_cache[new_task_id] = dict(job_info)
-    job_cache[new_task_id]["scenes"] = res["scenes"]
+    new_data = dict(job_info)
+    new_data["scenes"] = res["scenes"]
+    new_data["video_path"] = res["video_path"]
     if res.get("poster_path"):
-        job_cache[new_task_id]["poster_path"] = res["poster_path"]
+        new_data["poster_path"] = res["poster_path"]
+    save_job_cache_item(new_task_id, new_data)
 
     fmt_info = FORMATS.get(cur_fmt, FORMATS[DEFAULT_FORMAT])
     await callback.message.answer_video(
@@ -1549,7 +1562,7 @@ async def handle_video_creation(
         record_video_generation()
 
         if task_id:
-            job_cache[task_id] = {
+            save_job_cache_item(task_id, {
                 "topic": topic,
                 "video_path": video_path,
                 "mp3_path": mp3_path,
@@ -1562,7 +1575,7 @@ async def handle_video_creation(
                 "scenes": result.get("scenes"),
                 "poster_path": result.get("poster_path"),
                 "master_audio_path": result.get("master_audio_path")
-            }
+            })
 
         try:
             await status_msg.edit_text(
@@ -1576,8 +1589,9 @@ async def handle_video_creation(
         thumb_path = result.get("thumb_path")
         thumb_file = FSInputFile(thumb_path) if thumb_path and os.path.exists(thumb_path) else None
 
+        topic_disp = html.escape(topic[:180] + ("..." if len(topic) > 180 else ""))
         caption_text = (
-            f"🎬 <b>{html.escape(topic)}</b>\n\n"
+            f"🎬 <b>{topic_disp}</b>\n\n"
             f"🎙 <b>Ovoz:</b> {VOICES[cur_voice]['name']} | {VOICE_MODES[cur_mode]['name']}\n"
             f"🎚 <b>Akustika:</b> {dsp_info['name']}\n"
             f"🎬 <b>LUT:</b> {VISUAL_FILTERS[cur_filter]['name']}\n"
@@ -1585,7 +1599,7 @@ async def handle_video_creation(
             f"🎨 <b>Art:</b> {ART_STYLES[cur_art_style]['name']}\n"
             f"🎵 <b>Musiqa:</b> {genre_name} (Sidechain Ducking + SFX)\n"
             f"⏱ <b>Davomiyligi:</b> {dur:.1f}s | 📱 <b>Format:</b> {fmt_info['name']}\n"
-            f"💎 <b>Sifat:</b> Singularity 17.0 Transcendent Omnipotence\n\n"
+            f"💎 <b>Sifat:</b> Singularity 18.0 Cosmic Singularity\n\n"
             f"<i>{WATERMARK_TEXT}</i>"
         )
 
@@ -1616,8 +1630,7 @@ async def handle_video_creation(
         except Exception:
             pass
 
-        if task_id:
-            pipeline.cleanup_task_files(task_id)
+        pipeline.cleanup_old_temp_files(max_age_hours=2.0)
 
     except Exception as e:
         logger.exception("Video yaratishda xato")
@@ -1639,10 +1652,15 @@ async def main():
         print("TELEGRAM_BOT_TOKEN topilmadi")
         sys.exit(1)
 
+    try:
+        pipeline.cleanup_old_temp_files(max_age_hours=2.0)
+    except Exception as e:
+        print(f"[Startup Cleanup Notice] {e}")
+
     bot = Bot(token=token)
     print("=" * 65)
-    print("🤖 MUZAFFARZED AI VIDEO BOT (QUANTUM 9.0 APEX SUPREME) ISHGA TUSHDI!")
-    print("Podkast-Dialog, SRT Subtitr, Avto-Muqova, Kirill->Lotin, Flux 8K Art faol...")
+    print("🤖 MUZAFFARZED AI VIDEO BOT (SINGULARITY 18.0 COSMIC SINGULARITY) ISHGA TUSHDI!")
+    print("Ken Burns, 35mm Grain, Outro Chime, Turbo Speed, Toza Nutq, Multi-Series faol...")
     print("=" * 65)
     await dp.start_polling(bot)
 

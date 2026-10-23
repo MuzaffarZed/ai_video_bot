@@ -304,13 +304,14 @@ class AudioMixer:
         if not os.path.exists(bgm_path):
             bgm_path = str(MUSIC_DIR / "ambient_chill.wav")
 
-        concat_txt = TEMP_DIR / "concat_list.txt"
+        task_tag = os.path.splitext(os.path.basename(output_master_path))[0]
+        concat_txt = TEMP_DIR / f"concat_list_{task_tag}.txt"
         with open(concat_txt, "w", encoding="utf-8") as f:
             for v in voice_files:
                 clean_path = v.replace("\\", "/")
                 f.write(f"file '{clean_path}'\n")
 
-        merged_voice = str(TEMP_DIR / "merged_voice.wav")
+        merged_voice = str(TEMP_DIR / f"merged_voice_{task_tag}.wav")
         cmd_merge = [
             "ffmpeg", "-nostdin", "-y",
             "-f", "concat", "-safe", "0",
@@ -319,7 +320,12 @@ class AudioMixer:
             "-ar", "44100",
             merged_voice
         ]
-        subprocess.run(cmd_merge, capture_output=True, check=True, timeout=60)
+        try:
+            subprocess.run(cmd_merge, capture_output=True, check=True, timeout=60)
+        finally:
+            if os.path.exists(concat_txt):
+                try: os.remove(concat_txt)
+                except Exception: pass
 
         # Davomiylikni o'lchash
         dur_cmd = [

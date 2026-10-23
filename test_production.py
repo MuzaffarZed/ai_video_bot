@@ -278,5 +278,11 @@ class TestSingularity10(unittest.TestCase):
         self.assertIn("engagement_question", seo)
         self.assertIn("Sun'iy intellekt", seo["engagement_question"])
 
+    def test_job_cache_persistence_and_pruning(self):
+        from bot import save_job_cache_item, job_cache
+        save_job_cache_item("test_job_999", {"topic": "Test"})
+        self.assertIn("test_job_999", job_cache)
+        job_cache.pop("test_job_999", None)
+
 if __name__ == "__main__":
     unittest.main()

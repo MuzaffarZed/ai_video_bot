@@ -116,8 +116,25 @@ class TTSEngine:
             pitch_val = "-2Hz"
 
         temp_raw = output_path + ".raw.mp3"
-        comm = edge_tts.Communicate(clean_text, chosen_voice_id, rate=rate_val, pitch=pitch_val)
-        await comm.save(temp_raw)
+        saved = False
+        for attempt in range(3):
+            try:
+                comm = edge_tts.Communicate(clean_text, chosen_voice_id, rate=rate_val, pitch=pitch_val)
+                await comm.save(temp_raw)
+                if os.path.exists(temp_raw) and os.path.getsize(temp_raw) > 500:
+                    saved = True
+                    break
+            except Exception as tts_err:
+                print(f"[TTS Attempt #{attempt+1} Notice] {tts_err}")
+                await asyncio.sleep(0.8)
+
+        if not saved:
+            fb_voice = "uz-UZ-MadinaNeural" if "Sardor" in chosen_voice_id else "uz-UZ-SardorNeural"
+            try:
+                comm = edge_tts.Communicate(clean_text, fb_voice, rate=rate_val, pitch=pitch_val)
+                await comm.save(temp_raw)
+            except Exception as fb_err:
+                print(f"[TTS Fallback Notice] {fb_err}")
 
         # Studiya Broadcast DSP zanjiri (Tanlangan DSP profili bo'yicha)
         dsp_filter = self.dsp_filter
