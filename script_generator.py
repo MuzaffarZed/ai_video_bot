@@ -57,6 +57,55 @@ class ScriptGenerator:
             return "en"
         return "uz"
 
+    @staticmethod
+    def expand_user_prompt(topic: str, lang: str = "uz") -> str:
+        """
+        Agar foydalanuvchi juda qisqa (1-2 so'z) kiritgan bo'lsa, uni algoritmlar uchun jozibali viral mavzuga aylantiradi.
+        """
+        raw = topic.strip()
+        words = raw.split()
+        if len(words) > 3 or len(raw) > 18:
+            return raw
+
+        expansions = {
+            "mars": {
+                "uz": "Mars sayyorasida insoniyatdan yashirilgan 3 ta sirli haqiqat",
+                "ru": "3 шокирующие тайны планеты Марс, о которых молчат ученые",
+                "en": "3 Mind-Blowing Secrets Hidden on Planet Mars"
+            },
+            "pul": {
+                "uz": "Dunyodagi eng boy 1% insonlarning sirli pul qonuniyati",
+                "ru": "Главный закон денег, о котором знают только богатые",
+                "en": "The Secret Rule of Money That the Top 1% Never Tell You"
+            },
+            "koinot": {
+                "uz": "Koinotning inson aqlini shoshirib qo'yuvchi eng sirli hodisalari",
+                "ru": "Самые загадочные и пугающие явления в глубинах космоса",
+                "en": "The Most Mysterious and Terrifying Phenomena in Deep Space"
+            },
+            "vaqt": {
+                "uz": "Inson hayotidagi eng qimmatli narsa bu vaqt siri",
+                "ru": "Почему время — самый ценный ресурс в жизни каждого человека",
+                "en": "Why Time is the Most Valuable Currency in Human Life"
+            },
+            "ai": {
+                "uz": "Sun'iy intellekt kelajakda qaysi kasblarni butunlay yo'q qiladi?",
+                "ru": "Как искусственный интеллект изменит мир уже к 2027 году",
+                "en": "How Artificial Intelligence Will Transform Human Life Forever"
+            }
+        }
+
+        key = "".join(c for c in raw.lower() if c.isalnum())
+        if key in expansions and lang in expansions[key]:
+            return expansions[key][lang]
+
+        if lang == "ru":
+            return f"{raw} — шокирующие факты, которые изменят ваше мышление"
+        elif lang == "en":
+            return f"The Untold Truth About {raw} That Will Blow Your Mind"
+        else:
+            return f"{raw} haqida 99% insonlar bilmaydigan eng qiziqarli haqiqatlar"
+
     def generate(
         self,
         topic: str,
@@ -66,6 +115,7 @@ class ScriptGenerator:
     ) -> List[Dict]:
         detected_lang = self.detect_language(topic)
         final_lang = lang if lang in ["uz", "ru", "en"] else detected_lang
+        final_topic = self.expand_user_prompt(topic, final_lang)
 
         dur_info = DURATIONS.get(duration_key, DURATIONS[DEFAULT_DURATION])
         scene_count = dur_info.get("scene_count", 3)
@@ -73,18 +123,18 @@ class ScriptGenerator:
         # 1-Bosqich: Gemini 2.0 Flash (agar API kalit mavjud bo'lsa)
         if self.has_gemini:
             try:
-                return self._generate_with_gemini(topic, final_lang, style, scene_count)
+                return self._generate_with_gemini(final_topic, final_lang, style, scene_count)
             except Exception as e:
                 print(f"[Gemini Error] {e}. Pollinations AI ga o'tilmoqda.")
 
         # 2-Bosqich: Pollinations AI Text (bepul, onlayn sun'iy intellekt)
         try:
-            return self._generate_with_pollinations(topic, final_lang, style, scene_count)
+            return self._generate_with_pollinations(final_topic, final_lang, style, scene_count)
         except Exception as e:
             print(f"[Pollinations Text Error] {e}. Procedural generatorga o'tilmoqda.")
 
         # 3-Bosqich: Oflayn protsedural generator (100% ishonchli zaxira)
-        return self._generate_procedural(topic, final_lang, style, scene_count)
+        return self._generate_procedural(final_topic, final_lang, style, scene_count)
 
     def _generate_with_pollinations(self, topic: str, lang: str, style: str, scene_count: int) -> List[Dict]:
         """Pollinations bepul ochiq AI matn modeli orqali ssenariy yaratish."""

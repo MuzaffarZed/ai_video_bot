@@ -164,6 +164,21 @@ class TestSingularity10(unittest.TestCase):
         ve = VideoEngine()
         self.assertTrue(hasattr(ve, "render_voice_waveform_video"))
 
+    def test_expand_user_prompt(self):
+        exp_uz = ScriptGenerator.expand_user_prompt("Mars", "uz")
+        self.assertIn("Mars", exp_uz)
+        self.assertTrue(len(exp_uz) > 15)
+
+        exp_pul = ScriptGenerator.expand_user_prompt("pul", "uz")
+        self.assertIn("pul", exp_pul.lower())
+
+    def test_subtitle_power_words(self):
+        self.assertTrue(SubtitleEngine._is_power_word("pul"))
+        self.assertTrue(SubtitleEngine._is_power_word("99%"))
+        self.assertTrue(SubtitleEngine._is_power_word("million"))
+        self.assertTrue(SubtitleEngine._is_power_word("koinot!"))
+        self.assertFalse(SubtitleEngine._is_power_word("va"))
+
     def test_pipeline_attributes(self):
         pipeline = VideoPipeline()
         self.assertIsNotNone(pipeline.script_gen)
@@ -171,6 +186,7 @@ class TestSingularity10(unittest.TestCase):
         self.assertIsNotNone(pipeline.subtitle_eng)
         self.assertIsNotNone(pipeline.video_eng)
         self.assertIsNotNone(pipeline.visual_eng)
+        self.assertTrue(hasattr(pipeline, "reroll_visuals_for_video"))
 
 if __name__ == "__main__":
     unittest.main()

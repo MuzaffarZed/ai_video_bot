@@ -7,6 +7,7 @@ import os
 import sys
 import time
 import uuid
+import random
 import asyncio
 from pathlib import Path
 
@@ -291,6 +292,88 @@ class VideoPipeline:
             "format_key": new_format_key,
             "duration": total_duration,
             "task_id": reformat_task_id
+        }
+
+    async def reroll_visuals_for_video(
+        self,
+        task_id: str,
+        scenes: List[Dict],
+        master_audio_path: str,
+        format_key: str = DEFAULT_FORMAT,
+        theme_key: str = DEFAULT_SUBTITLE_THEME,
+        filter_key: str = DEFAULT_VISUAL_FILTER,
+        motion_key: str = DEFAULT_CAMERA_MOTION,
+        size_key: str = DEFAULT_SUBTITLE_SIZE,
+        art_style: str = DEFAULT_ART_STYLE,
+        topic: str = "Video"
+    ) -> Dict:
+        """
+        Mavjud ssenariy va ovozni saqlab qolgan holda butunlay yangi AI kadrlarni chizadi va 4 soniyada montaj qiladi.
+        """
+        clean_task_id = f"{task_id}_reroll_{int(time.time())}"
+        visual_eng = VisualEngine(format_key=format_key)
+
+        async def fetch_fresh_visual(sc):
+            img_path = str(TEMP_DIR / f"{clean_task_id}_img_{sc['scene_num']}.jpg")
+            prompt = f"{sc.get('visual_prompt', topic)}, variation {random.randint(100, 9999)}"
+            await asyncio.to_thread(visual_eng.get_scene_visual, prompt, img_path, None, sc["scene_num"], art_style)
+            new_sc = dict(sc)
+            new_sc["image_path"] = img_path
+            return new_sc
+
+        updated_scenes = await asyncio.gather(*[fetch_fresh_visual(sc) for sc in scenes])
+
+        poster_path = str(OUTPUT_DIR / f"{clean_task_id}_poster.jpg")
+        if updated_scenes:
+            await asyncio.to_thread(visual_eng.generate_cover_poster, updated_scenes[0]["image_path"], topic, poster_path)
+
+        ass_path = str(TEMP_DIR / f"{clean_task_id}_subtitles.ass")
+        await asyncio.to_thread(
+            self.subtitle_eng.generate_ass,
+            updated_scenes,
+            ass_path,
+            theme_key=theme_key,
+            format_key=format_key,
+            size_key=size_key
+        )
+
+        async def render_single_clip(sc):
+            clip_path = str(TEMP_DIR / f"{clean_task_id}_clip_{sc['scene_num']}.mp4")
+            await asyncio.to_thread(
+                self.video_eng.render_scene_clip,
+                sc["image_path"],
+                sc["duration"],
+                clip_path,
+                sc["scene_num"],
+                format_key,
+                filter_key,
+                motion_key
+            )
+            return clip_path
+
+        scene_clips = await asyncio.gather(*[render_single_clip(sc) for sc in updated_scenes])
+
+        total_duration = updated_scenes[-1]["end_time"] if updated_scenes else 0.0
+        output_final = str(OUTPUT_DIR / f"{clean_task_id}_final.mp4")
+        await asyncio.to_thread(
+            self.video_eng.assemble_final_video,
+            scene_clips,
+            master_audio_path,
+            ass_path,
+            output_final,
+            total_duration,
+            theme_key=theme_key,
+            format_key=format_key
+        )
+
+        return {
+            "status": "success",
+            "video_path": output_final,
+            "poster_path": poster_path if os.path.exists(poster_path) else None,
+            "scenes": updated_scenes,
+            "format_key": format_key,
+            "duration": total_duration,
+            "task_id": clean_task_id
         }
 
     @staticmethod

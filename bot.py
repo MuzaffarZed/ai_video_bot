@@ -295,6 +295,10 @@ def get_post_video_keyboard(task_id: str, current_fmt: str = "9:16", cur_voice: 
     else:
         builder.row(InlineKeyboardButton(text="📱 Reels (9:16) ga o'girish", callback_data=f"re_render:{task_id}:9:16"))
 
+    builder.row(
+        InlineKeyboardButton(text="🎨 Yangi AI Kadrlarga almashtirish", callback_data=f"reroll_vis:{task_id}")
+    )
+
     if "uz" in cur_voice:
         builder.row(InlineKeyboardButton(text="🇷🇺 Rus tilida chiqarish", callback_data=f"lang_switch:{task_id}:ru_dmitry"))
         builder.row(InlineKeyboardButton(text="🇺🇸 Ingliz tilida chiqarish", callback_data=f"lang_switch:{task_id}:en_christopher"))
@@ -333,15 +337,17 @@ async def cmd_start(message: types.Message):
 
     welcome_text = (
         f"👋 Assalomu alaykum, <b>{html.escape(message.from_user.full_name)}</b>!\n\n"
-        f"🎬 <b>{BRAND_NAME} (Singularity 12.0 Quantum Transcendence)</b>ga xush kelibsiz!\n\n"
+        f"🎬 <b>{BRAND_NAME} (Singularity 14.0 Infinite Apex)</b>ga xush kelibsiz!\n\n"
         f"Men to'liq avtonom va jahon darajasidagi video kontent yarataman:\n"
         f"• 🎙 <b>Ovoz:</b> {v_name} <i>(+ Dinamik Pacing & Hamroh Podkast)</i>\n"
         f"• 🎛 <b>Uslub:</b> {s_name}\n"
         f"• 📱 <b>Format:</b> {f_name}\n"
         f"• 🎬 <b>Rang (LUT):</b> {lut_name}\n"
         f"• 🎥 <b>Kamera Harakati:</b> {cam_name}\n"
-        f"• 🎨 <b>AI Vizual:</b> <i>Parallel Flux 8K + 4K Unsplash + HD Poster</i>\n"
-        f"• 🎚 <b>Studio DSP:</b> <i>EBU R128 + Sidechain Audio Ducking + Multi-SFX</i>\n"
+        f"• 💬 <b>Subtitr:</b> <i>Alex Hormozi 2.0 + Power-Word Pop Highlight</i>\n"
+        f"• 🎨 <b>AI Vizual:</b> <i>Parallel Flux 8K + HD Poster + 1-Click Re-Roll</i>\n"
+        f"• 🎚 <b>Studio DSP:</b> <i>EBU R128 + Sidechain Audio Ducking + Riser SFX</i>\n"
+        f"• ⚡️ <b>Tezkor Reformat:</b> <i>3 soniyada 16:9 / 9:16 transkodlash</i>\n"
         f"• 📄 <b>Eksport:</b> <i>Full HD Video, HD Poster, MP3 va .SRT Subtitr</i>\n\n"
         f"🚀 <b>Qanday ishlatiladi:</b>\n"
         f"1. ✍️ <b>Matn yozing:</b> Mavzuni yozing va video oling;\n"
@@ -752,14 +758,15 @@ async def cb_topics_menu(callback: types.CallbackQuery):
 @dp.callback_query(F.data == "menu_about")
 async def cb_about_menu(callback: types.CallbackQuery):
     about_text = (
-        f"💎 <b>{BRAND_NAME} (Singularity 12.0 Quantum Transcendence)</b>\n\n"
+        f"💎 <b>{BRAND_NAME} (Singularity 14.0 Infinite Apex)</b>\n\n"
         "• <b>Real-Time Parallel AI:</b> Pollinations AI 8K + 4K Unsplash + HD Poster\n"
         "• <b>Kinematografik LUT:</b> Teal & Orange, Cyberpunk, Golden, Clean HDR\n"
         "• <b>Kamera Harakati:</b> Dynamic Drift, Shock Punch, Crisp Static\n"
         "• <b>Formatlar:</b> 9:16 Vertikal, 16:9 Gorizontal, 1:1 Kvadrat\n"
         "• <b>Ovoz:</b> Microsoft Neural + Dinamik Pacing + Podkast Ovoz Almashish\n"
-        "• <b>Subtitr:</b> Alex Hormozi Karaoke 2.0 (Glassmorphic Shadow, 120% pop)\n"
-        "• <b>Musiqa & SFX:</b> 8 ta janr + Sidechain Ducking + Hollywood Hook Boom\n"
+        "• <b>Subtitr:</b> Alex Hormozi 2.0 (Glassmorphic Shadow + Power-Word Pop)\n"
+        "• <b>Musiqa & SFX:</b> 8 ta janr + Sidechain Ducking + Tension Riser Swell\n"
+        "• <b>1-Click Re-Roll:</b> 4 soniyada yangi AI kadrlar va vizual talqin\n"
         "• <b>SMM Paket:</b> Avtomatik tavsif, 15 ta hashtag va optimal vaqt\n\n"
         f"<i>{WATERMARK_TEXT}</i>"
     )
@@ -919,6 +926,64 @@ async def cb_re_render(callback: types.CallbackQuery):
     # Fallback to full pipeline
     await callback.answer(f"Format: {new_fmt} ga o'tkazilmoqda...")
     await handle_video_creation(callback.message, topic, callback.from_user.id)
+
+# --- 1-Click Yangi AI Kadrlarga Almashtirish (Visual Re-Roll) ---
+@dp.callback_query(F.data.startswith("reroll_vis:"))
+async def cb_reroll_visuals(callback: types.CallbackQuery):
+    task_id = callback.data.split(":")[1]
+    job_info = job_cache.get(task_id)
+    if not job_info or not job_info.get("scenes") or not job_info.get("master_audio_path"):
+        await callback.answer("⚠️ Ma'lumotlar eskirgan, yangi mavzu yozing.", show_alert=True)
+        return
+
+    await callback.answer("🎨 Yangi AI kadrlar chizilmoqda...")
+    status_msg = await callback.message.answer("🎨 <b>Yangi AI kadrlar chizilib, qayta montaj qilinmoqda...</b>", parse_mode="HTML")
+
+    topic = job_info.get("topic", "Video")
+    scenes = job_info["scenes"]
+    master_audio = job_info["master_audio_path"]
+    cur_fmt = job_info.get("format_key", DEFAULT_FORMAT)
+    cur_theme = get_user_pref(callback.from_user.id, "theme", DEFAULT_SUBTITLE_THEME)
+    cur_filter = get_user_pref(callback.from_user.id, "filter", DEFAULT_VISUAL_FILTER)
+    cur_motion = get_user_pref(callback.from_user.id, "camera_motion", DEFAULT_CAMERA_MOTION)
+    cur_sub_size = get_user_pref(callback.from_user.id, "sub_size", DEFAULT_SUBTITLE_SIZE)
+    cur_art_style = get_user_pref(callback.from_user.id, "art_style", DEFAULT_ART_STYLE)
+
+    res = await pipeline.reroll_visuals_for_video(
+        task_id=task_id,
+        scenes=scenes,
+        master_audio_path=master_audio,
+        format_key=cur_fmt,
+        theme_key=cur_theme,
+        filter_key=cur_filter,
+        motion_key=cur_motion,
+        size_key=cur_sub_size,
+        art_style=cur_art_style,
+        topic=topic
+    )
+
+    try: await status_msg.delete()
+    except Exception: pass
+
+    new_video_file = FSInputFile(res["video_path"])
+    new_task_id = res["task_id"]
+    job_cache[new_task_id] = dict(job_info)
+    job_cache[new_task_id]["scenes"] = res["scenes"]
+    if res.get("poster_path"):
+        job_cache[new_task_id]["poster_path"] = res["poster_path"]
+
+    fmt_info = FORMATS.get(cur_fmt, FORMATS[DEFAULT_FORMAT])
+    await callback.message.answer_video(
+        video=new_video_file,
+        caption=(
+            f"🎬 <b>{html.escape(topic)}</b>\n\n"
+            f"🎨 <b>Yangi AI Kadrlar:</b> Muqobil vizual uslub bilan yangilandi\n"
+            f"📱 <b>Format:</b> {fmt_info['name']}\n\n"
+            f"<i>{WATERMARK_TEXT}</i>"
+        ),
+        reply_markup=get_post_video_keyboard(new_task_id, cur_fmt, job_info.get("voice_key", DEFAULT_VOICE)),
+        parse_mode="HTML"
+    )
 
 # --- Xalqaro tilga 1-bosishda o'tkazish (Auto-Translation bilan) ---
 @dp.callback_query(F.data.startswith("lang_switch:"))

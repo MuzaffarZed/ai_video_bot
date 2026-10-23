@@ -17,11 +17,25 @@ from config import (
 )
 
 class SubtitleEngine:
+    POWER_WORDS = {
+        "pul", "boylik", "sir", "siri", "sirlari", "muhim", "haqiqat", "koinot", "million", "milliard",
+        "shok", "diqqat", "vaqt", "omad", "muvaffaqiyat", "qoida", "qonun", "tarix", "yashirin",
+        "деньги", "секрет", "секреты", "шок", "внимание", "успех", "правило", "факт", "факты",
+        "money", "secret", "secrets", "truth", "shock", "warning", "power", "million", "billion", "rule"
+    }
+
     def __init__(self, font_name: str = None):
         if font_name is None:
             self.font_name = "DejaVu Sans" if sys.platform != "win32" else "Arial"
         else:
             self.font_name = font_name
+
+    @classmethod
+    def _is_power_word(cls, word: str) -> bool:
+        clean = "".join(c for c in word.lower() if c.isalnum())
+        if any(c.isdigit() for c in clean):
+            return True
+        return clean in cls.POWER_WORDS
 
     @staticmethod
     def _format_time(seconds: float) -> str:
@@ -104,11 +118,19 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
                     for idx, part in enumerate(chunk):
                         word_text = part["word"]
+                        is_power = self._is_power_word(word_text)
                         if idx == active_idx:
-                            # 120% pop va neon yonuvchi rang
-                            line_parts.append(f"{{\\c{cur_active_bgr}&\\fscx120\\fscy120}}{word_text}{{\\rKaraoke}}")
+                            if is_power:
+                                # Power word: 135% ultra-pop + yorqin sariq-oltin urg'u
+                                line_parts.append(f"{{\\c&H0000FFFF&\\fscx135\\fscy135\\b1}}{word_text}{{\\rKaraoke}}")
+                            else:
+                                # 120% pop va neon yonuvchi rang
+                                line_parts.append(f"{{\\c{cur_active_bgr}&\\fscx120\\fscy120}}{word_text}{{\\rKaraoke}}")
                         else:
-                            line_parts.append(f"{{\\c{base_bgr}&}}{word_text}")
+                            if is_power:
+                                line_parts.append(f"{{\\c&H0080FFFF&\\b1}}{word_text}{{\\rKaraoke}}")
+                            else:
+                                line_parts.append(f"{{\\c{base_bgr}&}}{word_text}")
                     
                     dialogue_text = " ".join(line_parts)
                     ev_start = self._format_time(w_start)
