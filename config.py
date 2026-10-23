@@ -462,3 +462,27 @@ OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
 OLLAMA_TIMEOUT = int(os.getenv("OLLAMA_TIMEOUT", "45"))
 
+# AI Kreativlik / Harorat (Temperature) profillari
+AI_CREATIVITY_MODES = {
+    "viral_reels": {
+        "name": "🔥 Jo'shqin & Viral Reels (Temp 0.75 - Qiziqarli, dramatik)",
+        "temperature": 0.75,
+        "top_p": 0.90,
+        "desc": "Ijtimoiy tarmoqlar uchun e'tiborni tortuvchi shok faktlar va jo'shqin drayv"
+    },
+    "deep_story": {
+        "name": "📜 Chuqur Falsafiy Hikoya (Temp 0.65 - Salobatli, epik)",
+        "temperature": 0.65,
+        "top_p": 0.85,
+        "desc": "Tarixiy, motivatsion va ruhiy mavzular uchun mantiqiy boy hikoya"
+    },
+    "facts_precise": {
+        "name": "🎯 Aniq Ilmiy Faktlar (Temp 0.35 - Isbotlangan, faktik)",
+        "temperature": 0.35,
+        "top_p": 0.70,
+        "desc": "Fan, texnologiya va raqamlar bilan aniq ishlash uchun xatosiz mantiq"
+    }
+}
+DEFAULT_AI_CREATIVITY = "viral_reels"
+
+

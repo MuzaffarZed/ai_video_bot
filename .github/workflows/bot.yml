@@ -46,7 +46,8 @@ jobs:
           echo "=== 1. Ollama o'rnatilmoqda ==="
           curl -fsSL https://ollama.com/install.sh | sh
           
-          echo "=== 2. Ollama xizmati fonda ishga tushirilmoqda ==="
+          echo "=== 2. Ollama xizmati fonda ishga tushirilmoqda (Keep-Alive 24h) ==="
+          export OLLAMA_KEEP_ALIVE="24h"
           ollama serve > /tmp/ollama.log 2>&1 &
           
           echo "=== 3. Ollama xizmati tekshirilmoqda ==="
@@ -58,8 +59,9 @@ jobs:
             sleep 1
           done
           
-          echo "=== 4. Flagman Qwen 2.5 7B modeli yuklanmoqda ==="
+          echo "=== 4. Flagman Qwen 2.5 7B modeli yuklanmoqda va isitilmoqda (Warmup) ==="
           ollama pull qwen2.5:7b || echo "Ollama pull fallback tayyor"
+          ollama run qwen2.5:7b "Salom" > /dev/null 2>&1 || true
           ollama list
 
       - name: 🤖 Botni Bulutda Ishga Tushirish
@@ -68,6 +70,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OLLAMA_HOST: "http://localhost:11434"
           OLLAMA_MODEL: "qwen2.5:7b"
+          OLLAMA_KEEP_ALIVE: "24h"
           PYTHONUNBUFFERED: "1"
         run: |
           python bot.py

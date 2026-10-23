@@ -20,7 +20,7 @@ from subtitle_engine import SubtitleEngine
 from audio_mixer import AudioMixer
 from video_engine import VideoEngine
 from pipeline import VideoPipeline
-from bot import extract_title_from_url, get_main_keyboard
+from bot import extract_title_from_url, get_main_keyboard, get_ai_engine_keyboard
 
 class TestSingularity10(unittest.TestCase):
     def test_config_integrity(self):
@@ -535,14 +535,31 @@ class TestSingularity10(unittest.TestCase):
         self.assertIn("menu_create_text", callbacks)
 
     def test_ollama_local_llm_config_and_resilience(self):
-        from config import OLLAMA_HOST, OLLAMA_MODEL
+        from config import OLLAMA_HOST, OLLAMA_MODEL, AI_CREATIVITY_MODES
         self.assertEqual(OLLAMA_MODEL, "qwen2.5:7b")
         self.assertIn("11434", OLLAMA_HOST)
+        self.assertIn("viral_reels", AI_CREATIVITY_MODES)
+        self.assertIn("deep_story", AI_CREATIVITY_MODES)
+        self.assertIn("facts_precise", AI_CREATIVITY_MODES)
+
         sg = ScriptGenerator()
         self.assertTrue(hasattr(sg, "_generate_with_local_llm"))
         self.assertTrue(hasattr(sg, "_is_ollama_available"))
+        self.assertTrue(hasattr(sg, "warmup_local_llm"))
         # Unreachable host da tezkor tekshiruv False qaytarishi kerak
         self.assertFalse(sg._is_ollama_available())
+        self.assertFalse(sg.warmup_local_llm())
+
+    def test_ai_engine_keyboard_and_creativity_generation(self):
+        kb = get_ai_engine_keyboard("viral_reels")
+        buttons = [btn.text for row in kb.inline_keyboard for btn in row]
+        self.assertTrue(any("Viral Reels" in b for b in buttons))
+        self.assertTrue(any("Falsafiy Hikoya" in b for b in buttons))
+
+        # Generator yangi ai_creativity parametri bilan xatosiz ishlashi kerak
+        sg = ScriptGenerator()
+        scenes = sg.generate("Koinot", "uz", "cinematic", "short_15", ai_creativity="viral_reels")
+        self.assertTrue(len(scenes) >= 2)
 
 if __name__ == "__main__":
     unittest.main()

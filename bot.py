@@ -68,7 +68,9 @@ from config import (
     CAMERA_MOTIONS,
     DEFAULT_CAMERA_MOTION,
     WATERMARK_TEXT,
-    BRAND_NAME
+    BRAND_NAME,
+    AI_CREATIVITY_MODES,
+    DEFAULT_AI_CREATIVITY
 )
 from pipeline import VideoPipeline
 from tts_engine import TTSEngine
@@ -172,6 +174,7 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="✍️ Matn / Ssenariy Yuborish (Video Yaratish)", callback_data="menu_create_text")
     )
     builder.row(
+        InlineKeyboardButton(text="🧠 AI Dvigateli (Qwen 2.5 7B)", callback_data="menu_ai_engine"),
         InlineKeyboardButton(text="🎛 Studiya Shablonlari (Presets)", callback_data="menu_presets")
     )
     builder.row(
@@ -206,6 +209,14 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="👤 Profilim", callback_data="menu_profile"),
         InlineKeyboardButton(text="📊 Statistika", callback_data="menu_stats")
     )
+    return builder.as_markup()
+
+def get_ai_engine_keyboard(current: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for key, info in AI_CREATIVITY_MODES.items():
+        check = "✅ " if key == current else ""
+        builder.row(InlineKeyboardButton(text=f"{check}{info['name']}", callback_data=f"set_ai_creativity:{key}"))
+    builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
     return builder.as_markup()
 
 def get_dsp_keyboard(current: str) -> InlineKeyboardMarkup:
@@ -414,8 +425,9 @@ async def cmd_start(message: types.Message):
 
     welcome_text = (
         f"👋 Assalomu alaykum, <b>{html.escape(message.from_user.full_name)}</b>!\n\n"
-        f"🎬 <b>{BRAND_NAME} (Singularity 17.0 Transcendent Omnipotence)</b>ga xush kelibsiz!\n\n"
+        f"🎬 <b>{BRAND_NAME} (Singularity 18.9 Flagman Qwen AI Engine)</b>ga xush kelibsiz!\n\n"
         f"Men to'liq avtonom va jahon darajasidagi video kontent yarataman:\n"
+        f"• 🧠 <b>AI Dvigateli:</b> <i>Flagman Qwen 2.5 7B (100% Oflayn, Limitsiz)</i>\n"
         f"• 🎙 <b>Ovoz:</b> {v_name} <i>(+ Dinamik Pacing & Hamroh Podkast)</i>\n"
         f"• 🎚 <b>Studio DSP:</b> {dsp_name} <i>(+ Treyler, Radio, Vintage FX)</i>\n"
         f"• 🛸 <b>Kamera:</b> {cam_name} <i>(+ Ken Burns Slow Zoom & Pan)</i>\n"
@@ -704,6 +716,35 @@ async def cb_main(callback: types.CallbackQuery):
         reply_markup=get_main_keyboard(),
         parse_mode="HTML"
     )
+
+# --- AI Dvigateli (Qwen 2.5 7B) menyusi ---
+@dp.callback_query(F.data == "menu_ai_engine")
+async def cb_ai_engine(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    cur_creativity = get_user_pref(user_id, "ai_creativity", DEFAULT_AI_CREATIVITY)
+    ai_text = (
+        "🧠 <b>Flagman Qwen 2.5 (7B) Oflayn Sun'iy Intellekt Dvigateli</b>\n\n"
+        "⚡️ <b>Holat:</b> 🟢 <i>Serverda 100% Oflayn va Cheksiz faol</i>\n"
+        "🛡 <b>Xavfsizlik:</b> <i>0 API xarajat, limitsiz generasiya, 0% bloklanish</i>\n"
+        "👑 <b>Model parametrlari:</b> <i>7 Milliard neyronli Flagman arxitektura</i>\n\n"
+        "🎚 <b>AI Ijodkorlik va Ssenariy Harorati (Temperature):</b>\n"
+        "O'zingizga ma'qul ssenariy uslubini tanlang:\n\n"
+        "• <b>🔥 Jo'shqin & Viral Reels:</b> TikTok/Reels uchun kutilmagan shok faktlar va qiziqish.\n"
+        "• <b>📜 Chuqur Falsafiy Hikoya:</b> Ma'noli, hikmatli va salobatli hikoyalar.\n"
+        "• <b>🎯 Aniq Ilmiy Faktlar:</b> Isbotlangan raqamlar, fan va mantiqiy faktlar.\n\n"
+        f"<i>{WATERMARK_TEXT}</i>"
+    )
+    await callback.message.edit_text(ai_text, reply_markup=get_ai_engine_keyboard(cur_creativity), parse_mode="HTML")
+
+@dp.callback_query(F.data.startswith("set_ai_creativity:"))
+async def cb_set_ai_creativity(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    key = callback.data.split(":")[1]
+    if key in AI_CREATIVITY_MODES:
+        set_user_pref(user_id, "ai_creativity", key)
+        mode_name = AI_CREATIVITY_MODES[key]["name"]
+        await callback.answer(f"✅ AI Ssenariy uslubi: {mode_name.split('(')[0].strip()}", show_alert=False)
+        await cb_ai_engine(callback)
 
 # --- Format menyusi ---
 @dp.callback_query(F.data == "menu_formats")
@@ -1640,8 +1681,10 @@ async def handle_video_creation(
     cur_music_vol = get_user_pref(user_id, "music_vol", DEFAULT_MUSIC_VOLUME)
     cur_sub_size = get_user_pref(user_id, "sub_size", DEFAULT_SUBTITLE_SIZE)
     cur_dsp = get_user_pref(user_id, "audio_effect", DEFAULT_AUDIO_EFFECT)
+    cur_ai_creativity = get_user_pref(user_id, "ai_creativity", DEFAULT_AI_CREATIVITY)
 
     dsp_info = AUDIO_EFFECTS.get(cur_dsp, AUDIO_EFFECTS[DEFAULT_AUDIO_EFFECT])
+    ai_info = AI_CREATIVITY_MODES.get(cur_ai_creativity, AI_CREATIVITY_MODES[DEFAULT_AI_CREATIVITY])
     bgm_vol = MUSIC_VOLUMES.get(cur_music_vol, {}).get("vol", 0.15)
     fmt_info = FORMATS.get(cur_format, FORMATS[DEFAULT_FORMAT])
     motion_info = CAMERA_MOTIONS.get(cur_motion, CAMERA_MOTIONS[DEFAULT_CAMERA_MOTION])
@@ -1649,6 +1692,7 @@ async def handle_video_creation(
     status_msg = await message.answer(
         f"🎬 <b>Yangi video yaratish boshlandi!</b>\n\n"
         f"📌 <b>Mavzu:</b> <i>{html.escape(topic)}</i>\n"
+        f"🧠 <b>AI Ssenariy:</b> <i>Flagman Qwen 2.5 7B ({ai_info['name'].split('(')[0].strip()})</i>\n"
         f"🎙 <b>Ovoz:</b> <i>{VOICES[cur_voice]['name']}</i>\n"
         f"🎚 <b>Akustika:</b> <i>{dsp_info['name']}</i>\n"
         f"📱 <b>Format:</b> <i>{fmt_info['name']}</i>\n"
@@ -1700,6 +1744,7 @@ async def handle_video_creation(
                     size_key=cur_sub_size,
                     art_style=cur_art_style,
                     bgm_volume=bgm_vol,
+                    ai_creativity=cur_ai_creativity,
                     custom_scenes=custom_scenes,
                     custom_image_path=custom_image_path,
                     progress_callback=progress_notifier
@@ -1749,6 +1794,7 @@ async def handle_video_creation(
         topic_disp = html.escape(topic[:180] + ("..." if len(topic) > 180 else ""))
         caption_text = (
             f"🎬 <b>{topic_disp}</b>\n\n"
+            f"🧠 <b>AI:</b> Qwen 2.5 7B ({ai_info['name'].split('(')[0].strip()})\n"
             f"🎙 <b>Ovoz:</b> {VOICES[cur_voice]['name']} | {VOICE_MODES[cur_mode]['name']}\n"
             f"🎚 <b>Akustika:</b> {dsp_info['name']}\n"
             f"🎬 <b>LUT:</b> {VISUAL_FILTERS[cur_filter]['name']}\n"

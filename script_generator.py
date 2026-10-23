@@ -12,7 +12,8 @@ import urllib.parse
 from typing import List, Dict, Optional
 from config import (
     GEMINI_API_KEY, VIDEO_STYLES, DEFAULT_VIDEO_STYLE, DURATIONS, DEFAULT_DURATION,
-    VOICE_MODES, DEFAULT_VOICE_MODE, OLLAMA_HOST, OLLAMA_MODEL, OLLAMA_TIMEOUT
+    VOICE_MODES, DEFAULT_VOICE_MODE, OLLAMA_HOST, OLLAMA_MODEL, OLLAMA_TIMEOUT,
+    AI_CREATIVITY_MODES, DEFAULT_AI_CREATIVITY
 )
 
 def transliterate_uzbek(text: str) -> str:
@@ -284,7 +285,8 @@ class ScriptGenerator:
         lang: str = "uz",
         style: str = DEFAULT_VIDEO_STYLE,
         duration_key: str = DEFAULT_DURATION,
-        voice_mode: str = DEFAULT_VOICE_MODE
+        voice_mode: str = DEFAULT_VOICE_MODE,
+        ai_creativity: str = DEFAULT_AI_CREATIVITY
     ) -> List[Dict]:
         detected_lang = self.detect_language(topic)
         final_lang = lang if lang in ["uz", "ru", "en"] else detected_lang
@@ -296,9 +298,11 @@ class ScriptGenerator:
         # 1-Bosqich: Flagman Mahalliy Server AI (Ollama Qwen 2.5 7B - 100% oflayn, limitsiz)
         if self._is_ollama_available():
             try:
-                local_scenes = self._generate_with_local_llm(final_topic, final_lang, style, scene_count, voice_mode)
+                local_scenes = self._generate_with_local_llm(
+                    final_topic, final_lang, style, scene_count, voice_mode, ai_creativity, duration_key
+                )
                 if local_scenes and len(local_scenes) >= 2:
-                    print(f"[Local AI Success] Flagman Qwen 2.5 7B orqali {len(local_scenes)} ta kadr yaratildi.")
+                    print(f"[Local AI Success] Flagman Qwen 2.5 7B ({ai_creativity}) orqali {len(local_scenes)} ta kadr yaratildi.")
                     return local_scenes
             except Exception as e:
                 print(f"[Local AI Notice] {e}. Zaxira kanallarga o'tilmoqda.")
@@ -328,13 +332,36 @@ class ScriptGenerator:
         except Exception:
             return False
 
+    def warmup_local_llm(self) -> bool:
+        """Server ishga tushganda modelni RAM ga oldindan yuklab qo'yish (Cold-boot ni yo'qotish)."""
+        if not self._is_ollama_available():
+            return False
+        try:
+            payload = json.dumps({
+                "model": OLLAMA_MODEL,
+                "prompt": "Salom",
+                "stream": False,
+                "options": {"num_predict": 2}
+            }).encode("utf-8")
+            req = urllib.request.Request(
+                f"{OLLAMA_HOST}/api/generate",
+                data=payload,
+                headers={"Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                return resp.status == 200
+        except Exception:
+            return False
+
     def _generate_with_local_llm(
         self,
         topic: str,
         lang: str,
         style: str,
         scene_count: int,
-        voice_mode: str = DEFAULT_VOICE_MODE
+        voice_mode: str = DEFAULT_VOICE_MODE,
+        ai_creativity: str = DEFAULT_AI_CREATIVITY,
+        duration_key: str = DEFAULT_DURATION
     ) -> List[Dict]:
         """Ollama serverida 100% oflayn ishlaydigan Flagman Qwen 2.5 7B orqali ssenariy yaratish."""
         lang_instruction = {
@@ -345,28 +372,48 @@ class ScriptGenerator:
 
         cadence_guide = CADENCE_DIALECT_PROMPTS.get(voice_mode, "")
 
+        target_words = {
+            "short_15": "10-14 ta so'z",
+            "medium_30": "14-18 ta so'z",
+            "deep_45": "18-22 ta so'z",
+            "full_60": "22-26 ta so'z"
+        }.get(duration_key, "14-18 ta so'z")
+
+        system_instruction = (
+            "Siz MrBeast va Alex Hormozi darajasidagi dunyoning eng mohir viral video rejissyorisiz.\n"
+            "Siz yaratadigan har bir kadr tomoshabinni birinchi soniyadanoq ushlab qolishi, unga yangi bilim berishi va his-tuyg'ularini uyg'otishi shart.\n"
+            "Muhim qoidalar:\n"
+            "1. 'text': Faqat sof gapiriladigan jonli nutq matni. Raqamlarni aniq va jarangdor qilib yozing.\n"
+            "2. 'visual_prompt': Flux/Midjourney uchun 8K kinematik tasvir so'rovi (faqat ingliz tilida). HECH QACHON 'text', 'subtitles', 'words', 'letters' yoki 'watermark' so'zlarini qo'shmang!"
+        )
+
         prompt = (
-            f"Siz professional video produser va ssenaristisiz (MrBeast va Alex Hormozi darajasida).\n"
             f"Mavzu: '{topic}'.\n"
             f"Til: {lang_instruction}.\n"
             f"Uslub: {style}.\n"
             f"{cadence_guide}\n"
-            f"Vazifa: AYNAN {scene_count} ta ketma-ket kadrli ssenariy yozing.\n"
-            f"1-kadr (Hook): Birinchi 2 soniyada tomoshabin e'tiborini mixlab qo'yuvchi kuchli jumlalar.\n"
-            f"O'rta kadrlar: Kutilmagan, qiziqarli faktlar va drayv.\n"
+            f"Kadrlar soni: AYNAN {scene_count} ta ketma-ket kadr.\n"
+            f"Har bir kadr hajmi: taxminan {target_words}.\n"
+            f"1-kadr (Hook): Shok qiluvchi yoki qiziqtiruvchi birinchi 2 soniya.\n"
+            f"O'rta kadrlar: Qiziqarli faktlar va drayv.\n"
             f"Oxirgi kadr (CTA): Fikr qoldirish yoki do'stlarga ulashishga chaqiruv.\n\n"
-            f"Javobni FAQAT quyidagi JSON massivida qaytaring (hech qanday qo'shimcha so'zsiz):\n"
-            f'[{{"scene_num": 1, "text": "1-kadr matni", "visual_prompt": "cinematic dramatic vertical 8k visual prompt in english"}}]'
+            f"Javobni FAQAT quyidagi JSON massivida qaytaring (ortiqcha hech narsa qo'shmang):\n"
+            f'[{{"scene_num": 1, "text": "1-kadr matni", "visual_prompt": "cinematic dramatic vertical 8k concept in english"}}]'
         )
+
+        creativity_info = AI_CREATIVITY_MODES.get(ai_creativity, AI_CREATIVITY_MODES[DEFAULT_AI_CREATIVITY])
+        temp = creativity_info.get("temperature", 0.75)
+        top_p = creativity_info.get("top_p", 0.90)
 
         payload = json.dumps({
             "model": OLLAMA_MODEL,
+            "system": system_instruction,
             "prompt": prompt,
             "format": "json",
             "stream": False,
             "options": {
-                "temperature": 0.7,
-                "top_p": 0.9
+                "temperature": temp,
+                "top_p": top_p
             }
         }).encode("utf-8")
 

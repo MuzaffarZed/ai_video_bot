@@ -35,7 +35,8 @@ from config import (
     DEFAULT_VISUAL_FILTER,
     DEFAULT_ART_STYLE,
     DEFAULT_CAMERA_MOTION,
-    FORMATS
+    FORMATS,
+    DEFAULT_AI_CREATIVITY
 )
 from script_generator import ScriptGenerator
 from tts_engine import TTSEngine
@@ -68,6 +69,7 @@ class VideoPipeline:
         size_key: str = DEFAULT_SUBTITLE_SIZE,
         art_style: str = DEFAULT_ART_STYLE,
         bgm_volume: float = 0.15,
+        ai_creativity: str = DEFAULT_AI_CREATIVITY,
         custom_scenes: Optional[List[Dict]] = None,
         custom_image_path: Optional[str] = None,
         progress_callback: Optional[Callable[[int, int, str], None]] = None
@@ -91,12 +93,12 @@ class VideoPipeline:
                     print(f"[Callback Error] {e}")
 
         # 1-Bosqich: Ssenariy va SEO paket
-        await notify(1, "🧠 1/5: AI ssenariy va viral kadrlar tuzilmoqda...")
+        await notify(1, "🧠 1/5: Flagman Qwen 2.5 7B AI ssenariy va viral kadrlar tuzmoqda...")
         lang = VOICES.get(voice_key, {}).get("lang", "uz")
         if custom_scenes:
             scenes = custom_scenes
         else:
-            scenes = await asyncio.to_thread(self.script_gen.generate, topic, lang, style_key, duration_key, voice_mode)
+            scenes = await asyncio.to_thread(self.script_gen.generate, topic, lang, style_key, duration_key, voice_mode, ai_creativity)
         seo_data = await asyncio.to_thread(self.script_gen.generate_viral_seo_package, topic, lang, scenes)
 
         # 2-Bosqich: Ovozlashtirish & Studiya DSP
