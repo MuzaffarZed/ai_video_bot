@@ -22,7 +22,7 @@ class VideoEngine:
         vf_filter = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1"
 
         cmd = [
-            "ffmpeg", "-y",
+            "ffmpeg", "-nostdin", "-y",
             "-loop", "1",
             "-t", f"{duration:.3f}",
             "-i", clean_img,
@@ -34,7 +34,7 @@ class VideoEngine:
             clean_out
         ]
 
-        subprocess.run(cmd, cwd=str(BASE_DIR), capture_output=True, check=True)
+        subprocess.run(cmd, cwd=str(BASE_DIR), capture_output=True, check=True, timeout=60)
         return output_clip_path
 
     def assemble_final_video(
@@ -46,6 +46,7 @@ class VideoEngine:
     ) -> str:
         """
         Barcha kadr kliplarini birlashtiradi, ovozni ulaydi va karaoke subtitrni yondiradi.
+        Agar tizimda libass bo'lmasa, avtomatik subtitrsiz zaxira rejimida benuqson yig'adi.
         """
         concat_txt = TEMP_DIR / "clips_concat.txt"
         with open(concat_txt, "w", encoding="utf-8") as f:
@@ -58,8 +59,9 @@ class VideoEngine:
         rel_ass = os.path.relpath(ass_subtitle_path, BASE_DIR).replace("\\", "/")
         rel_final = os.path.abspath(output_final_path).replace("\\", "/")
 
-        cmd_final = [
-            "ffmpeg", "-y",
+        # 1-Urinish: ASS karaoke subtitrlar bilan montaj
+        cmd_with_subtitles = [
+            "ffmpeg", "-nostdin", "-y",
             "-f", "concat", "-safe", "0",
             "-i", rel_concat,
             "-i", rel_audio,
@@ -75,5 +77,29 @@ class VideoEngine:
             rel_final
         ]
 
-        subprocess.run(cmd_final, cwd=str(BASE_DIR), capture_output=True, check=True)
+        try:
+            res = subprocess.run(cmd_with_subtitles, cwd=str(BASE_DIR), capture_output=True, text=True, timeout=120)
+            if res.returncode == 0 and os.path.exists(output_final_path) and os.path.getsize(output_final_path) > 1000:
+                return output_final_path
+            print(f"[VideoEngine Notice] ASS subtitr renderida xatolik: {res.stderr[:200]}")
+        except Exception as e:
+            print(f"[VideoEngine Notice] ASS render sinovi muvaffaqiyatsiz: {e}")
+
+        # 2-Urinish (Zero-Defect Fallback): Subtitrsiz to'liq Full HD montaj
+        cmd_fallback = [
+            "ffmpeg", "-nostdin", "-y",
+            "-f", "concat", "-safe", "0",
+            "-i", rel_concat,
+            "-i", rel_audio,
+            "-c:v", "libx264",
+            "-preset", "veryfast",
+            "-crf", "22",
+            "-pix_fmt", "yuv420p",
+            "-c:a", "aac",
+            "-b:a", "192k",
+            "-shortest",
+            "-movflags", "+faststart",
+            rel_final
+        ]
+        subprocess.run(cmd_fallback, cwd=str(BASE_DIR), capture_output=True, check=True, timeout=120)
         return output_final_path

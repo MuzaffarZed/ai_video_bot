@@ -63,7 +63,6 @@ class AudioMixer:
         if not bgm_path or not os.path.exists(bgm_path):
             bgm_path = str(self.default_bgm)
 
-        # 1. Concat ro'yxatini tuzish
         concat_txt = TEMP_DIR / "concat_list.txt"
         with open(concat_txt, "w", encoding="utf-8") as f:
             for v in voice_files:
@@ -72,13 +71,13 @@ class AudioMixer:
 
         merged_voice = str(TEMP_DIR / "merged_voice.wav")
         cmd_merge = [
-            "ffmpeg", "-y",
+            "ffmpeg", "-nostdin", "-y",
             "-f", "concat", "-safe", "0",
             "-i", str(concat_txt),
             "-c:a", "pcm_s16le",
             merged_voice
         ]
-        subprocess.run(cmd_merge, capture_output=True, check=True)
+        subprocess.run(cmd_merge, capture_output=True, check=True, timeout=60)
 
         # Ovoz davomiyligini aniqlash
         dur_cmd = [
@@ -87,10 +86,9 @@ class AudioMixer:
             "-of", "default=noprint_wrappers=1:nokey=1",
             merged_voice
         ]
-        res = subprocess.run(dur_cmd, capture_output=True, text=True, check=True)
+        res = subprocess.run(dur_cmd, capture_output=True, text=True, check=True, timeout=30)
         total_dur = float(res.stdout.strip())
 
-        # 2. BGM bilan mikserlash (resample + audio ducking)
         fade_out_start = max(0.0, total_dur - 1.2)
         filter_complex = (
             f"[0:a]aresample=44100,aformat=channel_layouts=stereo,volume=1.0[voice];"
@@ -99,9 +97,8 @@ class AudioMixer:
             f"[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[outa]"
         )
 
-        # Standart WAV pcm_s16le chiqaramiz, shunda hech qanday kodek mojaro bo'lmaydi
         cmd_mix = [
-            "ffmpeg", "-y",
+            "ffmpeg", "-nostdin", "-y",
             "-i", merged_voice,
             "-stream_loop", "-1", "-i", bgm_path,
             "-filter_complex", filter_complex,
@@ -109,5 +106,5 @@ class AudioMixer:
             "-c:a", "pcm_s16le",
             output_master_path
         ]
-        subprocess.run(cmd_mix, capture_output=True, check=True)
+        subprocess.run(cmd_mix, capture_output=True, check=True, timeout=60)
         return output_master_path

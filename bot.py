@@ -7,6 +7,7 @@ import os
 import sys
 import asyncio
 import logging
+import html
 
 if sys.platform == "win32":
     try:
@@ -227,10 +228,14 @@ async def handle_video_creation(message: types.Message, topic: str, user_id: int
 
     except Exception as e:
         logger.exception("Video yaratishda xato")
-        await status_msg.edit_text(
-            f"❌ <b>Xatolik yuz berdi:</b>\n<code>{str(e)[:200]}</code>\n\nIltimos boshqa mavzuni sinab ko'ring.",
-            parse_mode="HTML"
-        )
+        err_msg = html.escape(str(e)[:250])
+        try:
+            await status_msg.edit_text(
+                f"❌ <b>Xatolik yuz berdi:</b>\n<code>{err_msg}</code>\n\nIltimos boshqa mavzuni sinab ko'ring.",
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
     finally:
         active_tasks.discard(user_id)
 
