@@ -400,7 +400,7 @@ async def cb_profile(callback: types.CallbackQuery):
     builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
     await callback.message.edit_text(prof_text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
-@dp.message(Command("health") | Command("ping"))
+@dp.message(Command("health", "ping"))
 async def cmd_health(message: types.Message):
     uptime_sec = int(time.time() - START_TIME)
     mins = uptime_sec // 60
