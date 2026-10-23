@@ -55,30 +55,81 @@ VOICES = {
 }
 DEFAULT_VOICE = "uz_sardor"
 
-# 2. Ovoz Rejimlari va Tonalitesi
+# 2. Ovoz Rejimlari, Mintaqaviy Sheva va Ohang Dinamikasi (Speech Cadence & Dialects)
 VOICE_MODES = {
+    "vodiy_viral": {
+        "name": "⚡ Vodiy Jonli Reels (+15% jo'shqin, viral drayv)",
+        "rate": "+15%",
+        "pitch": "+2Hz",
+        "cadence": "viral_hook",
+        "desc": "Tezkor, e'tiborni tortuvchi va viral roliklar uchun jo'shqin drayv ohangi"
+    },
+    "toshkent_adabiy": {
+        "name": "🏛 Toshkent Adabiy (Aniq diksiya, madaniy me'yor)",
+        "rate": "+6%",
+        "pitch": "-1Hz",
+        "cadence": "literary_clean",
+        "desc": "Adabiy til me'yorlari, aniq artikulyatsiya va televideniye madaniyati"
+    },
+    "samarqand_epik": {
+        "name": "📜 Samarqand & Buxoro Epik (Vazmin rivoyat, tarix)",
+        "rate": "-2%",
+        "pitch": "-3Hz",
+        "cadence": "epic_story",
+        "desc": "Afsona, qadimiy rivoyatlar va falsafiy hikoyalar uchun chuqur salobat"
+    },
+    "city_podcast": {
+        "name": "🏙 Toshkent City Podkast (+10% biznes & intervyu)",
+        "rate": "+10%",
+        "pitch": "+0Hz",
+        "cadence": "podcast_flow",
+        "desc": "Zamonaviy IT, startap va professional podkastlar uchun samimiy erkin uslub"
+    },
+    "koinot_mystic": {
+        "name": "🌌 Sirli Koinot & Doku (-4Hz chuqur sirli bas)",
+        "rate": "+3%",
+        "pitch": "-4Hz",
+        "cadence": "mystic_doku",
+        "desc": "Ilmiy kashfiyotlar, sirli jumboqlar va koinot mavzulari uchun mistik ohang"
+    },
+    "trailer_power": {
+        "name": "🔥 Gollivud Jangovar (+12% shiddat, kuchli motiv)",
+        "rate": "+12%",
+        "pitch": "-2Hz",
+        "cadence": "power_action",
+        "desc": "Treyler, sport, jangovar motivatsiya va qat'iy chaqiriq ohangi"
+    },
+    # Eski versiyalar bilan 100% moslik (Legacy Aliases)
     "reels_fast": {
         "name": "🚀 Reels Dinamik (+12% tezlik, baquvvat)",
         "rate": "+12%",
-        "pitch": "-1Hz"
+        "pitch": "-1Hz",
+        "cadence": "viral_hook",
+        "desc": "Standart Reels tezligi"
     },
     "cinematic_deep": {
         "name": "🎬 Kinematik Chuqur (-3Hz bas)",
         "rate": "+5%",
-        "pitch": "-3Hz"
+        "pitch": "-3Hz",
+        "cadence": "mystic_doku",
+        "desc": "Kinematografik chuqur ovoz"
     },
     "natural_clean": {
         "name": "🎙 Standart Tabiiy (1.0x me'yorda)",
         "rate": "+0%",
-        "pitch": "+0Hz"
+        "pitch": "+0Hz",
+        "cadence": "literary_clean",
+        "desc": "O'zgarishsiz standart nutq"
     },
     "energetic": {
         "name": "⚡ Energetik / TikTok (+16% tezyurar)",
         "rate": "+16%",
-        "pitch": "+1Hz"
+        "pitch": "+1Hz",
+        "cadence": "viral_hook",
+        "desc": "Maksimal tez va chaqqon nutq"
     }
 }
-DEFAULT_VOICE_MODE = "reels_fast"
+DEFAULT_VOICE_MODE = "vodiy_viral"
 
 # 2.1 Ovoz Akustikasi va Studiya DSP Effektlari (Audio Effects)
 AUDIO_EFFECTS = {

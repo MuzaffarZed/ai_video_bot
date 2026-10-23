@@ -173,7 +173,7 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
     )
     builder.row(
         InlineKeyboardButton(text="🎙 Ovoz", callback_data="menu_voice"),
-        InlineKeyboardButton(text="⚡ Tezlik & Rejim", callback_data="menu_modes")
+        InlineKeyboardButton(text="🎭 Ohang & Sheva Rejimi", callback_data="menu_modes")
     )
     builder.row(
         InlineKeyboardButton(text="🎛 Uslub", callback_data="menu_styles"),
@@ -255,9 +255,15 @@ def get_voice_keyboard(current: str) -> InlineKeyboardMarkup:
 
 def get_modes_keyboard(current: str) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
+    primary_keys = ["vodiy_viral", "toshkent_adabiy", "samarqand_epik", "city_podcast", "koinot_mystic", "trailer_power"]
+    for key in primary_keys:
+        if key in VOICE_MODES:
+            m = VOICE_MODES[key]
+            check = "✅ " if key == current else ""
+            builder.row(InlineKeyboardButton(text=f"{check}{m['name']}", callback_data=f"set_mode:{key}"))
     for key, m in VOICE_MODES.items():
-        check = "✅ " if key == current else ""
-        builder.row(InlineKeyboardButton(text=f"{check}{m['name']}", callback_data=f"set_mode:{key}"))
+        if key not in primary_keys and key == current:
+            builder.row(InlineKeyboardButton(text=f"✅ {m['name']}", callback_data=f"set_mode:{key}"))
     builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
     return builder.as_markup()
 
@@ -769,11 +775,11 @@ async def cb_listen_voice(callback: types.CallbackQuery):
         logger.error(f"Generate voice demo error: {e}")
         await callback.answer("⚠️ Ovoz namunasini tayyorlashda xatolik yuz berdi.", show_alert=True)
 
-# --- Tezlik menyusi ---
+# --- Ohang & Sheva menyusi ---
 @dp.callback_query(F.data == "menu_modes")
 async def cb_modes_menu(callback: types.CallbackQuery):
     cur = get_user_pref(callback.from_user.id, "mode", DEFAULT_VOICE_MODE)
-    await callback.message.edit_text("⚡ <b>Ovoz tezligi va tonalitesini tanlang:</b>", reply_markup=get_modes_keyboard(cur), parse_mode="HTML")
+    await callback.message.edit_text("🎭 <b>Ovoz gapirish ohangi, sheva va drayvini tanlang:</b>\n<i>(Vodiy jo'shqin reels, Toshkent adabiy, Samarqand rivoyat, City podkast, Koinot sirli va b.)</i>", reply_markup=get_modes_keyboard(cur), parse_mode="HTML")
 
 @dp.callback_query(F.data.startswith("set_mode:"))
 async def cb_set_mode(callback: types.CallbackQuery):

@@ -10,7 +10,7 @@ import json
 from typing import List, Dict
 import edge_tts
 from config import TEMP_DIR, VOICES, DEFAULT_VOICE, VOICE_MODES, DEFAULT_VOICE_MODE, AUDIO_EFFECTS, DEFAULT_AUDIO_EFFECT
-from script_generator import transliterate_uzbek
+from script_generator import transliterate_uzbek, phonetic_uzbek_normalize
 
 VOICE_DEMO_TEXTS = {
     "uz_sardor": "Assalomu alaykum! Men Sardor — sizning videolaringiz uchun rasmiy va salobatli ovozman.",
@@ -29,8 +29,10 @@ class TTSEngine:
         self.voice_id = self.voice_info["id"]
 
         mode_data = VOICE_MODES.get(mode_key, VOICE_MODES[DEFAULT_VOICE_MODE])
-        self.rate = mode_data.get("rate", "+12%")
-        self.pitch = mode_data.get("pitch", "-1Hz")
+        self.mode_key = mode_key if mode_key in VOICE_MODES else DEFAULT_VOICE_MODE
+        self.rate = mode_data.get("rate", "+15%")
+        self.pitch = mode_data.get("pitch", "+2Hz")
+        self.cadence = mode_data.get("cadence", "viral_hook")
 
         if effect_key not in AUDIO_EFFECTS:
             effect_key = DEFAULT_AUDIO_EFFECT
@@ -47,7 +49,7 @@ class TTSEngine:
         voice_id = voice_data["id"]
         demo_text = VOICE_DEMO_TEXTS.get(voice_key, "Salom! Bu ovoz namunasi.")
 
-        clean_text = transliterate_uzbek(demo_text) if voice_data.get("lang") == "uz" else demo_text
+        clean_text = phonetic_uzbek_normalize(demo_text) if voice_data.get("lang") == "uz" else demo_text
         temp_raw = output_path + ".demo.raw.mp3"
         comm = edge_tts.Communicate(clean_text, voice_id, rate="+8%", pitch="0Hz")
         await comm.save(temp_raw)
@@ -104,16 +106,63 @@ class TTSEngine:
             }
             chosen_voice_id = partner_map.get(self.voice_id, self.voice_id)
 
-        clean_text = transliterate_uzbek(text) if self.voice_info.get("lang") == "uz" else text
+        # O'zbek tili uchun mukammal fonetik normalizatsiya (sonlar, valyuta, texnik atamalar)
+        clean_text = phonetic_uzbek_normalize(text) if self.voice_info.get("lang") == "uz" else text
 
         rate_val = self.rate
         pitch_val = self.pitch
-        if is_hook:
-            rate_val = "+16%"
-            pitch_val = "+1Hz"
-        elif is_climax:
-            rate_val = "+4%"
-            pitch_val = "-2Hz"
+
+        # Sheva va ohang dinamikasiga mos intonatsiya modulyatsiyasi
+        cadence = getattr(self, "cadence", "viral_hook")
+        if cadence == "viral_hook":
+            if is_hook:
+                rate_val = "+18%"
+                pitch_val = "+2Hz"
+            elif is_climax:
+                rate_val = "+8%"
+                pitch_val = "+0Hz"
+        elif cadence == "epic_story":
+            if is_hook:
+                rate_val = "+0%"
+                pitch_val = "-2Hz"
+            elif is_climax:
+                rate_val = "-4%"
+                pitch_val = "-4Hz"
+        elif cadence == "literary_clean":
+            if is_hook:
+                rate_val = "+8%"
+                pitch_val = "+0Hz"
+            elif is_climax:
+                rate_val = "+3%"
+                pitch_val = "-2Hz"
+        elif cadence == "podcast_flow":
+            if is_hook:
+                rate_val = "+12%"
+                pitch_val = "+1Hz"
+            elif is_climax:
+                rate_val = "+6%"
+                pitch_val = "-1Hz"
+        elif cadence == "mystic_doku":
+            if is_hook:
+                rate_val = "+4%"
+                pitch_val = "-3Hz"
+            elif is_climax:
+                rate_val = "-1%"
+                pitch_val = "-5Hz"
+        elif cadence == "power_action":
+            if is_hook:
+                rate_val = "+16%"
+                pitch_val = "-1Hz"
+            elif is_climax:
+                rate_val = "+7%"
+                pitch_val = "-3Hz"
+        else:
+            if is_hook:
+                rate_val = "+16%"
+                pitch_val = "+1Hz"
+            elif is_climax:
+                rate_val = "+4%"
+                pitch_val = "-2Hz"
 
         temp_raw = output_path + ".raw.mp3"
         saved = False

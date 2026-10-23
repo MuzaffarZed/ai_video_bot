@@ -7,10 +7,13 @@ sys.path.insert(0, r'C:\Users\MuzaffarZed\ai_workspace\ai_video_bot')
 from config import (
     VOICES, VIDEO_STYLES, VISUAL_FILTERS, SUBTITLE_THEMES, SUBTITLE_SIZES,
     FORMATS, DURATIONS, MUSIC_GENRES, ART_STYLES, STUDIO_PRESETS, MUSIC_VOLUMES,
-    CAMERA_MOTIONS, DEFAULT_CAMERA_MOTION, AUDIO_EFFECTS, DEFAULT_AUDIO_EFFECT, TEMP_DIR,
-    USER_UPLOADS_DIR
+    CAMERA_MOTIONS, DEFAULT_CAMERA_MOTION, AUDIO_EFFECTS, DEFAULT_AUDIO_EFFECT,
+    VOICE_MODES, DEFAULT_VOICE_MODE, TEMP_DIR, USER_UPLOADS_DIR
 )
-from script_generator import ScriptGenerator, transliterate_uzbek
+from script_generator import (
+    ScriptGenerator, transliterate_uzbek, phonetic_uzbek_normalize,
+    uzbek_number_to_words, to_uzbek_ordinal
+)
 from visual_engine import VisualEngine
 from tts_engine import TTSEngine
 from subtitle_engine import SubtitleEngine
@@ -383,6 +386,57 @@ class TestSingularity10(unittest.TestCase):
             self.assertIn("BADGE (TEST)", content)
         try: os.remove(test_ass)
         except Exception: pass
+
+    def test_uzbek_number_to_words_and_ordinals(self):
+        self.assertEqual(uzbek_number_to_words(0), "nol")
+        self.assertEqual(uzbek_number_to_words(5), "besh")
+        self.assertEqual(uzbek_number_to_words(16), "o'n olti")
+        self.assertEqual(uzbek_number_to_words(99), "to'qson to'qqiz")
+        self.assertEqual(uzbek_number_to_words(100), "bir yuz")
+        self.assertEqual(uzbek_number_to_words(2026), "ikki ming yigirma olti")
+        self.assertEqual(to_uzbek_ordinal("ikki ming yigirma olti"), "ikki ming yigirma oltinchi")
+        self.assertEqual(to_uzbek_ordinal("bir"), "birinchi")
+        self.assertEqual(to_uzbek_ordinal("yigirma"), "yigirmanchi")
+
+    def test_phonetic_uzbek_normalization(self):
+        text1 = "2026-yilda insoniyat AI va ChatGPT orqali 99% ishlarni bajaradi."
+        norm1 = phonetic_uzbek_normalize(text1)
+        self.assertIn("ikki ming yigirma oltinchi yilda", norm1)
+        self.assertIn("ey-ay", norm1)
+        self.assertIn("Chat-Ji-Pi-Ti", norm1)
+        self.assertIn("to'qson to'qqiz foiz", norm1)
+
+        text2 = "Buning narxi $100 yoki 5-10 dollar atrofida."
+        norm2 = phonetic_uzbek_normalize(text2)
+        self.assertIn("bir yuz dollar", norm2)
+        self.assertIn("besh dan o'n gacha dollar", norm2)
+
+        text3 = "U 1-o'rinda turadi va 3 ta usul bor."
+        norm3 = phonetic_uzbek_normalize(text3)
+        self.assertIn("birinchi o'rinda", norm3)
+        self.assertIn("uch ta usul", norm3)
+
+        text4 = "2-qism: YouTube va TikTok orqali 4K formatda ko'ring."
+        norm4 = phonetic_uzbek_normalize(text4)
+        self.assertIn("ikkinchi qism", norm4)
+        self.assertIn("Yutyub", norm4)
+        self.assertIn("Tik-Tok", norm4)
+        self.assertIn("to'rt ka", norm4)
+
+    def test_voice_cadence_modes(self):
+        self.assertEqual(DEFAULT_VOICE_MODE, "vodiy_viral")
+        expected_modes = ["vodiy_viral", "toshkent_adabiy", "samarqand_epik", "city_podcast", "koinot_mystic", "trailer_power"]
+        for m in expected_modes:
+            self.assertIn(m, VOICE_MODES)
+            self.assertIn("cadence", VOICE_MODES[m])
+            self.assertIn("rate", VOICE_MODES[m])
+            self.assertIn("pitch", VOICE_MODES[m])
+
+        tts_vodiy = TTSEngine(voice_key="uz_sardor", mode_key="vodiy_viral")
+        self.assertEqual(tts_vodiy.cadence, "viral_hook")
+
+        tts_sam = TTSEngine(voice_key="uz_sardor", mode_key="samarqand_epik")
+        self.assertEqual(tts_sam.cadence, "epic_story")
 
 if __name__ == "__main__":
     unittest.main()

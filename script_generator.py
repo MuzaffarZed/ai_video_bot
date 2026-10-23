@@ -30,6 +30,122 @@ def transliterate_uzbek(text: str) -> str:
     }
     return "".join(mapping.get(ch, ch) for ch in text)
 
+# Fonetik talaffuz va sonlarni to'liq so'zga aylantirish (O'zbek tili uchun)
+ONES_UZ = ['', 'bir', 'ikki', 'uch', "to'rt", 'besh', 'olti', 'yetti', 'sakkiz', "to'qqiz"]
+TENS_UZ = ['', "o'n", 'yigirma', "o'ttiz", 'qirq', 'ellik', 'oltmish', 'yetmish', 'sakson', "to'qson"]
+SCALES_UZ = ['', 'ming', 'million', 'milliard', 'trillion']
+
+def uzbek_number_to_words(n: int) -> str:
+    """Ixtiyoriy butun sonni o'zbekcha yozma so'z shakliga o'giradi (0..trillion)."""
+    if n == 0:
+        return 'nol'
+    if n < 0:
+        return 'minus ' + uzbek_number_to_words(-n)
+    parts = []
+    chunk_idx = 0
+    while n > 0:
+        chunk = n % 1000
+        if chunk > 0:
+            c_parts = []
+            h = chunk // 100
+            t = (chunk % 100) // 10
+            u = chunk % 10
+            if h > 0:
+                if h == 1:
+                    c_parts.append('bir yuz')
+                else:
+                    c_parts.append(ONES_UZ[h] + ' yuz')
+            if t > 0:
+                c_parts.append(TENS_UZ[t])
+            if u > 0:
+                c_parts.append(ONES_UZ[u])
+            chunk_str = ' '.join(c_parts)
+            if chunk_idx > 0 and SCALES_UZ[chunk_idx]:
+                chunk_str += ' ' + SCALES_UZ[chunk_idx]
+            parts.append(chunk_str)
+        n //= 1000
+        chunk_idx += 1
+    return ' '.join(reversed(parts)).strip()
+
+def to_uzbek_ordinal(words: str) -> str:
+    """So'z bilan ifodalangan sonni tartib songa aylantiradi (-nchi / -inchi)."""
+    words = words.strip()
+    if not words:
+        return words
+    last_word = words.split()[-1].lower()
+    if last_word.endswith(('a', 'e', 'i', 'o', 'u', "o'")):
+        return words + 'nchi'
+    return words + 'inchi'
+
+def phonetic_uzbek_normalize(text: str) -> str:
+    """
+    O'zbek tili nutq sintezi (TTS) uchun mukammal fonetik normalizatsiya:
+    1. Kirillchadan lotinchaga transliteratsiya (agar mavjud bo'lsa)
+    2. Noaniq apostrof, tirnoq va tirelarni standartlashtirish
+    3. Valyutalar ($100 -> bir yuz dollar, 50€ -> ellik yevro)
+    4. Foizlar (99% -> to'qson to'qqiz foiz)
+    5. Tartib sonlar (2026-yil -> ikki ming yigirma oltinchi yilda, 1-o'rin -> birinchi o'rin)
+    6. Oraliq sonlar (5-10 -> besh dan o'n gacha)
+    7. Zamonaviy texnologik va ijtimoiy tarmoq atamalari (AI, IT, ChatGPT, YouTube, TikTok, 4K)
+    8. Barcha mustaqil sonlarni to'liq so'zga aylantirish.
+    """
+    if not text:
+        return ''
+    if any('а' <= c.lower() <= 'я' or c.lower() in 'ўғҳқё' for c in text):
+        text = transliterate_uzbek(text)
+
+    t = text
+    # Standartlashtirish
+    t = t.replace('’', "'").replace('‘', "'").replace('ʻ', "'").replace('`', "'").replace('´', "'")
+    t = t.replace('“', '"').replace('”', '"').replace('«', '"').replace('»', '"')
+    t = t.replace('—', ' - ').replace('–', ' - ').replace('…', ', ').replace('...', ', ')
+    
+    # Valyutalar
+    t = re.sub(r'\$\s*(\d+)', lambda m: f"{uzbek_number_to_words(int(m.group(1)))} dollar", t)
+    t = re.sub(r'(\d+)\s*\$', lambda m: f"{uzbek_number_to_words(int(m.group(1)))} dollar", t)
+    t = re.sub(r'€\s*(\d+)', lambda m: f"{uzbek_number_to_words(int(m.group(1)))} yevro", t)
+    t = re.sub(r'(\d+)\s*€', lambda m: f"{uzbek_number_to_words(int(m.group(1)))} yevro", t)
+
+    # Foiz (%)
+    t = re.sub(r'%\s*(\d+)', lambda m: f"{uzbek_number_to_words(int(m.group(1)))} foiz", t)
+    t = re.sub(r'(\d+)\s*%', lambda m: f"{uzbek_number_to_words(int(m.group(1)))} foiz", t)
+
+    # Tartib sonlar va yillar: 2026-yil, 21-asr, 1-chi, 2-nchi
+    t = re.sub(r'\b(\d+)-(?:chi|nchi|inchi)\b', lambda m: to_uzbek_ordinal(uzbek_number_to_words(int(m.group(1)))), t, flags=re.IGNORECASE)
+    t = re.sub(r'\b(\d+)-yil(da)?\b', lambda m: f"{to_uzbek_ordinal(uzbek_number_to_words(int(m.group(1))))} yil{'da' if m.group(2) else ''}", t, flags=re.IGNORECASE)
+    t = re.sub(r'\b(\d+)-asr(da)?\b', lambda m: f"{to_uzbek_ordinal(uzbek_number_to_words(int(m.group(1))))} asr{'da' if m.group(2) else ''}", t, flags=re.IGNORECASE)
+
+    # Qo'shma tartib sonlar: 1-o'rinda, 2-qism, 3-bosqich, 1-qadam
+    t = re.sub(
+        r"\b(\d+)-(o['\u02bb]?rin(?:da)?|qism|bosqich|qadam|dars|savol|bob|sinf|kurs|avlod|kun)\b",
+        lambda m: f"{to_uzbek_ordinal(uzbek_number_to_words(int(m.group(1))))} {m.group(2)}",
+        t,
+        flags=re.IGNORECASE
+    )
+
+    # Oraliq sonlar: 5-10
+    t = re.sub(r'\b(\d+)\s*-\s*(\d+)\b', lambda m: f"{uzbek_number_to_words(int(m.group(1)))} dan {uzbek_number_to_words(int(m.group(2)))} gacha", t)
+
+    # Zamonaviy texnologik va platforma atamalari
+    t = re.sub(r'\bAI\b', 'ey-ay', t)
+    t = re.sub(r'\bIT\b', 'ay-ti', t)
+    t = re.sub(r'\bChatGPT\b', 'Chat-Ji-Pi-Ti', t, flags=re.IGNORECASE)
+    t = re.sub(r'\bGPT-?4\b', "Ji-Pi-Ti to'rt", t, flags=re.IGNORECASE)
+    t = re.sub(r'\bGPT\b', 'Ji-Pi-Ti', t, flags=re.IGNORECASE)
+    t = re.sub(r'\bCEO\b', 'si-i-o', t, flags=re.IGNORECASE)
+    t = re.sub(r'\bWi-?Fi\b', 'vay-fay', t, flags=re.IGNORECASE)
+    t = re.sub(r'\bYouTube\b', 'Yutyub', t, flags=re.IGNORECASE)
+    t = re.sub(r'\bTikTok\b', 'Tik-Tok', t, flags=re.IGNORECASE)
+    t = re.sub(r'\b3D\b', 'uch de', t, flags=re.IGNORECASE)
+    t = re.sub(r'\b4K\b', "to'rt ka", t, flags=re.IGNORECASE)
+    t = re.sub(r'\bHD\b', 'eych di', t, flags=re.IGNORECASE)
+
+    # Barcha qolgan mustaqil sonlar
+    t = re.sub(r'\b(\d+)\b', lambda m: uzbek_number_to_words(int(m.group(1))), t)
+
+    t = re.sub(r'\s+', ' ', t).strip()
+    return t
+
 class ScriptGenerator:
     def __init__(self):
         self.has_gemini = bool(GEMINI_API_KEY)
