@@ -13,6 +13,7 @@ import asyncio
 import logging
 import html
 import subprocess
+import uuid
 from pathlib import Path
 
 if sys.platform == "win32":
@@ -85,7 +86,21 @@ USER_DB_FILE = BASE_DIR / "user_db.json"
 STATS_FILE = BASE_DIR / "bot_stats.json"
 
 def extract_title_from_url(url: str) -> str:
-    """Web havola (maqola, yangilik) manzilidan sarlavhani avtomatik ajratib olish."""
+    """Web havola (YouTube, maqola, yangilik) manzilidan sarlavhani avtomatik ajratib olish."""
+    # 1. YouTube videolari uchun rasmiy oEmbed tekshiruvi (bepul, to'siqsiz)
+    if any(d in url.lower() for d in ["youtube.com", "youtu.be"]):
+        try:
+            oembed_url = f"https://www.youtube.com/oembed?url={urllib.parse.quote(url)}&format=json"
+            req = urllib.request.Request(oembed_url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                yt_title = data.get("title", "").strip()
+                if yt_title and len(yt_title) >= 3:
+                    return yt_title[:80]
+        except Exception:
+            pass
+
+    # 2. Boshqa veb-saytlar uchun <title> tegi
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=5) as response:
@@ -94,11 +109,15 @@ def extract_title_from_url(url: str) -> str:
             if m:
                 clean = re.sub(r"\s+", " ", m.group(1)).strip()
                 clean = clean.split(" - ")[0].split(" | ")[0].strip()
-                if len(clean) >= 3:
+                if len(clean) >= 3 and clean.lower() not in ["youtube", "tiktok", "instagram", "404", "error"]:
                     return clean[:80]
     except Exception:
         pass
+
+    # 3. Slugdan toza matn hosil qilish
     slug = url.split("?")[0].rstrip("/").split("/")[-1].replace("-", " ").replace("_", " ").strip()
+    if len(slug) <= 15 and re.match(r"^[A-Za-z0-9]+$", slug):
+        return "Qiziqarli Video Sharhi"
     return slug[:70] if slug else "Maqola Sharhi"
 
 def load_json(file_path: Path, default_data: dict) -> dict:
@@ -371,41 +390,49 @@ def get_topics_keyboard() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 def get_post_video_keyboard(task_id: str, current_fmt: str = "9:16", cur_voice: str = "uz_sardor", cur_speed: float = 1.0) -> InlineKeyboardMarkup:
+    # Telegram 64-byte callback_data safety guard
+    # Agar task_id 16 belgidan uzun bo'lsa, zudlik bilan ixcham taxallus (alias) beramiz
+    if len(task_id) > 16:
+        short_id = f"t_{uuid.uuid4().hex[:8]}"
+        if task_id in job_cache:
+            job_cache[short_id] = job_cache[task_id]
+        task_id = short_id
+
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text="🎙 Audio MP3 olish", callback_data=f"dl_mp3:{task_id}"),
-        InlineKeyboardButton(text="🗣 Toza Nutq (Vocals)", callback_data=f"dl_vocals:{task_id}"),
+        InlineKeyboardButton(text="🗣 Toza Nutq (Vocals)", callback_data=f"dl_voc:{task_id}"),
         InlineKeyboardButton(text="📄 Subtitr (.SRT)", callback_data=f"dl_srt:{task_id}")
     )
     builder.row(
-        InlineKeyboardButton(text="📸 HD Muqova (Poster)", callback_data=f"dl_poster:{task_id}"),
-        InlineKeyboardButton(text="📱 15s Story Snippet", callback_data=f"dl_story:{task_id}")
+        InlineKeyboardButton(text="📸 HD Muqova (Poster)", callback_data=f"dl_post:{task_id}"),
+        InlineKeyboardButton(text="📱 15s Story Snippet", callback_data=f"dl_sty:{task_id}")
     )
     spd_btn = (
-        InlineKeyboardButton(text="⚡️ 1.25x Turbo Tezlik", callback_data=f"set_speed:{task_id}:1.25")
+        InlineKeyboardButton(text="⚡️ 1.25x Turbo Tezlik", callback_data=f"spd:{task_id}:1.25")
         if cur_speed <= 1.05 else
-        InlineKeyboardButton(text="⚡️ 1.0x Normal Tezlik", callback_data=f"set_speed:{task_id}:1.0")
+        InlineKeyboardButton(text="⚡️ 1.0x Normal Tezlik", callback_data=f"spd:{task_id}:1.0")
     )
     builder.row(
         spd_btn,
-        InlineKeyboardButton(text="🎨 Yangi AI Kadrlar (Re-Roll)", callback_data=f"reroll_vis:{task_id}")
+        InlineKeyboardButton(text="🎨 Yangi AI Kadrlar (Re-Roll)", callback_data=f"rr_vis:{task_id}")
     )
     builder.row(
-        InlineKeyboardButton(text="📝 Ssenariy & SMM matni", callback_data=f"view_script:{task_id}")
+        InlineKeyboardButton(text="📝 Ssenariy & SMM matni", callback_data=f"view_sc:{task_id}")
     )
     if current_fmt == "9:16":
-        builder.row(InlineKeyboardButton(text="🖥 YouTube (16:9) ga o'girish", callback_data=f"re_render:{task_id}:16:9"))
+        builder.row(InlineKeyboardButton(text="🖥 YouTube (16:9) ga o'girish", callback_data=f"fmt:{task_id}:16:9"))
     else:
-        builder.row(InlineKeyboardButton(text="📱 Reels (9:16) ga o'girish", callback_data=f"re_render:{task_id}:9:16"))
+        builder.row(InlineKeyboardButton(text="📱 Reels (9:16) ga o'girish", callback_data=f"fmt:{task_id}:9:16"))
 
     if "uz" in cur_voice:
-        builder.row(InlineKeyboardButton(text="🇷🇺 Rus tilida chiqarish", callback_data=f"lang_switch:{task_id}:ru_dmitry"))
-        builder.row(InlineKeyboardButton(text="🇺🇸 Ingliz tilida chiqarish", callback_data=f"lang_switch:{task_id}:en_christopher"))
+        builder.row(InlineKeyboardButton(text="🇷🇺 Rus tilida chiqarish", callback_data=f"lang:{task_id}:ru_dmitry"))
+        builder.row(InlineKeyboardButton(text="🇺🇸 Ingliz tilida chiqarish", callback_data=f"lang:{task_id}:en_christopher"))
     elif "ru" in cur_voice:
-        builder.row(InlineKeyboardButton(text="🇺🇿 O'zbek tilida chiqarish", callback_data=f"lang_switch:{task_id}:uz_sardor"))
-        builder.row(InlineKeyboardButton(text="🇺🇸 Ingliz tilida chiqarish", callback_data=f"lang_switch:{task_id}:en_christopher"))
+        builder.row(InlineKeyboardButton(text="🇺🇿 O'zbek tilida chiqarish", callback_data=f"lang:{task_id}:uz_sardor"))
+        builder.row(InlineKeyboardButton(text="🇺🇸 Ingliz tilida chiqarish", callback_data=f"lang:{task_id}:en_christopher"))
     else:
-        builder.row(InlineKeyboardButton(text="🇺🇿 O'zbek tilida chiqarish", callback_data=f"lang_switch:{task_id}:uz_sardor"))
+        builder.row(InlineKeyboardButton(text="🇺🇿 O'zbek tilida chiqarish", callback_data=f"lang:{task_id}:uz_sardor"))
 
     builder.row(
         InlineKeyboardButton(text="💡 Yangi mavzular", callback_data="menu_topics"),
@@ -1097,7 +1124,7 @@ async def cb_dl_mp3(callback: types.CallbackQuery):
         await callback.answer("⚠️ Audio fayl topilmadi.", show_alert=True)
 
 # --- Toza nutq (Vocals MP3) yuklab olish ---
-@dp.callback_query(F.data.startswith("dl_vocals:"))
+@dp.callback_query(F.data.startswith("dl_vocals:") | F.data.startswith("dl_voc:"))
 async def cb_dl_vocals(callback: types.CallbackQuery):
     task_id = callback.data.split(":")[1]
     job_info = job_cache.get(task_id)
@@ -1132,7 +1159,7 @@ async def cb_dl_srt(callback: types.CallbackQuery):
         await callback.answer("⚠️ Subtitr fayli topilmadi.", show_alert=True)
 
 # --- HD Muqova (Poster) yuklab olish ---
-@dp.callback_query(F.data.startswith("dl_poster:"))
+@dp.callback_query(F.data.startswith("dl_poster:") | F.data.startswith("dl_post:"))
 async def cb_dl_poster(callback: types.CallbackQuery):
     task_id = callback.data.split(":")[1]
     job_info = job_cache.get(task_id)
@@ -1154,7 +1181,7 @@ async def cb_dl_poster(callback: types.CallbackQuery):
         await callback.answer("⚠️ Muqova posteri topilmadi.", show_alert=True)
 
 # --- 15s Story Snippet yuklab olish ---
-@dp.callback_query(F.data.startswith("dl_story:"))
+@dp.callback_query(F.data.startswith("dl_story:") | F.data.startswith("dl_sty:"))
 async def cb_dl_story(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     if user_id in user_active_requests:
@@ -1200,7 +1227,7 @@ async def cb_dl_story(callback: types.CallbackQuery):
         user_active_requests.discard(user_id)
 
 # --- 1-Click Video Tezligini O'zgartirish (Pacing Multiplier) ---
-@dp.callback_query(F.data.startswith("set_speed:"))
+@dp.callback_query(F.data.startswith("set_speed:") | F.data.startswith("spd:"))
 async def cb_set_speed(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     if user_id in user_active_requests:
@@ -1257,7 +1284,7 @@ async def cb_set_speed(callback: types.CallbackQuery):
         user_active_requests.discard(user_id)
 
 # --- Ssenariy va SEO matnini ko'rish ---
-@dp.callback_query(F.data.startswith("view_script:"))
+@dp.callback_query(F.data.startswith("view_script:") | F.data.startswith("view_sc:"))
 async def cb_view_script(callback: types.CallbackQuery):
     task_id = callback.data.split(":")[1]
     job_info = job_cache.get(task_id)
@@ -1290,7 +1317,7 @@ async def cb_view_script(callback: types.CallbackQuery):
         await callback.answer("⚠️ Ma'lumot topilmadi.", show_alert=True)
 
 # --- 1-Click Tezkor Format Almashtirish (Fast Transcoding) ---
-@dp.callback_query(F.data.startswith("re_render:"))
+@dp.callback_query(F.data.startswith("re_render:") | F.data.startswith("fmt:"))
 async def cb_re_render(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     if user_id in user_active_requests:
@@ -1376,7 +1403,7 @@ async def cb_re_render(callback: types.CallbackQuery):
     await handle_video_creation(callback.message, topic, callback.from_user.id)
 
 # --- 1-Click Yangi AI Kadrlarga Almashtirish (Visual Re-Roll) ---
-@dp.callback_query(F.data.startswith("reroll_vis:"))
+@dp.callback_query(F.data.startswith("reroll_vis:") | F.data.startswith("rr_vis:"))
 async def cb_reroll_visuals(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     if user_id in user_active_requests:
@@ -1454,7 +1481,7 @@ async def cb_reroll_visuals(callback: types.CallbackQuery):
         user_active_requests.discard(user_id)
 
 # --- Xalqaro tilga 1-bosishda o'tkazish (Auto-Translation bilan) ---
-@dp.callback_query(F.data.startswith("lang_switch:"))
+@dp.callback_query(F.data.startswith("lang_switch:") | F.data.startswith("lang:"))
 async def cb_lang_switch(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     if user_id in user_active_requests:

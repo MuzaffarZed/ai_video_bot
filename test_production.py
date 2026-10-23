@@ -590,5 +590,20 @@ class TestSingularity10(unittest.TestCase):
         v_eng = VideoEngine()
         self.assertTrue(hasattr(v_eng, "render_scene_clip"))
 
+    def test_post_video_keyboard_callback_data_within_64_bytes(self):
+        from bot import get_post_video_keyboard
+        # Oddiy task_id bilan tekshirish
+        kb1 = get_post_video_keyboard("j_12345678", "9:16", "uz_sardor")
+        for row in kb1.inline_keyboard:
+            for btn in row:
+                self.assertLessEqual(len(btn.callback_data.encode("utf-8")), 64, f"Button {btn.text} callback_data > 64 bytes: {btn.callback_data}")
+
+        # O'ta uzun task_id bo'lganda ham 64 baytdan oshmasligini kafolatlash
+        long_id = "job_1729712345_a1b2c3_reroll_1729712350_reroll_1729712399"
+        kb2 = get_post_video_keyboard(long_id, "9:16", "uz_sardor")
+        for row in kb2.inline_keyboard:
+            for btn in row:
+                self.assertLessEqual(len(btn.callback_data.encode("utf-8")), 64, f"Button {btn.text} callback_data > 64 bytes: {btn.callback_data}")
+
 if __name__ == "__main__":
     unittest.main()

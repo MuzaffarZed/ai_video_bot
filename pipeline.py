@@ -79,7 +79,7 @@ class VideoPipeline:
         """
         To'liq professional siklda video, MP3 va SEO paketini tayyorlaydi (Zenith 16.0).
         """
-        task_id = f"job_{int(time.time())}_{uuid.uuid4().hex[:6]}"
+        task_id = f"j_{uuid.uuid4().hex[:8]}"
         total_steps = 5
 
         visual_eng = VisualEngine(format_key=format_key)
@@ -271,7 +271,7 @@ class VideoPipeline:
         Mavjud ovoz va suratlarni qayta yuklamasdan 3 soniyada yangi formatga (16:9 yoki 9:16) o'giradi.
         """
         clean_fmt = new_format_key.replace(":", "_")
-        reformat_task_id = f"{task_id}_{clean_fmt}"
+        reformat_task_id = f"f_{uuid.uuid4().hex[:8]}"
         visual_eng = VisualEngine(format_key=new_format_key)
 
         ass_path = str(TEMP_DIR / f"{reformat_task_id}_subtitles.ass")
@@ -343,7 +343,7 @@ class VideoPipeline:
         """
         Mavjud ssenariy va ovozni saqlab qolgan holda butunlay yangi AI kadrlarni chizadi va 4 soniyada montaj qiladi.
         """
-        clean_task_id = f"{task_id}_reroll_{int(time.time())}"
+        clean_task_id = f"r_{uuid.uuid4().hex[:8]}"
         visual_eng = VisualEngine(format_key=format_key)
 
         async def fetch_fresh_visual(sc):
