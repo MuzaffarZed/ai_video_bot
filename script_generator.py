@@ -331,7 +331,7 @@ class ScriptGenerator:
             url,
             headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
         )
-        with urllib.request.urlopen(req, timeout=14) as resp:
+        with urllib.request.urlopen(req, timeout=6) as resp:
             content = resp.read().decode("utf-8")
 
         m = re.search(r'\[\s*\{.*\}\s*\]', content, re.DOTALL)
@@ -399,7 +399,8 @@ Javobni FAQAT quyidagi JSON massivida qaytaring, ortiqcha hech qanday matn qo'sh
         return json.loads(text.strip())
 
     def _generate_procedural(self, topic: str, lang: str, style: str, scene_count: int, voice_mode: str = DEFAULT_VOICE_MODE) -> List[Dict]:
-        clean_topic = transliterate_uzbek(topic.strip()) if lang == "uz" else topic.strip()
+        raw_clean = transliterate_uzbek(topic.strip()) if lang == "uz" else topic.strip()
+        clean_topic = raw_clean.split("\n")[0][:70].strip() or "Mavzu"
 
         if lang == "uz":
             if style == "podcast_dialogue":

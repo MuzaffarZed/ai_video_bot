@@ -20,7 +20,7 @@ from subtitle_engine import SubtitleEngine
 from audio_mixer import AudioMixer
 from video_engine import VideoEngine
 from pipeline import VideoPipeline
-from bot import extract_title_from_url
+from bot import extract_title_from_url, get_main_keyboard
 
 class TestSingularity10(unittest.TestCase):
     def test_config_integrity(self):
@@ -247,8 +247,10 @@ class TestSingularity10(unittest.TestCase):
         self.assertTrue(os.path.exists(test_ass))
         with open(test_ass, "r", encoding="utf-8") as f:
             content = f.read()
-            self.assertIn("HeaderBadge", content)
-            self.assertIn("KOINOT SIRLARI", content)
+            # Top header banner to'liq olib tashlangan bo'lishi shart (Zero-Banner standarti)
+            self.assertNotIn("HeaderBadge", content)
+            self.assertNotIn("【", content)
+            self.assertIn("Karaoke", content)
         try: os.remove(test_ass)
         except Exception: pass
 
@@ -383,7 +385,7 @@ class TestSingularity10(unittest.TestCase):
             content = f.read()
             self.assertIn("(Python)", content)
             self.assertIn("siri/", content)
-            self.assertIn("BADGE (TEST)", content)
+            self.assertNotIn("HeaderBadge", content)
         try: os.remove(test_ass)
         except Exception: pass
 
@@ -512,6 +514,25 @@ class TestSingularity10(unittest.TestCase):
 
         sc_voha = sg._generate_procedural("Tarix", "uz", "podcast_dialogue", 3, voice_mode="voha_baxshi")
         self.assertIn("mardona", sc_voha[0]["text"])
+
+    def test_parse_custom_user_script_and_text_modes(self):
+        sg = ScriptGenerator()
+        custom_text = (
+            "1. Sun'iy intellekt kelajakni qanday o'zgartirmoqda?\n"
+            "2. Har kuni yangi texnologiyalar paydo bo'lmoqda.\n"
+            "3. O'zbekiston yoshlari ham bu sohada yetakchi bo'ladi!"
+        )
+        scenes = sg.parse_custom_user_script(custom_text, topic="AI Kelajak")
+        self.assertEqual(len(scenes), 3)
+        self.assertIn("Sun'iy intellekt", scenes[0]["text"])
+        self.assertIn("yetakchi", scenes[2]["text"])
+
+    def test_main_keyboard_create_text_button(self):
+        kb = get_main_keyboard()
+        buttons = [btn.text for row in kb.inline_keyboard for btn in row]
+        self.assertTrue(any("Matn / Ssenariy Yuborish" in b for b in buttons))
+        callbacks = [btn.callback_data for row in kb.inline_keyboard for btn in row]
+        self.assertIn("menu_create_text", callbacks)
 
 if __name__ == "__main__":
     unittest.main()

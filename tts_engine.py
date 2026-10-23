@@ -273,6 +273,13 @@ class TTSEngine:
             except Exception as fb_err:
                 print(f"[TTS Fallback Notice] {fb_err}")
 
+        # Agar barcha urinishlardan so'ng ham temp_raw hosil bo'lmasa, sokin WAV yaratamiz
+        if not os.path.exists(temp_raw) or os.path.getsize(temp_raw) < 100:
+            cmd_null = ["ffmpeg", "-nostdin", "-y", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo", "-t", "3.0", "-c:a", "pcm_s16le", output_path]
+            try: subprocess.run(cmd_null, capture_output=True, check=True, timeout=10)
+            except Exception: pass
+            return 3.0
+
         # Studiya Broadcast DSP zanjiri (Tanlangan DSP profili bo'yicha)
         dsp_filter = self.dsp_filter
         if "loudnorm" in dsp_filter and "afade" not in dsp_filter:

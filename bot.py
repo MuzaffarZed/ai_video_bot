@@ -169,6 +169,9 @@ def set_user_pref(user_id: int, key: str, value: str):
 def get_main_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
+        InlineKeyboardButton(text="✍️ Matn / Ssenariy Yuborish (Video Yaratish)", callback_data="menu_create_text")
+    )
+    builder.row(
         InlineKeyboardButton(text="🎛 Studiya Shablonlari (Presets)", callback_data="menu_presets")
     )
     builder.row(
@@ -420,7 +423,7 @@ async def cmd_start(message: types.Message):
         f"• 🎛 <b>Uslub:</b> {s_name}\n"
         f"• 📱 <b>Format:</b> {f_name} <i>(+ 15s Story Snippet)</i>\n"
         f"• 🎬 <b>Rang (LUT):</b> {lut_name}\n"
-        f"• 💬 <b>Subtitr:</b> <i>Alex Hormozi 2.0 + Power-Word Pop + Header Badge</i>\n"
+        f"• 💬 <b>Subtitr:</b> <i>Alex Hormozi 2.0 + Power-Word Neon Glow Pop</i>\n"
         f"• 🎨 <b>AI Vizual:</b> <i>Parallel Flux 8K + HD Poster + 1-Click Re-Roll</i>\n"
         f"• ⏱ <b>SMM Paket:</b> <i>Instagram Bio, TikTok Caption & YouTube Chapters</i>\n"
         f"• ⚡️ <b>Tezkor Reformat:</b> <i>3 soniyada 16:9 / 9:16 transkodlash</i>\n"
@@ -679,6 +682,20 @@ async def cb_stats(callback: types.CallbackQuery):
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
     await callback.message.edit_text(stats_text, reply_markup=builder.as_markup(), parse_mode="HTML")
+
+@dp.callback_query(F.data == "menu_create_text")
+async def cb_create_text(callback: types.CallbackQuery):
+    guide_text = (
+        "✍️ <b>Matn orqali professional video yaratish:</b>\n\n"
+        "Siz 2 xil usulda video yaratishingiz mumkin:\n\n"
+        "1. 💡 <b>Mavzu yozing:</b> Masalan, <i>Koinot sirlari</i>, <i>Neyrotarmoqlar orqali pul topish</i> yoki <i>Muvaffaqiyat qoidalari</i> — AI o'zi ssenariy, 8K tasvirlar, diktor ovozi va subtitrlarni montaj qiladi.\n\n"
+        "2. 📝 <b>O'z shaxsiy matningizni yuboring:</b> Har bir kadr matnini yangi qatordan yozib yuboring (yoki bitta to'liq matn qilib tashlang) — bot sizning so'zlaringizdan to'liq video montaj qiladi!\n\n"
+        "<i>Matningizni shu yerga xabar sifatida yozib yuboring:</i>"
+    )
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="💡 Trend Mavzularni Ko'rish", callback_data="menu_topics"))
+    builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
+    await callback.message.edit_text(guide_text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
 @dp.callback_query(F.data == "menu_main")
 async def cb_main(callback: types.CallbackQuery):
@@ -1582,7 +1599,19 @@ async def msg_handle_text(message: types.Message):
         return
 
     custom_img = user_pending_photos.pop(user_id, None)
-    await handle_video_creation(message, topic, user_id, custom_image_path=custom_img)
+
+    # Shaxsiy ssenariyni avtomatik aniqlash (Multi-line yoki uzun gaplar)
+    lines = [l.strip() for l in topic.split("\n") if len(l.strip()) >= 2]
+    is_multi_line = len(lines) >= 2
+    is_long_paragraph = len(topic.split()) >= 15 and any(p in topic for p in [". ", "! ", "? "])
+
+    if is_multi_line or is_long_paragraph:
+        first_line = lines[0] if lines else topic[:40]
+        topic_title = re.sub(r'^[0-9]+[.)\-]\s*', '', first_line)[:50].strip() or "Shaxsiy Ssenariy"
+        custom_scenes = pipeline.script_gen.parse_custom_user_script(topic, topic=topic_title)
+        await handle_video_creation(message, topic_title, user_id, custom_image_path=custom_img, custom_scenes=custom_scenes)
+    else:
+        await handle_video_creation(message, topic, user_id, custom_image_path=custom_img)
 
 # ==================== ASOSIY VIDEO YARATISH LOGIKASI ====================
 
