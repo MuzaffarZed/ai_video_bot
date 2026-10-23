@@ -5,13 +5,65 @@ Muallif: MuzaffarZed
 """
 import os
 import time
+import json
 import random
 import urllib.request
 import urllib.parse
 from PIL import Image, ImageDraw, ImageFilter, ImageEnhance
-from config import TEMP_DIR, FORMATS, DEFAULT_FORMAT, ART_STYLES, DEFAULT_ART_STYLE
+from config import (
+    TEMP_DIR, FORMATS, DEFAULT_FORMAT, ART_STYLES, DEFAULT_ART_STYLE,
+    PEXELS_API_KEY, VISUAL_MODES, DEFAULT_VISUAL_MODE
+)
 
 class VisualEngine:
+    CINEMA_MOTION_VAULT = {
+        "space": [
+            "https://upload.wikimedia.org/wikipedia/commons/e/e2/A_Galaxy_Grouping.webm",
+            "https://upload.wikimedia.org/wikipedia/commons/c/c3/Galaxy_Collision_Animation-_James_Webb_Space_Telescope_Science.webm",
+            "https://upload.wikimedia.org/wikipedia/commons/9/9a/Chandra_X-ray_Image_%26_DSS_Optical_Image_of_NGC_galaxies_%282006-galaxies%29.webm"
+        ],
+        "nature": [
+            "https://upload.wikimedia.org/wikipedia/commons/f/f7/Waterfall_in_Huascar%C3%A1n_National_Park_-_Peru.webm",
+            "https://upload.wikimedia.org/wikipedia/commons/e/ee/Ocean_surface_waves_09.ogv"
+        ],
+        "ocean": [
+            "https://upload.wikimedia.org/wikipedia/commons/e/ee/Ocean_surface_waves_09.ogv",
+            "https://upload.wikimedia.org/wikipedia/commons/f/f7/Waterfall_in_Huascar%C3%A1n_National_Park_-_Peru.webm"
+        ],
+        "urban": [
+            "https://upload.wikimedia.org/wikipedia/commons/1/16/Traffic_situation_in_Mango_Avenue_Cebu_City.webm"
+        ],
+        "cars": [
+            "https://upload.wikimedia.org/wikipedia/commons/1/16/Traffic_situation_in_Mango_Avenue_Cebu_City.webm"
+        ],
+        "sport": [
+            "https://upload.wikimedia.org/wikipedia/commons/5/5f/Veldloop_van_de_Volewijckers.webm"
+        ],
+        "motivation": [
+            "https://upload.wikimedia.org/wikipedia/commons/5/5f/Veldloop_van_de_Volewijckers.webm"
+        ],
+        "history": [
+            "https://upload.wikimedia.org/wikipedia/commons/8/89/Fire_flames_9652_Nevit.ogv"
+        ],
+        "ai": [
+            "https://upload.wikimedia.org/wikipedia/commons/c/c3/Galaxy_Collision_Animation-_James_Webb_Space_Telescope_Science.webm"
+        ],
+        "tech": [
+            "https://upload.wikimedia.org/wikipedia/commons/c/c3/Galaxy_Collision_Animation-_James_Webb_Space_Telescope_Science.webm"
+        ],
+        "business": [
+            "https://upload.wikimedia.org/wikipedia/commons/1/16/Traffic_situation_in_Mango_Avenue_Cebu_City.webm"
+        ],
+        "crypto": [
+            "https://upload.wikimedia.org/wikipedia/commons/c/c3/Galaxy_Collision_Animation-_James_Webb_Space_Telescope_Science.webm"
+        ],
+        "future": [
+            "https://upload.wikimedia.org/wikipedia/commons/1/16/Traffic_situation_in_Mango_Avenue_Cebu_City.webm"
+        ],
+        "mind": [
+            "https://upload.wikimedia.org/wikipedia/commons/e/e2/A_Galaxy_Grouping.webm"
+        ]
+    }
     CURATED_THEMES = {
         "space": [
             "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1080&h=1920&fit=crop&q=80",
@@ -470,3 +522,134 @@ class VisualEngine:
         except Exception as e:
             print(f"[Cover Poster Error] {e}")
             return image_path
+
+    def extract_visual_keywords(self, prompt: str, cat: str) -> str:
+        """Matn yoki ssenariydan harakatlanuvchi video uchun inglizcha kalit so'zlarni ajratib olish."""
+        p_lower = prompt.lower()
+        if any(w in p_lower for w in ["koinot", "yulduz", "sayyora", "galaktika", "oy", "quyosh", "space", "galaxy", "stars", "planet"]):
+            return "galaxy stars space universe animation"
+        elif any(w in p_lower for w in ["mashina", "avtomobil", "tezlik", "haydash", "yo'l", "car", "drive", "highway", "speed"]):
+            return "car driving highway traffic night"
+        elif any(w in p_lower for w in ["pul", "boylik", "biznes", "dollar", "daromad", "invest", "money", "gold", "finance"]):
+            return "gold coins money market commerce"
+        elif any(w in p_lower for w in ["dengiz", "okean", "suv", "to'lqin", "baliq", "ocean", "sea", "waves", "water"]):
+            return "ocean waves blue sea water"
+        elif any(w in p_lower for w in ["tabiat", "tog'", "sharshara", "daryo", "o'rmon", "nature", "mountain", "waterfall", "forest"]):
+            return "waterfall mountain nature landscape"
+        elif any(w in p_lower for w in ["ai", "robot", "sun'iy", "kod", "texnologiya", "kompyuter", "cyber", "technology"]):
+            return "technology digital network computer"
+        elif any(w in p_lower for w in ["sport", "mashq", "yugurish", "zal", "boks", "fitness", "running", "workout"]):
+            return "running athlete sport fitness"
+        elif any(w in p_lower for w in ["shahar", "bino", "odamlar", "ko'cha", "city", "street", "building", "urban"]):
+            return "city traffic street people time lapse"
+        elif any(w in p_lower for w in ["olov", "yonish", "tarix", "qadimiy", "sir", "fire", "flame", "history", "ancient"]):
+            return "fire flames smoke burning"
+        else:
+            cat_defaults = {
+                "space": "galaxy stars space universe",
+                "ai": "technology computer digital",
+                "business": "modern city skyscraper business",
+                "crypto": "gold market currency digital",
+                "motivation": "mountain runner sunrise clouds",
+                "history": "ancient fire ruins landscape",
+                "nature": "nature forest river waterfall",
+                "mind": "sky clouds stars time lapse",
+                "cars": "car driving road vehicle",
+                "sport": "running athlete sports stadium",
+                "tech": "modern technology circuit screen",
+                "ocean": "ocean waves water sea",
+                "urban": "city traffic night street",
+                "future": "city night lights futuristic"
+            }
+            return cat_defaults.get(cat, "nature waterfall landscape")
+
+    def _download_video_stream(self, url: str, output_path: str, max_bytes: int = 12 * 1024 * 1024, timeout: int = 8) -> bool:
+        """Video oqimini xavfsiz va tez yuklab olish (maksimal 12MB)."""
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "MuzaffarZedVideoBot/2.0"})
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                data = resp.read(max_bytes)
+                if len(data) >= 30000:
+                    with open(output_path, "wb") as f:
+                        f.write(data)
+                    return True
+        except Exception:
+            pass
+        return False
+
+    def search_motion_video(self, query: str, category: str, output_path: str, timeout: int = 8) -> bool:
+        """
+        Matnga yoki yo'nalishga mos haqiqiy harakatlanuvchi kinematik video kadrni topish va yuklab olish.
+        1. Pexels Video API (agar PEXELS_API_KEY o'rnatilgan bo'lsa)
+        2. Wikimedia Commons Video Search API (bepul, litsenziyali ochiq video)
+        3. CinemaMotion Vault (100% kafolatlangan zaxira klip)
+        """
+        # 1-Urinish: Pexels Video API (Vertikal 9:16)
+        if PEXELS_API_KEY:
+            try:
+                p_url = f"https://api.pexels.com/videos/search?query={urllib.parse.quote(query)}&orientation=portrait&per_page=3"
+                p_req = urllib.request.Request(p_url, headers={"Authorization": PEXELS_API_KEY, "User-Agent": "MuzaffarZedVideoBot"})
+                with urllib.request.urlopen(p_req, timeout=timeout) as p_resp:
+                    p_data = json.loads(p_resp.read().decode("utf-8"))
+                    videos = p_data.get("videos", [])
+                    if videos:
+                        v_files = videos[0].get("video_files", [])
+                        mp4_files = [f for f in v_files if f.get("file_type") == "video/mp4"]
+                        if mp4_files:
+                            best_link = max(mp4_files, key=lambda x: x.get("width", 0))["link"]
+                            if self._download_video_stream(best_link, output_path, timeout=timeout):
+                                return True
+            except Exception as e:
+                print(f"[Pexels Video Notice] {e}")
+
+        # 2-Urinish: Wikimedia Commons Video Search API
+        try:
+            w_url = f"https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrnamespace=6&gsrsearch={urllib.parse.quote(query)}+filetype:video&gsrlimit=3&prop=imageinfo&iiprop=url|mime"
+            w_req = urllib.request.Request(w_url, headers={"User-Agent": "MuzaffarZedVideoBot/2.0"})
+            with urllib.request.urlopen(w_req, timeout=timeout) as w_resp:
+                w_data = json.loads(w_resp.read().decode("utf-8"))
+                pages = w_data.get("query", {}).get("pages", {})
+                for pid, pdata in pages.items():
+                    ii_list = pdata.get("imageinfo", [])
+                    if ii_list:
+                        vid_url = ii_list[0].get("url")
+                        if vid_url and self._download_video_stream(vid_url, output_path, timeout=timeout):
+                            return True
+        except Exception as e:
+            print(f"[Wikimedia Video Notice] {e}")
+
+        # 3-Urinish: CinemaMotion Vault zaxira video klipi
+        vault_urls = self.CINEMA_MOTION_VAULT.get(category, self.CINEMA_MOTION_VAULT.get("nature", []))
+        if vault_urls:
+            chosen_url = random.choice(vault_urls)
+            if self._download_video_stream(chosen_url, output_path, timeout=timeout):
+                return True
+
+        return False
+
+    def get_scene_motion_visual(
+        self,
+        prompt: str,
+        base_output_path: str,
+        seed: int = None,
+        scene_num: int = 1,
+        art_style: str = DEFAULT_ART_STYLE,
+        duration: float = 5.0,
+        visual_mode: str = DEFAULT_VISUAL_MODE
+    ) -> str:
+        """
+        Foydalanuvchi tanlagan rejimga qarab haqiqiy harakatlanuvchi video klip yoki AI rasm qaytaradi.
+        """
+        cat = self.detect_category(prompt)
+
+        if visual_mode == "motion_video":
+            motion_vid_path = f"{base_output_path}.mp4"
+            query = self.extract_visual_keywords(prompt, cat)
+            if self.search_motion_video(query, cat, motion_vid_path, timeout=8):
+                if os.path.exists(motion_vid_path) and os.path.getsize(motion_vid_path) >= 30000:
+                    return motion_vid_path
+
+        # Zaxira yoki AI Art rejimi: 8K AI tasvir generatsiyasi
+        img_path = f"{base_output_path}.jpg"
+        self.get_scene_visual(prompt, img_path, seed, scene_num, art_style)
+        return img_path

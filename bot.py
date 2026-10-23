@@ -70,7 +70,9 @@ from config import (
     WATERMARK_TEXT,
     BRAND_NAME,
     AI_CREATIVITY_MODES,
-    DEFAULT_AI_CREATIVITY
+    DEFAULT_AI_CREATIVITY,
+    VISUAL_MODES,
+    DEFAULT_VISUAL_MODE
 )
 from pipeline import VideoPipeline
 from tts_engine import TTSEngine
@@ -174,8 +176,12 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="✍️ Matn / Ssenariy Yuborish (Video Yaratish)", callback_data="menu_create_text")
     )
     builder.row(
-        InlineKeyboardButton(text="🧠 AI Dvigateli (Qwen 2.5 7B)", callback_data="menu_ai_engine"),
-        InlineKeyboardButton(text="🎛 Studiya Shablonlari (Presets)", callback_data="menu_presets")
+        InlineKeyboardButton(text="🎬 Vizual: Harakatlanuvchi Video", callback_data="menu_visual_mode"),
+        InlineKeyboardButton(text="🧠 AI Dvigateli (Qwen 2.5 7B)", callback_data="menu_ai_engine")
+    )
+    builder.row(
+        InlineKeyboardButton(text="🎛 Studiya Shablonlari (Presets)", callback_data="menu_presets"),
+        InlineKeyboardButton(text="💡 Trend Mavzular", callback_data="menu_topics")
     )
     builder.row(
         InlineKeyboardButton(text="🎙 Ovoz", callback_data="menu_voice"),
@@ -203,12 +209,19 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
     )
     builder.row(
         InlineKeyboardButton(text="🎚 Ovoz Akustikasi (DSP)", callback_data="menu_dsp"),
-        InlineKeyboardButton(text="💡 Trend Mavzular", callback_data="menu_topics")
+        InlineKeyboardButton(text="👤 Profilim", callback_data="menu_profile")
     )
     builder.row(
-        InlineKeyboardButton(text="👤 Profilim", callback_data="menu_profile"),
         InlineKeyboardButton(text="📊 Statistika", callback_data="menu_stats")
     )
+    return builder.as_markup()
+
+def get_visual_mode_keyboard(current: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for key, info in VISUAL_MODES.items():
+        check = "✅ " if key == current else ""
+        builder.row(InlineKeyboardButton(text=f"{check}{info['name']}", callback_data=f"set_visual_mode:{key}"))
+    builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
     return builder.as_markup()
 
 def get_ai_engine_keyboard(current: str) -> InlineKeyboardMarkup:
@@ -1002,6 +1015,33 @@ async def cb_set_dsp(callback: types.CallbackQuery):
     await callback.answer(f"DSP: {d_name[:25]}")
     await callback.message.edit_text(f"✅ Ovoz Akustikasi: <b>{d_name}</b>", reply_markup=get_dsp_keyboard(key), parse_mode="HTML")
 
+# --- Vizual Rejim (Harakatlanuvchi Video vs AI Art) menyusi ---
+@dp.callback_query(F.data == "menu_visual_mode")
+async def cb_visual_mode_menu(callback: types.CallbackQuery):
+    cur = get_user_pref(callback.from_user.id, "visual_mode", DEFAULT_VISUAL_MODE)
+    await callback.message.edit_text(
+        "🎬 <b>Vizual Tasvir Rejimini Tanlang:</b>\n\n"
+        "• 🎥 <b>Harakatlanuvchi Video:</b> So'zlar va yo'nalishdan kelib chiqib harakatdagi real kinematik video kadrlar montaj qilinadi.\n"
+        "• 🎨 <b>AI Badiiy Kadrlar:</b> Flux/Midjourney uslubidagi generativ AI suratlari va suzuvchi kamera harakati.",
+        reply_markup=get_visual_mode_keyboard(cur),
+        parse_mode="HTML"
+    )
+
+@dp.callback_query(F.data.startswith("set_visual_mode:"))
+async def cb_set_visual_mode(callback: types.CallbackQuery):
+    key = callback.data.split(":")[1]
+    set_user_pref(callback.from_user.id, "visual_mode", key)
+    v_info = VISUAL_MODES.get(key, VISUAL_MODES[DEFAULT_VISUAL_MODE])
+    await callback.answer(f"Rejim: {v_info['name']}")
+    await callback.message.edit_text(
+        f"✅ <b>Vizual Rejim O'rnatildi:</b>\n\n"
+        f"📌 <b>{v_info['name']}</b>\n"
+        f"ℹ️ <i>{v_info['desc']}</i>\n\n"
+        f"<i>{WATERMARK_TEXT}</i>",
+        reply_markup=get_visual_mode_keyboard(key),
+        parse_mode="HTML"
+    )
+
 # --- Mavzular menyusi ---
 @dp.callback_query(F.data == "menu_topics")
 async def cb_topics_menu(callback: types.CallbackQuery):
@@ -1682,9 +1722,11 @@ async def handle_video_creation(
     cur_sub_size = get_user_pref(user_id, "sub_size", DEFAULT_SUBTITLE_SIZE)
     cur_dsp = get_user_pref(user_id, "audio_effect", DEFAULT_AUDIO_EFFECT)
     cur_ai_creativity = get_user_pref(user_id, "ai_creativity", DEFAULT_AI_CREATIVITY)
+    cur_visual_mode = get_user_pref(user_id, "visual_mode", DEFAULT_VISUAL_MODE)
 
     dsp_info = AUDIO_EFFECTS.get(cur_dsp, AUDIO_EFFECTS[DEFAULT_AUDIO_EFFECT])
     ai_info = AI_CREATIVITY_MODES.get(cur_ai_creativity, AI_CREATIVITY_MODES[DEFAULT_AI_CREATIVITY])
+    visual_info = VISUAL_MODES.get(cur_visual_mode, VISUAL_MODES[DEFAULT_VISUAL_MODE])
     bgm_vol = MUSIC_VOLUMES.get(cur_music_vol, {}).get("vol", 0.15)
     fmt_info = FORMATS.get(cur_format, FORMATS[DEFAULT_FORMAT])
     motion_info = CAMERA_MOTIONS.get(cur_motion, CAMERA_MOTIONS[DEFAULT_CAMERA_MOTION])
@@ -1692,6 +1734,7 @@ async def handle_video_creation(
     status_msg = await message.answer(
         f"🎬 <b>Yangi video yaratish boshlandi!</b>\n\n"
         f"📌 <b>Mavzu:</b> <i>{html.escape(topic)}</i>\n"
+        f"🎥 <b>Vizual:</b> <i>{visual_info['name']}</i>\n"
         f"🧠 <b>AI Ssenariy:</b> <i>Flagman Qwen 2.5 7B ({ai_info['name'].split('(')[0].strip()})</i>\n"
         f"🎙 <b>Ovoz:</b> <i>{VOICES[cur_voice]['name']}</i>\n"
         f"🎚 <b>Akustika:</b> <i>{dsp_info['name']}</i>\n"
@@ -1745,6 +1788,7 @@ async def handle_video_creation(
                     art_style=cur_art_style,
                     bgm_volume=bgm_vol,
                     ai_creativity=cur_ai_creativity,
+                    visual_mode=cur_visual_mode,
                     custom_scenes=custom_scenes,
                     custom_image_path=custom_image_path,
                     progress_callback=progress_notifier
@@ -1794,6 +1838,7 @@ async def handle_video_creation(
         topic_disp = html.escape(topic[:180] + ("..." if len(topic) > 180 else ""))
         caption_text = (
             f"🎬 <b>{topic_disp}</b>\n\n"
+            f"🎥 <b>Vizual:</b> {visual_info['name']}\n"
             f"🧠 <b>AI:</b> Qwen 2.5 7B ({ai_info['name'].split('(')[0].strip()})\n"
             f"🎙 <b>Ovoz:</b> {VOICES[cur_voice]['name']} | {VOICE_MODES[cur_mode]['name']}\n"
             f"🎚 <b>Akustika:</b> {dsp_info['name']}\n"
@@ -1802,7 +1847,7 @@ async def handle_video_creation(
             f"🎨 <b>Art:</b> {ART_STYLES[cur_art_style]['name']}\n"
             f"🎵 <b>Musiqa:</b> {genre_name} (Sidechain Ducking + SFX)\n"
             f"⏱ <b>Davomiyligi:</b> {dur:.1f}s | 📱 <b>Format:</b> {fmt_info['name']}\n"
-            f"💎 <b>Sifat:</b> Singularity 18.0 Cosmic Singularity\n\n"
+            f"💎 <b>Sifat:</b> Singularity 20.0 Dynamic Motion\n\n"
             f"<i>{WATERMARK_TEXT}</i>"
         )
 

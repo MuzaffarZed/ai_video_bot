@@ -485,4 +485,19 @@ AI_CREATIVITY_MODES = {
 }
 DEFAULT_AI_CREATIVITY = "viral_reels"
 
+# ==================== VIZUAL HARAKATLANUVCHI TASVIR REJIMLARI ====================
+PEXELS_API_KEY = os.environ.get("PEXELS_API_KEY", "")
+
+VISUAL_MODES = {
+    "motion_video": {
+        "name": "🎥 Harakatlanuvchi Video (Real Motion Video)",
+        "desc": "So'zlarga va yo'nalishga mos haqiqiy harakatdagi kinematik video roliklar"
+    },
+    "ai_art": {
+        "name": "🎨 AI Badiiy Kadrlar (AI Images)",
+        "desc": "Noyob generativ AI suratlari va kinematografik kamera harakati (Ken Burns)"
+    }
+}
+DEFAULT_VISUAL_MODE = "motion_video"
+
 

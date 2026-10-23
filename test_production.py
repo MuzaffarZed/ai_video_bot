@@ -561,5 +561,34 @@ class TestSingularity10(unittest.TestCase):
         scenes = sg.generate("Koinot", "uz", "cinematic", "short_15", ai_creativity="viral_reels")
         self.assertTrue(len(scenes) >= 2)
 
+    def test_visual_modes_config_and_keyboard(self):
+        from config import VISUAL_MODES, DEFAULT_VISUAL_MODE
+        from bot import get_visual_mode_keyboard
+        self.assertEqual(DEFAULT_VISUAL_MODE, "motion_video")
+        self.assertIn("motion_video", VISUAL_MODES)
+        self.assertIn("ai_art", VISUAL_MODES)
+
+        kb = get_visual_mode_keyboard("motion_video")
+        buttons = [btn.text for row in kb.inline_keyboard for btn in row]
+        self.assertTrue(any("Harakatlanuvchi Video" in b for b in buttons))
+        self.assertTrue(any("AI Badiiy Kadrlar" in b for b in buttons))
+
+    def test_motion_video_keywords_and_engine(self):
+        ve = VisualEngine()
+        self.assertTrue(hasattr(ve, "extract_visual_keywords"))
+        self.assertTrue(hasattr(ve, "search_motion_video"))
+        self.assertTrue(hasattr(ve, "get_scene_motion_visual"))
+
+        kw_space = ve.extract_visual_keywords("Koinot sirlari va yulduzlar", "space")
+        self.assertIn("galaxy", kw_space.lower())
+        kw_cars = ve.extract_visual_keywords("Tezyurar sport mashinasi", "cars")
+        self.assertIn("car", kw_cars.lower())
+        kw_money = ve.extract_visual_keywords("Biznes va katta pul", "business")
+        self.assertIn("gold", kw_money.lower())
+
+    def test_video_engine_supports_mp4_and_jpg(self):
+        v_eng = VideoEngine()
+        self.assertTrue(hasattr(v_eng, "render_scene_clip"))
+
 if __name__ == "__main__":
     unittest.main()

@@ -36,7 +36,8 @@ from config import (
     DEFAULT_ART_STYLE,
     DEFAULT_CAMERA_MOTION,
     FORMATS,
-    DEFAULT_AI_CREATIVITY
+    DEFAULT_AI_CREATIVITY,
+    DEFAULT_VISUAL_MODE
 )
 from script_generator import ScriptGenerator
 from tts_engine import TTSEngine
@@ -70,6 +71,7 @@ class VideoPipeline:
         art_style: str = DEFAULT_ART_STYLE,
         bgm_volume: float = 0.15,
         ai_creativity: str = DEFAULT_AI_CREATIVITY,
+        visual_mode: str = DEFAULT_VISUAL_MODE,
         custom_scenes: Optional[List[Dict]] = None,
         custom_image_path: Optional[str] = None,
         progress_callback: Optional[Callable[[int, int, str], None]] = None
@@ -106,19 +108,26 @@ class VideoPipeline:
         tts = TTSEngine(voice_key=voice_key, mode_key=voice_mode, effect_key=effect_key)
         processed_scenes = await tts.process_all_scenes(scenes, task_id=task_id)
 
-        # 3-Bosqich: 8K AI tasvirlar (Pollinations AI + 4K Unsplash)
-        await notify(3, "🎨 3/5: Real-Time AI kadrlar chizilmoqda va vinyetka berilmoqda...")
+        # 3-Bosqich: Harakatlanuvchi Kinematik Video Kadrlar (Motion Video Footage + AI)
+        step_title = "🎥 3/5: Harakatlanuvchi kinematik video kadrlar montaj qilinmoqda..." if visual_mode == "motion_video" else "🎨 3/5: Real-Time AI kadrlar chizilmoqda..."
+        await notify(3, step_title)
         category = visual_eng.detect_category(topic)
 
         async def fetch_scene_visual(sc):
-            img_path = str(TEMP_DIR / f"{task_id}_img_{sc['scene_num']}.jpg")
+            base_output = str(TEMP_DIR / f"{task_id}_visual_{sc['scene_num']}")
             if custom_image_path and os.path.exists(custom_image_path) and sc["scene_num"] == 1:
+                img_path = base_output + ".jpg"
                 await asyncio.to_thread(visual_eng.process_custom_user_image, custom_image_path, img_path)
+                sc["image_path"] = img_path
             else:
                 prompt = sc.get("visual_prompt") or sc.get("text") or topic
                 scene_seed = random.randint(10000, 999999) + sc["scene_num"] * 1013
-                await asyncio.to_thread(visual_eng.get_scene_visual, prompt, img_path, scene_seed, sc["scene_num"], art_style)
-            sc["image_path"] = img_path
+                scene_dur = sc.get("duration", 5.0)
+                asset_path = await asyncio.to_thread(
+                    visual_eng.get_scene_motion_visual,
+                    prompt, base_output, scene_seed, sc["scene_num"], art_style, scene_dur, visual_mode
+                )
+                sc["image_path"] = asset_path
 
         await asyncio.gather(*[fetch_scene_visual(sc) for sc in processed_scenes])
 

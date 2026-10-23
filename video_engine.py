@@ -63,7 +63,31 @@ class VideoEngine:
         fade_out_st = max(0.0, duration - fade_d)
         fades = f"fade=t=in:st=0:d={fade_d:.3f},fade=t=out:st={fade_out_st:.3f}:d={fade_d:.3f}"
 
-        if mode == "zoom_in":
+        is_video = any(image_path.lower().endswith(ext) for ext in [".mp4", ".webm", ".ogv", ".mov", ".mkv"])
+
+        if is_video:
+            vf_filter = (
+                f"scale={target_w}:{target_h}:force_original_aspect_ratio=increase,"
+                f"crop={target_w}:{target_h},"
+                f"{color_filter},"
+                f"{fades},"
+                f"setsar=1"
+            )
+            cmd = [
+                "ffmpeg", "-nostdin", "-y",
+                "-stream_loop", "-1",
+                "-t", f"{duration:.3f}",
+                "-i", clean_img,
+                "-vf", vf_filter,
+                "-c:v", "libx264",
+                "-preset", "veryfast",
+                "-threads", "2",
+                "-pix_fmt", "yuv420p",
+                "-r", str(self.fps),
+                "-an",
+                clean_out
+            ]
+        elif mode == "zoom_in":
             scaled_max_w = int(target_w * 1.25)
             scaled_max_h = int(target_h * 1.25)
             vf_filter = (
@@ -73,6 +97,19 @@ class VideoEngine:
                 f"{fades},"
                 f"setsar=1"
             )
+            cmd = [
+                "ffmpeg", "-nostdin", "-y",
+                "-loop", "1",
+                "-t", f"{duration:.3f}",
+                "-i", clean_img,
+                "-vf", vf_filter,
+                "-c:v", "libx264",
+                "-preset", "veryfast",
+                "-threads", "2",
+                "-pix_fmt", "yuv420p",
+                "-r", str(self.fps),
+                clean_out
+            ]
         elif mode == "pan_horiz":
             if scene_idx % 2 == 1:
                 pan_x = f"(in_w-out_w)*(t/{max(0.1, duration):.3f})"
@@ -86,6 +123,19 @@ class VideoEngine:
                 f"{fades},"
                 f"setsar=1"
             )
+            cmd = [
+                "ffmpeg", "-nostdin", "-y",
+                "-loop", "1",
+                "-t", f"{duration:.3f}",
+                "-i", clean_img,
+                "-vf", vf_filter,
+                "-c:v", "libx264",
+                "-preset", "veryfast",
+                "-threads", "2",
+                "-pix_fmt", "yuv420p",
+                "-r", str(self.fps),
+                clean_out
+            ]
         else:
             if speed_factor <= 0.001:
                 drift_x = "(in_w-out_w)/2"
@@ -104,20 +154,19 @@ class VideoEngine:
                 f"{fades},"
                 f"setsar=1"
             )
-
-        cmd = [
-            "ffmpeg", "-nostdin", "-y",
-            "-loop", "1",
-            "-t", f"{duration:.3f}",
-            "-i", clean_img,
-            "-vf", vf_filter,
-            "-c:v", "libx264",
-            "-preset", "veryfast",
-            "-threads", "2",
-            "-pix_fmt", "yuv420p",
-            "-r", str(self.fps),
-            clean_out
-        ]
+            cmd = [
+                "ffmpeg", "-nostdin", "-y",
+                "-loop", "1",
+                "-t", f"{duration:.3f}",
+                "-i", clean_img,
+                "-vf", vf_filter,
+                "-c:v", "libx264",
+                "-preset", "veryfast",
+                "-threads", "2",
+                "-pix_fmt", "yuv420p",
+                "-r", str(self.fps),
+                clean_out
+            ]
 
         subprocess.run(cmd, cwd=str(BASE_DIR), capture_output=True, check=True, timeout=60)
         return output_clip_path
