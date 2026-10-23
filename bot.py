@@ -1875,6 +1875,10 @@ async def main():
     print("🤖 MUZAFFARZED AI VIDEO BOT (SINGULARITY 18.0 COSMIC SINGULARITY) ISHGA TUSHDI!")
     print("Ken Burns, 35mm Grain, Outro Chime, Turbo Speed, Toza Nutq, Multi-Series faol...")
     print("=" * 65)
+    try:
+        await bot.delete_webhook(drop_pending_updates=True)
+    except Exception as e:
+        print(f"[Webhook Cleanup Notice] {e}")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":

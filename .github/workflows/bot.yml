@@ -41,30 +41,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: 🧠 Kuchli Oflayn AI Dvigatelini O'rnatish (Ollama + Qwen 2.5 7B Flagman)
+      - name: 🧠 Kuchli Oflayn AI Dvigatelini O'rnatish (Ollama CLI)
         run: |
-          echo "=== 1. Ollama o'rnatilmoqda ==="
+          echo "=== Ollama o'rnatilmoqda ==="
           curl -fsSL https://ollama.com/install.sh | sh
-          
-          echo "=== 2. Ollama xizmati fonda ishga tushirilmoqda (Keep-Alive 24h) ==="
-          export OLLAMA_KEEP_ALIVE="24h"
-          ollama serve > /tmp/ollama.log 2>&1 &
-          
-          echo "=== 3. Ollama xizmati tekshirilmoqda ==="
-          for i in {1..30}; do
-            if curl -s http://localhost:11434/api/tags > /dev/null; then
-              echo "✅ Ollama server muvaffaqiyatli ishga tushdi ($i s)"
-              break
-            fi
-            sleep 1
-          done
-          
-          echo "=== 4. Flagman Qwen 2.5 7B modeli yuklanmoqda va isitilmoqda (Warmup) ==="
-          ollama pull qwen2.5:7b || echo "Ollama pull fallback tayyor"
-          ollama run qwen2.5:7b "Salom" > /dev/null 2>&1 || true
-          ollama list
+          ollama --version
 
-      - name: 🤖 Botni Bulutda Ishga Tushirish
+      - name: 🤖 Botni Bulutda Ishga Tushirish (Zero-Downtime Watchdog + Ollama Powerhouse)
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -73,4 +56,30 @@ jobs:
           OLLAMA_KEEP_ALIVE: "24h"
           PYTHONUNBUFFERED: "1"
         run: |
-          python bot.py
+          echo "=== 1. Ollama xizmati fonda ishga tushirilmoqda (Keep-Alive 24h) ==="
+          export OLLAMA_KEEP_ALIVE="24h"
+          ollama serve > /tmp/ollama.log 2>&1 &
+
+          echo "=== 2. Flagman modelni fonda yuklash boshlandi (Non-Blocking Instant Boot) ==="
+          (
+            echo "⏳ Ollama API tekshirilmoqda..."
+            for i in {1..30}; do
+              if curl -s http://localhost:11434/api/tags > /dev/null; then
+                echo "✅ Ollama server muvaffaqiyatli ishga tushdi ($i s)"
+                echo "📥 Flagman Qwen 2.5 7B modeli fonda yuklanmoqda..."
+                ollama pull qwen2.5:7b || echo "Ollama pull fallback tayyor"
+                ollama run qwen2.5:7b "Salom" > /dev/null 2>&1 || true
+                echo "💎 Flagman Qwen 2.5 7B to'liq xotirada faol!"
+                break
+              fi
+              sleep 1
+            done
+          ) &
+
+          echo "=== 3. Telegram Bot zudlik bilan ishga tushirilmoqda (Watchdog Loop) ==="
+          while true; do
+            echo "🚀 [$(date)] MuzaffarZed AI Video Bot ishga tushmoqda..."
+            python bot.py || true
+            echo "⚠️ [$(date)] Bot jarayoni to'xtadi. 3 soniyadan so'ng qayta ishga tushadi..."
+            sleep 3
+          done

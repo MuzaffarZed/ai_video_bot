@@ -324,11 +324,16 @@ class ScriptGenerator:
         return self._generate_procedural(final_topic, final_lang, style, scene_count, voice_mode)
 
     def _is_ollama_available(self) -> bool:
-        """Ollama serveri faol yoki yo'qligini tezkor 1.2 soniyada tekshirish."""
+        """Ollama serveri faol va model yuklanganligini tezkor 1.2 soniyada tekshirish."""
         try:
             req = urllib.request.Request(f"{OLLAMA_HOST}/api/tags", headers={"User-Agent": "MuzaffarZed-Bot"})
             with urllib.request.urlopen(req, timeout=1.2) as resp:
-                return resp.status == 200
+                if resp.status == 200:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    models = [m.get("name", "") for m in data.get("models", [])]
+                    target = OLLAMA_MODEL.split(":")[0].lower()
+                    return any(target in m.lower() for m in models)
+                return False
         except Exception:
             return False
 
