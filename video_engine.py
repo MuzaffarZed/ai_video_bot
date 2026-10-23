@@ -155,7 +155,7 @@ class VideoEngine:
         active_color = bar_colors.get(theme_key, "0xFFD700@0.95")
 
         dark_rail = "drawbox=x=0:y=ih-14:w=iw:h=14:color=black@0.45:t=fill"
-        active_bar = f"drawbox=x=0:y=ih-14:w='iw*(t/{max(1.0, total_duration):.3f})':h=14:color={active_color}:t=fill"
+        active_bar = f"drawbox=x=0:y=ih-14:w='min(iw,iw*(t/{max(1.0, total_duration):.3f}))':h=14:color={active_color}:t=fill"
         progress_filter = f"{dark_rail},{active_bar}"
 
         if rel_ass and os.path.exists(ass_subtitle_path):

@@ -20,6 +20,7 @@ from typing import Callable, Optional, Dict, List
 from config import (
     TEMP_DIR,
     OUTPUT_DIR,
+    USER_UPLOADS_DIR,
     DEFAULT_VOICE,
     VOICES,
     DEFAULT_VOICE_MODE,
@@ -122,6 +123,7 @@ class VideoPipeline:
         await notify(4, "🎵 4/5: Fon musiqasi (Sidechain Ducking) va Karaoke tayyorlanmoqda...")
         voice_files = [sc["audio_path"] for sc in processed_scenes]
         master_audio = str(TEMP_DIR / f"{task_id}_master_audio.wav")
+        clean_voice_wav = str(TEMP_DIR / f"{task_id}_vocals.wav")
 
         final_music_genre = music_key
         if final_music_genre == "auto" or not final_music_genre:
@@ -134,7 +136,8 @@ class VideoPipeline:
             master_audio,
             genre=final_music_genre,
             transition_points=transition_points,
-            bgm_volume=bgm_volume
+            bgm_volume=bgm_volume,
+            output_vocals_path=clean_voice_wav
         )
 
         # Alohida MP3 podkast
@@ -143,12 +146,14 @@ class VideoPipeline:
 
         # Alohida toza nutq (Vocals only) eksporti
         clean_voice_mp3 = str(OUTPUT_DIR / f"{task_id}_vocals.mp3")
-        merged_voice_temp = str(TEMP_DIR / "merged_voice.wav")
-        if os.path.exists(merged_voice_temp):
+        if os.path.exists(clean_voice_wav):
             try:
-                await asyncio.to_thread(self.audio_mixer.export_mp3_podcast, merged_voice_temp, clean_voice_mp3)
-            except Exception:
+                await asyncio.to_thread(self.audio_mixer.export_mp3_podcast, clean_voice_wav, clean_voice_mp3)
+            except Exception as v_err:
+                print(f"[Vocals Export Notice] {v_err}")
                 clean_voice_mp3 = None
+        else:
+            clean_voice_mp3 = None
 
         ass_path = str(TEMP_DIR / f"{task_id}_subtitles.ass")
         await asyncio.to_thread(
@@ -395,16 +400,25 @@ class VideoPipeline:
 
     @staticmethod
     def cleanup_old_temp_files(max_age_hours: float = 1.0):
-        """1 soatdan eski vaqtinchalik fayllarni xavfsiz tozalash."""
+        """1 soatdan eski vaqtinchalik va 24 soatdan eski foydalanuvchi yuklamalarini xavfsiz tozalash."""
         now = time.time()
-        cutoff = now - (max_age_hours * 3600)
+        cutoff_temp = now - (max_age_hours * 3600)
+        cutoff_uploads = now - (24.0 * 3600)
         try:
             for item in TEMP_DIR.iterdir():
-                if item.is_file() and item.stat().st_mtime < cutoff:
+                if item.is_file() and item.stat().st_mtime < cutoff_temp:
                     try: item.unlink(missing_ok=True)
                     except Exception: pass
         except Exception as e:
-            print(f"[Garbage Collection Notice] {e}")
+            print(f"[Garbage Collection Temp Notice] {e}")
+
+        try:
+            for item in USER_UPLOADS_DIR.iterdir():
+                if item.is_file() and item.stat().st_mtime < cutoff_uploads:
+                    try: item.unlink(missing_ok=True)
+                    except Exception: pass
+        except Exception as e:
+            print(f"[Garbage Collection Uploads Notice] {e}")
 
     @staticmethod
     def cleanup_task_files(task_id: str):

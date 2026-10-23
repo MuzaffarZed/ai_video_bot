@@ -1058,6 +1058,7 @@ async def cb_set_speed(callback: types.CallbackQuery):
         top = job_info.get("topic", "Video")
         cur_fmt = job_info.get("format_key", DEFAULT_FORMAT)
         cur_v = job_info.get("voice_key", DEFAULT_VOICE)
+        fmt_info = FORMATS.get(cur_fmt, FORMATS[DEFAULT_FORMAT])
 
         await callback.message.answer_video(
             video=FSInputFile(output_speed_path),
@@ -1067,6 +1068,9 @@ async def cb_set_speed(callback: types.CallbackQuery):
                 f"💎 <b>Sifat:</b> Singularity 18.0 Cosmic Singularity\n\n"
                 f"<i>{WATERMARK_TEXT}</i>"
             ),
+            width=fmt_info["width"],
+            height=fmt_info["height"],
+            supports_streaming=True,
             reply_markup=get_post_video_keyboard(task_id, cur_fmt, cur_v, cur_speed=speed),
             parse_mode="HTML"
         )
@@ -1167,6 +1171,9 @@ async def cb_re_render(callback: types.CallbackQuery):
                 f"⚡️ <b>Tezkor Reformat:</b> 3 soniyada konvertatsiya qilindi\n\n"
                 f"<i>{WATERMARK_TEXT}</i>"
             ),
+            width=fmt_info["width"],
+            height=fmt_info["height"],
+            supports_streaming=True,
             reply_markup=get_post_video_keyboard(new_task_id, new_fmt, job_info.get("voice_key", DEFAULT_VOICE)),
             parse_mode="HTML"
         )
@@ -1232,6 +1239,9 @@ async def cb_reroll_visuals(callback: types.CallbackQuery):
             f"📱 <b>Format:</b> {fmt_info['name']}\n\n"
             f"<i>{WATERMARK_TEXT}</i>"
         ),
+        width=fmt_info["width"],
+        height=fmt_info["height"],
+        supports_streaming=True,
         reply_markup=get_post_video_keyboard(new_task_id, cur_fmt, job_info.get("voice_key", DEFAULT_VOICE)),
         parse_mode="HTML"
     )
@@ -1530,24 +1540,27 @@ async def handle_video_creation(
 
     try:
         async with render_lock:
-            result = await pipeline.create_video(
-                topic=topic,
-                voice_key=cur_voice,
-                voice_mode=cur_mode,
-                effect_key=cur_dsp,
-                style_key=cur_style,
-                theme_key=cur_theme,
-                music_key=cur_music,
-                duration_key=cur_duration,
-                format_key=cur_format,
-                filter_key=cur_filter,
-                motion_key=cur_motion,
-                size_key=cur_sub_size,
-                art_style=cur_art_style,
-                bgm_volume=bgm_vol,
-                custom_scenes=custom_scenes,
-                custom_image_path=custom_image_path,
-                progress_callback=progress_notifier
+            result = await asyncio.wait_for(
+                pipeline.create_video(
+                    topic=topic,
+                    voice_key=cur_voice,
+                    voice_mode=cur_mode,
+                    effect_key=cur_dsp,
+                    style_key=cur_style,
+                    theme_key=cur_theme,
+                    music_key=cur_music,
+                    duration_key=cur_duration,
+                    format_key=cur_format,
+                    filter_key=cur_filter,
+                    motion_key=cur_motion,
+                    size_key=cur_sub_size,
+                    art_style=cur_art_style,
+                    bgm_volume=bgm_vol,
+                    custom_scenes=custom_scenes,
+                    custom_image_path=custom_image_path,
+                    progress_callback=progress_notifier
+                ),
+                timeout=300.0
             )
 
         video_path = result["video_path"]
@@ -1632,6 +1645,16 @@ async def handle_video_creation(
 
         pipeline.cleanup_old_temp_files(max_age_hours=2.0)
 
+    except asyncio.TimeoutError:
+        logger.error(f"Video yaratish vaqti tugadi (Timeout 300s): {topic}")
+        try:
+            await status_msg.edit_text(
+                "⏳ <b>Video yaratish belgilangan vaqt ichida yakunlanmadi (Timeout 300s).</b>\n\nIltimos boshqa mavzuni yoki qisqaroq davomiylikni tanlang.",
+                reply_markup=get_main_keyboard(),
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
     except Exception as e:
         logger.exception("Video yaratishda xato")
         err_msg = html.escape(str(e)[:250])

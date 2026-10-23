@@ -4,6 +4,7 @@ Haqiqiy Real-Time AI rasm generatsiyasi (Pollinations Flux AI), 12 toifali 4K ku
 Muallif: MuzaffarZed
 """
 import os
+import time
 import random
 import urllib.request
 import urllib.parse
@@ -230,16 +231,20 @@ class VisualEngine:
         return output_path
 
     def _download_image(self, url: str, output_path: str, timeout: int = 10) -> bool:
-        try:
-            req = urllib.request.Request(
-                url,
-                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-            )
-            with urllib.request.urlopen(req, timeout=timeout) as response, open(output_path, "wb") as out_file:
-                out_file.write(response.read())
-            return True
-        except Exception:
-            return False
+        for attempt in range(2):
+            try:
+                req = urllib.request.Request(
+                    url,
+                    headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+                )
+                with urllib.request.urlopen(req, timeout=timeout) as response, open(output_path, "wb") as out_file:
+                    out_file.write(response.read())
+                if os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
+                    return True
+            except Exception:
+                if attempt == 0:
+                    time.sleep(0.5)
+        return False
 
     def _generate_fallback_graphic(self, category: str, output_path: str):
         """Oflayn ko'p qatlamli kinoviy grafika generatsiyasi."""

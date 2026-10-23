@@ -4,10 +4,11 @@ Nutq audiolari, ko'p janrli fon musiqalari, Sahna almashuv Whoosh SFX va Podkast
 Muallif: MuzaffarZed
 """
 import os
+import shutil
 import subprocess
 import wave
 import numpy as np
-from typing import List, Dict
+from typing import List, Dict, Optional
 from config import TEMP_DIR, MUSIC_DIR, SFX_DIR, MUSIC_GENRES, DEFAULT_MUSIC_GENRE
 
 class AudioMixer:
@@ -290,7 +291,8 @@ class AudioMixer:
         output_master_path: str,
         genre: str = "ambient_chill",
         transition_points: List[float] = None,
-        bgm_volume: float = 0.15
+        bgm_volume: float = 0.15,
+        output_vocals_path: Optional[str] = None
     ) -> str:
         """
         Barcha kadrlar ovozlarini birlashtiradi, mavzuga mos fon musiqasi (Audio Ducking)
@@ -322,6 +324,11 @@ class AudioMixer:
         ]
         try:
             subprocess.run(cmd_merge, capture_output=True, check=True, timeout=60)
+            if output_vocals_path:
+                try:
+                    shutil.copyfile(merged_voice, output_vocals_path)
+                except Exception as cp_err:
+                    print(f"[Vocals Copy Notice] {cp_err}")
         finally:
             if os.path.exists(concat_txt):
                 try: os.remove(concat_txt)

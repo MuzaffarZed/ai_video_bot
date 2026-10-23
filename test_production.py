@@ -1,4 +1,4 @@
-import os, sys, unittest
+import os, sys, time, unittest
 from PIL import Image
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -7,7 +7,8 @@ sys.path.insert(0, r'C:\Users\MuzaffarZed\ai_workspace\ai_video_bot')
 from config import (
     VOICES, VIDEO_STYLES, VISUAL_FILTERS, SUBTITLE_THEMES, SUBTITLE_SIZES,
     FORMATS, DURATIONS, MUSIC_GENRES, ART_STYLES, STUDIO_PRESETS, MUSIC_VOLUMES,
-    CAMERA_MOTIONS, DEFAULT_CAMERA_MOTION, AUDIO_EFFECTS, DEFAULT_AUDIO_EFFECT, TEMP_DIR
+    CAMERA_MOTIONS, DEFAULT_CAMERA_MOTION, AUDIO_EFFECTS, DEFAULT_AUDIO_EFFECT, TEMP_DIR,
+    USER_UPLOADS_DIR
 )
 from script_generator import ScriptGenerator, transliterate_uzbek
 from visual_engine import VisualEngine
@@ -283,6 +284,41 @@ class TestSingularity10(unittest.TestCase):
         save_job_cache_item("test_job_999", {"topic": "Test"})
         self.assertIn("test_job_999", job_cache)
         job_cache.pop("test_job_999", None)
+
+    def test_audio_mixer_mix_with_vocals_path(self):
+        mixer = AudioMixer()
+        # Synthesize a 1s sample voice
+        test_v1 = str(TEMP_DIR / "test_v1.wav")
+        mixer._synthesize_track("lofi_vibes", test_v1, duration=1.0)
+
+        out_master = str(TEMP_DIR / "test_out_master.wav")
+        out_vocals = str(TEMP_DIR / "test_out_vocals.wav")
+
+        mixer.mix([test_v1], out_master, genre="lofi_vibes", output_vocals_path=out_vocals)
+        self.assertTrue(os.path.exists(out_master))
+        self.assertTrue(os.path.exists(out_vocals))
+        self.assertGreater(os.path.getsize(out_vocals), 1000)
+
+        for p in [test_v1, out_master, out_vocals]:
+            try: os.remove(p)
+            except Exception: pass
+
+    def test_cleanup_old_temp_files_includes_user_uploads(self):
+        # Create a test old file in USER_UPLOADS_DIR
+        test_up = USER_UPLOADS_DIR / "test_stale_upload.tmp"
+        test_up.write_text("stale data")
+        # Set mtime to 48 hours ago
+        past_time = time.time() - (48 * 3600)
+        os.utime(test_up, (past_time, past_time))
+
+        VideoPipeline.cleanup_old_temp_files(max_age_hours=1.0)
+        self.assertFalse(test_up.exists())
+
+    def test_visual_engine_download_retry_structure(self):
+        ve = VisualEngine()
+        # Non-existent invalid URL should return False after retries without throwing uncaught exception
+        res = ve._download_image("https://invalid-non-existent-domain-12345.xyz/img.jpg", str(TEMP_DIR / "never.jpg"), timeout=1)
+        self.assertFalse(res)
 
 if __name__ == "__main__":
     unittest.main()
