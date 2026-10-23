@@ -1,5 +1,5 @@
 """
-MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Singularity 11.0 Omniscient Genesis)
+MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Singularity 12.0 Quantum Transcendence)
 Muallif: MuzaffarZed
 """
 import os
@@ -215,6 +215,7 @@ MUSIC_GENRES = {
     "cosmic_deep": "🪐 Chuqur Sirli / Kosmik Bas",
     "epic_inspiration": "🔥 Epik Motivatsiya / Ilhom",
     "tech_modern": "🤖 Zamonaviy Kiber / Lo-Fi",
+    "cyber_action": "⚡️ Kiber-Dinamik / Synthwave",
     "suspense_drama": "🕵️‍♂️ Kutilmagan Sir / Dramatik",
     "lofi_vibes": "☕️ Xotirjam Lo-Fi / Fokus"
 }

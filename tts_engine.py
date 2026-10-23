@@ -23,10 +23,18 @@ class TTSEngine:
         self.rate = mode_data.get("rate", "+12%")
         self.pitch = mode_data.get("pitch", "-1Hz")
 
-    async def generate_scene_audio(self, text: str, output_path: str, speaker: int = 1) -> float:
+    async def generate_scene_audio(
+        self,
+        text: str,
+        output_path: str,
+        speaker: int = 1,
+        is_hook: bool = False,
+        is_climax: bool = False
+    ) -> float:
         """
         Bitta kadr matnini ovozlashtiradi, Studiya DSP filtri va EBU R128 bilan boyitadi va saqlaydi.
         Agar speaker == 2 bo'lsa, avtomatik ravishda qarama-qarshi jinsdagi hamroh ovoziga o'tadi!
+        is_hook (1-kadr) uchun baquvvat ritm (+16%), is_climax (yakun) uchun chuqur basli (-2Hz) modulyatsiya.
         """
         chosen_voice_id = self.voice_id
         if speaker == 2:
@@ -42,8 +50,17 @@ class TTSEngine:
 
         clean_text = transliterate_uzbek(text) if self.voice_info.get("lang") == "uz" else text
 
+        rate_val = self.rate
+        pitch_val = self.pitch
+        if is_hook:
+            rate_val = "+16%"
+            pitch_val = "+1Hz"
+        elif is_climax:
+            rate_val = "+4%"
+            pitch_val = "-2Hz"
+
         temp_raw = output_path + ".raw.mp3"
-        comm = edge_tts.Communicate(clean_text, chosen_voice_id, rate=self.rate, pitch=self.pitch)
+        comm = edge_tts.Communicate(clean_text, chosen_voice_id, rate=rate_val, pitch=pitch_val)
         await comm.save(temp_raw)
 
         # Studiya Broadcast DSP zanjiri:
@@ -154,15 +171,38 @@ class TTSEngine:
         return word_timings
 
     async def process_all_scenes(self, scenes: List[Dict], task_id: str = "job") -> List[Dict]:
+        """
+        Barcha kadrlarni parallel oqimda (Concurrent Async) tezkor ovozlashtiradi
+        va vaqt chizig'i (Global Timeline) bo'yicha tartiblaydi.
+        """
+        total_sc = len(scenes)
+        tasks = []
+        for i, sc in enumerate(scenes):
+            scene_idx = i + 1
+            audio_path = str(TEMP_DIR / f"{task_id}_audio_{scene_idx}.wav")
+            speaker_id = sc.get("speaker", 1)
+            is_hook = (i == 0)
+            is_climax = (i == total_sc - 1 and total_sc > 1)
+            tasks.append(
+                self.generate_scene_audio(
+                    sc["text"],
+                    audio_path,
+                    speaker=speaker_id,
+                    is_hook=is_hook,
+                    is_climax=is_climax
+                )
+            )
+
+        durations = await asyncio.gather(*tasks)
+
         processed_scenes = []
         global_timeline_offset = 0.0
 
         for i, sc in enumerate(scenes):
             scene_idx = i + 1
             audio_path = str(TEMP_DIR / f"{task_id}_audio_{scene_idx}.wav")
-
+            dur = durations[i]
             speaker_id = sc.get("speaker", 1)
-            dur = await self.generate_scene_audio(sc["text"], audio_path, speaker=speaker_id)
             timed_words = self.build_word_timings(sc["text"], global_timeline_offset, dur)
 
             scene_record = {

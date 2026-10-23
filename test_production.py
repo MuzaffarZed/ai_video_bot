@@ -95,12 +95,31 @@ class TestSingularity10(unittest.TestCase):
 
     def test_audio_mixer_track_synthesis(self):
         mixer = AudioMixer()
-        for g in ["suspense_drama", "lofi_vibes"]:
+        for g in ["suspense_drama", "lofi_vibes", "cyber_action"]:
             test_wav = str(TEMP_DIR / f"test_{g}.wav")
             mixer._synthesize_track(g, test_wav, duration=0.5)
             self.assertTrue(os.path.exists(test_wav))
             try: os.remove(test_wav)
             except Exception: pass
+
+    def test_visual_engine_cover_poster(self):
+        ve = VisualEngine("9:16")
+        test_in = str(TEMP_DIR / "test_poster_in.jpg")
+        img = Image.new("RGB", (1080, 1920), color=(30, 40, 60))
+        img.save(test_in, "JPEG")
+
+        test_poster = str(TEMP_DIR / "test_poster_out.jpg")
+        ve.generate_cover_poster(test_in, "Epic Topic", test_poster)
+        self.assertTrue(os.path.exists(test_poster))
+        with Image.open(test_poster) as p_im:
+            self.assertEqual(p_im.width, 1080)
+            self.assertEqual(p_im.height, 1920)
+
+        try:
+            os.remove(test_in)
+            os.remove(test_poster)
+        except Exception:
+            pass
 
     def test_camera_motions_and_sfx(self):
         self.assertIn("dynamic_drift", CAMERA_MOTIONS)

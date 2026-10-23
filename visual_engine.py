@@ -331,3 +331,42 @@ class VisualEngine:
         except Exception as e:
             print(f"[Thumbnail Generate Error] {e}")
             return image_path
+
+    def generate_cover_poster(self, image_path: str, title: str, output_poster_path: str) -> str:
+        """
+        YouTube Shorts, TikTok va Reels uchun 1080x1920 Full HD dizaynerlik muqova posteri (Cover Poster).
+        """
+        try:
+            with Image.open(image_path) as im:
+                base = im.convert("RGBA").resize((self.width, self.height), Image.Resampling.LANCZOS)
+                overlay = Image.new("RGBA", (self.width, self.height), (0, 0, 0, 0))
+                draw = ImageDraw.Draw(overlay)
+
+                # Yuqori va pastki qismda kinolarga xos mayin qorayish (cinematic gradient/vignette)
+                draw.rectangle([(0, 0), (self.width, int(self.height * 0.16))], fill=(0, 0, 0, 140))
+                draw.rectangle([(0, int(self.height * 0.82)), (self.width, self.height)], fill=(0, 0, 0, 180))
+
+                # Yuqori brending badge
+                draw.rectangle(
+                    [(30, 40), (self.width - 30, 110)],
+                    fill=(10, 15, 30, 200),
+                    outline=(0, 255, 255, 220),
+                    width=2
+                )
+                draw.text((50, 60), "MuzaffarZed AI Studios • Official Cover", fill=(255, 255, 255, 240))
+
+                # Pastki mualliflik muhri
+                draw.rectangle(
+                    [(30, self.height - 100), (self.width - 30, self.height - 40)],
+                    fill=(10, 15, 30, 200),
+                    outline=(255, 215, 0, 220),
+                    width=2
+                )
+                draw.text((50, self.height - 80), "Dasturchi: MuzaffarZed", fill=(255, 215, 0, 240))
+
+                composited = Image.alpha_composite(base, overlay).convert("RGB")
+                composited.save(output_poster_path, "JPEG", quality=95)
+                return output_poster_path
+        except Exception as e:
+            print(f"[Cover Poster Error] {e}")
+            return image_path

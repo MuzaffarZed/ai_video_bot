@@ -102,7 +102,7 @@ class VideoPipeline:
         await notify(3, "🎨 3/5: Real-Time AI kadrlar chizilmoqda va vinyetka berilmoqda...")
         category = visual_eng.detect_category(topic)
 
-        for sc in processed_scenes:
+        async def fetch_scene_visual(sc):
             img_path = str(TEMP_DIR / f"{task_id}_img_{sc['scene_num']}.jpg")
             if custom_image_path and os.path.exists(custom_image_path) and sc["scene_num"] == 1:
                 await asyncio.to_thread(visual_eng.process_custom_user_image, custom_image_path, img_path)
@@ -110,6 +110,8 @@ class VideoPipeline:
                 prompt = sc.get("visual_prompt") or topic
                 await asyncio.to_thread(visual_eng.get_scene_visual, prompt, img_path, None, sc["scene_num"], art_style)
             sc["image_path"] = img_path
+
+        await asyncio.gather(*[fetch_scene_visual(sc) for sc in processed_scenes])
 
         # 4-Bosqich: Musiqa, Ducking, Subtitr & Podkast MP3
         await notify(4, "🎵 4/5: Fon musiqasi (Sidechain Ducking) va Karaoke tayyorlanmoqda...")
@@ -148,15 +150,18 @@ class VideoPipeline:
         srt_path = str(OUTPUT_DIR / f"{task_id}_subtitles.srt")
         await asyncio.to_thread(self.subtitle_eng.generate_srt, processed_scenes, srt_path)
 
-        # Video uchun maxsus muqova (thumbnail) kartochkasi
+        # Video uchun maxsus muqova (thumbnail) va Full HD poster kartochkasi
         thumb_path = str(TEMP_DIR / f"{task_id}_thumb.jpg")
+        poster_path = str(OUTPUT_DIR / f"{task_id}_poster.jpg")
         if processed_scenes:
-            await asyncio.to_thread(visual_eng.generate_thumbnail_card, processed_scenes[0]["image_path"], topic, thumb_path)
+            first_img = processed_scenes[0]["image_path"]
+            await asyncio.to_thread(visual_eng.generate_thumbnail_card, first_img, topic, thumb_path)
+            await asyncio.to_thread(visual_eng.generate_cover_poster, first_img, topic, poster_path)
 
         # 5-Bosqich: Kinematografik LUT render va Final montaj
         await notify(5, "🎬 5/5: Kinematografik rang grading va montaj yakunlanmoqda...")
-        scene_clips = []
-        for sc in processed_scenes:
+
+        async def render_single_clip(sc):
             clip_path = str(TEMP_DIR / f"{task_id}_clip_{sc['scene_num']}.mp4")
             await asyncio.to_thread(
                 self.video_eng.render_scene_clip,
@@ -168,7 +173,9 @@ class VideoPipeline:
                 filter_key,
                 motion_key
             )
-            scene_clips.append(clip_path)
+            return clip_path
+
+        scene_clips = await asyncio.gather(*[render_single_clip(sc) for sc in processed_scenes])
 
         total_duration = processed_scenes[-1]["end_time"] if processed_scenes else 0.0
         output_final = str(OUTPUT_DIR / f"{task_id}_final.mp4")
@@ -191,6 +198,7 @@ class VideoPipeline:
             "mp3_path": output_mp3,
             "srt_path": srt_path,
             "thumb_path": thumb_path if os.path.exists(thumb_path) else None,
+            "poster_path": poster_path if os.path.exists(poster_path) else None,
             "script_text": full_script_text,
             "seo_package": seo_data,
             "duration": total_duration,

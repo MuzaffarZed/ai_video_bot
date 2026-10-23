@@ -287,6 +287,7 @@ def get_post_video_keyboard(task_id: str, current_fmt: str = "9:16", cur_voice: 
         InlineKeyboardButton(text="📄 Subtitr (.SRT) olish", callback_data=f"dl_srt:{task_id}")
     )
     builder.row(
+        InlineKeyboardButton(text="📸 HD Muqova (Poster)", callback_data=f"dl_poster:{task_id}"),
         InlineKeyboardButton(text="📝 Ssenariy & SEO matni", callback_data=f"view_script:{task_id}")
     )
     if current_fmt == "9:16":
@@ -332,16 +333,16 @@ async def cmd_start(message: types.Message):
 
     welcome_text = (
         f"👋 Assalomu alaykum, <b>{html.escape(message.from_user.full_name)}</b>!\n\n"
-        f"🎬 <b>{BRAND_NAME} (Singularity 11.0 Omniscient Genesis)</b>ga xush kelibsiz!\n\n"
+        f"🎬 <b>{BRAND_NAME} (Singularity 12.0 Quantum Transcendence)</b>ga xush kelibsiz!\n\n"
         f"Men to'liq avtonom va jahon darajasidagi video kontent yarataman:\n"
-        f"• 🎙 <b>Ovoz:</b> {v_name} <i>(+ Ikki kishilik Podkast)</i>\n"
+        f"• 🎙 <b>Ovoz:</b> {v_name} <i>(+ Dinamik Pacing & Hamroh Podkast)</i>\n"
         f"• 🎛 <b>Uslub:</b> {s_name}\n"
         f"• 📱 <b>Format:</b> {f_name}\n"
         f"• 🎬 <b>Rang (LUT):</b> {lut_name}\n"
         f"• 🎥 <b>Kamera Harakati:</b> {cam_name}\n"
-        f"• 🎨 <b>AI Vizual:</b> <i>Real-Time Pollinations Flux 8K + 4K Unsplash</i>\n"
-        f"• 🎚 <b>Studio DSP:</b> <i>EBU R128 + Sidechain Audio Ducking + SFX</i>\n"
-        f"• 📄 <b>Eksport:</b> <i>Full HD Video, MP3 Podkast va .SRT Subtitr</i>\n\n"
+        f"• 🎨 <b>AI Vizual:</b> <i>Parallel Flux 8K + 4K Unsplash + HD Poster</i>\n"
+        f"• 🎚 <b>Studio DSP:</b> <i>EBU R128 + Sidechain Audio Ducking + Multi-SFX</i>\n"
+        f"• 📄 <b>Eksport:</b> <i>Full HD Video, HD Poster, MP3 va .SRT Subtitr</i>\n\n"
         f"🚀 <b>Qanday ishlatiladi:</b>\n"
         f"1. ✍️ <b>Matn yozing:</b> Mavzuni yozing va video oling;\n"
         f"2. 💡 <b>/ideas:</b> Trenddagi viral g'oyalardan video yasang;\n"
@@ -518,7 +519,7 @@ async def cmd_stats(message: types.Message):
         f"👥 <b>Jami foydalanuvchilar:</b> {total_u} ta\n"
         f"🎬 <b>Yaratilgan videolar:</b> {total_v} ta\n"
         f"☁️ <b>Bulut Serveri:</b> 24/7 Faol (GitHub Actions)\n"
-        f"💎 <b>Dvigatel:</b> Singularity 7.0 Omnipotent\n\n"
+        f"💎 <b>Dvigatel:</b> Singularity 12.0 Quantum Transcendence\n\n"
         f"<i>{WATERMARK_TEXT}</i>"
     )
     await message.answer(stats_text, parse_mode="HTML")
@@ -751,13 +752,14 @@ async def cb_topics_menu(callback: types.CallbackQuery):
 @dp.callback_query(F.data == "menu_about")
 async def cb_about_menu(callback: types.CallbackQuery):
     about_text = (
-        f"💎 <b>{BRAND_NAME} (Singularity 7.0 Omnipotent)</b>\n\n"
-        "• <b>Real-Time AI Art:</b> Pollinations AI 8K + 4K Unsplash\n"
+        f"💎 <b>{BRAND_NAME} (Singularity 12.0 Quantum Transcendence)</b>\n\n"
+        "• <b>Real-Time Parallel AI:</b> Pollinations AI 8K + 4K Unsplash + HD Poster\n"
         "• <b>Kinematografik LUT:</b> Teal & Orange, Cyberpunk, Golden, Clean HDR\n"
+        "• <b>Kamera Harakati:</b> Dynamic Drift, Shock Punch, Crisp Static\n"
         "• <b>Formatlar:</b> 9:16 Vertikal, 16:9 Gorizontal, 1:1 Kvadrat\n"
-        "• <b>Ovoz:</b> Microsoft Neural + Studio Broadcast DSP (EBU R128, Warmth)\n"
+        "• <b>Ovoz:</b> Microsoft Neural + Dinamik Pacing + Podkast Ovoz Almashish\n"
         "• <b>Subtitr:</b> Alex Hormozi Karaoke 2.0 (Glassmorphic Shadow, 120% pop)\n"
-        "• <b>Musiqa:</b> 4 ta janr + Sidechain Audio Ducking + Whoosh SFX\n"
+        "• <b>Musiqa & SFX:</b> 8 ta janr + Sidechain Ducking + Hollywood Hook Boom\n"
         "• <b>SMM Paket:</b> Avtomatik tavsif, 15 ta hashtag va optimal vaqt\n\n"
         f"<i>{WATERMARK_TEXT}</i>"
     )
@@ -804,6 +806,28 @@ async def cb_dl_srt(callback: types.CallbackQuery):
         )
     else:
         await callback.answer("⚠️ Subtitr fayli topilmadi.", show_alert=True)
+
+# --- HD Muqova (Poster) yuklab olish ---
+@dp.callback_query(F.data.startswith("dl_poster:"))
+async def cb_dl_poster(callback: types.CallbackQuery):
+    task_id = callback.data.split(":")[1]
+    job_info = job_cache.get(task_id)
+    poster_p = job_info.get("poster_path") if job_info else None
+    if poster_p and os.path.exists(poster_p):
+        await callback.answer("Muqova yuklanmoqda...")
+        photo_file = FSInputFile(poster_p)
+        top = job_info.get("topic", "Video")
+        await callback.message.answer_photo(
+            photo=photo_file,
+            caption=(
+                f"📸 <b>{html.escape(top)} - HD Muqova Kartochkasi (Cover Poster)</b>\n\n"
+                f"🎯 <i>YouTube Shorts, TikTok va Instagram Reels muqovasi uchun tayyor Full HD rasm.</i>\n\n"
+                f"<i>{WATERMARK_TEXT}</i>"
+            ),
+            parse_mode="HTML"
+        )
+    else:
+        await callback.answer("⚠️ Muqova posteri topilmadi.", show_alert=True)
 
 # --- Ssenariy va SEO matnini ko'rish ---
 @dp.callback_query(F.data.startswith("view_script:"))
@@ -1157,7 +1181,8 @@ async def handle_video_creation(
                 "seo_package": seo_data,
                 "format_key": cur_format,
                 "voice_key": cur_voice,
-                "scenes": result.get("scenes")
+                "scenes": result.get("scenes"),
+                "poster_path": result.get("poster_path")
             }
 
         try:
