@@ -1,6 +1,6 @@
 """
-MuzaffarZed AI Video Bot - Ssenariy Generatori (Version 4.0 Titanium Dynamic Scenes)
-Mavzu, uslub va davomiylikka (3, 5 yoki 7 kadr) mos viral ssenariy tuzadi.
+MuzaffarZed AI Video Bot - Ssenariy Generatori (Version 6.0 Zenith SEO & SMM Engine)
+Mavzu bo'yicha viral kadrlar va Instagram/TikTok uchun tayyor SEO sarlavha va hashtaglar to'plami.
 Muallif: MuzaffarZed
 """
 import os
@@ -24,7 +24,6 @@ class ScriptGenerator:
 
     @staticmethod
     def detect_language(text: str) -> str:
-        """Matn qaysi tilda ekanligini avtomatik aniqlash."""
         cyrillic_chars = sum(1 for c in text if 'а' <= c.lower() <= 'я' or c.lower() in 'ёъь')
         if cyrillic_chars > 5:
             if any(w in text.lower() for w in ["ҳақида", "билан", "учун", "қандай", "нима", "сири"]):
@@ -45,9 +44,6 @@ class ScriptGenerator:
         style: str = DEFAULT_VIDEO_STYLE,
         duration_key: str = DEFAULT_DURATION
     ) -> List[Dict]:
-        """
-        Berilgan mavzu, uslub va davomiylik bo'yicha viral ssenariy tuzadi.
-        """
         detected_lang = self.detect_language(topic)
         final_lang = lang if lang in ["uz", "ru", "en"] else detected_lang
 
@@ -71,7 +67,7 @@ class ScriptGenerator:
         }.get(lang, "O'zbek tilida")
 
         prompt = f"""
-Siz jahonning eng mashhur video produserisiz (MrBeast va Alex Hormozi darajasida).
+Siz jahon darajasidagi video produserisiz (MrBeast va Alex Hormozi darajasida).
 Mavzu: "{topic}"
 Til: {lang_prompt}
 Uslub: {style}
@@ -110,9 +106,6 @@ Javobni FAQAT quyidagi JSON massivida qaytaring, ortiqcha hech qanday matn qo'sh
         return json.loads(text.strip())
 
     def _generate_procedural(self, topic: str, lang: str, style: str, scene_count: int) -> List[Dict]:
-        """
-        Har qanday sharoitda aniq {scene_count} ta viral kadr ishlab chiquvchi generator.
-        """
         clean_topic = topic.strip()
 
         if lang == "uz":
@@ -157,13 +150,11 @@ Javobni FAQAT quyidagi JSON massivida qaytaring, ortiqcha hech qanday matn qo'sh
                     f"Siz bu haqda qanday fikrdasiz? Fikringizni izohlarda yozib qoldiring va sahifamizga obuna bo'ling!"
                 ]
 
-            # scene_count ga qarab tanlash
             if scene_count <= 3:
                 chosen = [templates[0], templates[1], templates[-1]]
             elif scene_count <= 5:
                 chosen = templates[:scene_count]
             else:
-                # 7 kadr uchun kengaytirish
                 extra = [f"{clean_topic} borasidagi tadqiqotlar har kuni yangi qirralarini ochib bermoqda.", f"Inson ongi har doim shunday yangiliklarga intilib yashaydi."]
                 chosen = (templates + extra)[:scene_count]
 
@@ -212,3 +203,29 @@ Javobni FAQAT quyidagi JSON massivida qaytaring, ortiqcha hech qanday matn qo'sh
             ]
 
         return scenes
+
+    def generate_viral_seo_package(self, topic: str, lang: str = "uz") -> Dict:
+        """
+        Instagram Reels, TikTok va YouTube Shorts uchun tayyor SEO sarlavha,
+        tavsif matni va 15 ta eng yuqori qamrovli (viral) hashtaglar to'plami.
+        """
+        clean_t = topic.strip()
+        tags_uz = ["#reels", "#uzbekistan", "#toshkent", "#faktlar", "#sirlar", "#bilim", "#top", "#foydali", "#shorts", "#trend", "#uzb", "#motivatsiya", "#qiziqarli", "#rek", "#uz"]
+        tags_ru = ["#рилс", "#факты", "#секреты", "#топ", "#наука", "#тренды", "#шортс", "#тикток", "#мотивация", "#полезно", "#инсайты", "#рек", "#рекомендации", "#саморазвитие", "#интересно"]
+        tags_en = ["#reels", "#viral", "#shorts", "#tiktok", "#facts", "#mindblown", "#curiosity", "#trending", "#foryou", "#explore", "#motivation", "#knowledge", "#secrets", "#ai", "#fyp"]
+
+        if lang == "ru":
+            caption = f"🔥 {clean_t} — тайна, которую скрывают 99% людей! Досмотрите до конца и сохраните в закладки!"
+            tags = " ".join(tags_ru)
+        elif lang == "en":
+            caption = f"🔥 The hidden truth about {clean_t} that 99% of people don't know! Watch until the end and share!"
+            tags = " ".join(tags_en)
+        else:
+            caption = f"🔥 {clean_t} haqida 99% insonlar bilmaydigan haqiqat! Videoni saqlab oling va do'stlaringizga ulashing!"
+            tags = " ".join(tags_uz)
+
+        return {
+            "caption": caption,
+            "hashtags": tags,
+            "best_time": "18:30 - 21:30 (Eng yuqori faollik vaqti)"
+        }

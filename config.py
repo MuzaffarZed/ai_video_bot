@@ -1,5 +1,5 @@
 """
-MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Infinity 5.0 Ultra Studio)
+MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Zenith 6.0 Apex Studio)
 Muallif: MuzaffarZed
 """
 import os
@@ -105,7 +105,36 @@ VIDEO_STYLES = {
 }
 DEFAULT_VIDEO_STYLE = "top_facts"
 
-# 4. Davomiylik va Kadrlar Miqdori
+# 4. Kinematografik Rang Filtrlari (Visual LUTs / Color Grading)
+VISUAL_FILTERS = {
+    "teal_orange": {
+        "name": "🎬 Kinematik Teal & Orange (Gollivud)",
+        "filter": "eq=contrast=1.08:saturation=1.2:gamma_r=0.92:gamma_b=1.12"
+    },
+    "cyberpunk": {
+        "name": "🌆 Kiberpank Neon (To'yingan yorug'lik)",
+        "filter": "eq=contrast=1.14:saturation=1.35,colorchannelmixer=rr=1.05:bb=1.2:gg=0.95"
+    },
+    "golden": {
+        "name": "🌟 Oltin Quyoshli (Golden Hour)",
+        "filter": "eq=contrast=1.06:saturation=1.16,colorbalance=rs=0.08:gs=0.04:bs=-0.06"
+    },
+    "clean": {
+        "name": "💎 Tiniq Zamonaviy (Clean HDR)",
+        "filter": "eq=contrast=1.06:saturation=1.14"
+    }
+}
+DEFAULT_VISUAL_FILTER = "teal_orange"
+
+# 5. Subtitr O'lchamlari
+SUBTITLE_SIZES = {
+    "large": {"name": "🔠 Katta Pop (82px - Reels)", "size": 82},
+    "medium": {"name": "🔡 Standart (74px)", "size": 74},
+    "small": {"name": "🔤 Ixcham (64px - YouTube)", "size": 64}
+}
+DEFAULT_SUBTITLE_SIZE = "medium"
+
+# 6. Davomiylik va Kadrlar Miqdori
 DURATIONS = {
     "short_15": {
         "name": "⚡ Qisqa Tezkor (3 kadr ~18s)",
@@ -122,7 +151,7 @@ DURATIONS = {
 }
 DEFAULT_DURATION = "short_15"
 
-# 5. Video Formatlari
+# 7. Video Formatlari
 FORMATS = {
     "9:16": {
         "width": 1080,
@@ -146,7 +175,7 @@ FORMATS = {
 DEFAULT_FORMAT = "9:16"
 FPS = 30
 
-# 6. Subtitr Dizaynlari
+# 8. Subtitr Rang Dizaynlari
 SUBTITLE_THEMES = {
     "gold": {
         "name": "🌟 Alex Hormozi Oltin",
@@ -175,7 +204,7 @@ SUBTITLE_THEMES = {
 }
 DEFAULT_SUBTITLE_THEME = "gold"
 
-# 7. Fon Musiqasi Janrlari
+# 9. Fon Musiqasi Janrlari
 MUSIC_GENRES = {
     "auto": "✨ Mavzuga mos avtomatik",
     "ambient_chill": "🌌 Koinot / Tinch Ambient",

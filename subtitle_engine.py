@@ -1,20 +1,27 @@
 """
-MuzaffarZed AI Video Bot - Zamonaviy Karaoke Subtitrlar Generatori (Version 4.0 Titanium Multi-Format)
-Ko'p formatli (9:16, 16:9, 1:1), 4 xil rang sxemasi, dinamik safe-margin va mualliflik muhri.
+MuzaffarZed AI Video Bot - Zamonaviy Karaoke Subtitrlar Generatori (Version 6.0 Zenith Dynamic Sizing)
+Ko'p formatli (9:16, 16:9, 1:1), 4 xil rang, dinamik shrift o'lchami va safe-margin.
 Muallif: MuzaffarZed
 """
 import os
 import sys
 from typing import List, Dict
-from config import WATERMARK_TEXT, FORMATS, DEFAULT_FORMAT, SUBTITLE_THEMES, DEFAULT_SUBTITLE_THEME
+from config import (
+    WATERMARK_TEXT,
+    FORMATS,
+    DEFAULT_FORMAT,
+    SUBTITLE_THEMES,
+    DEFAULT_SUBTITLE_THEME,
+    SUBTITLE_SIZES,
+    DEFAULT_SUBTITLE_SIZE
+)
 
 class SubtitleEngine:
-    def __init__(self, font_name: str = None, font_size: int = 76):
+    def __init__(self, font_name: str = None):
         if font_name is None:
             self.font_name = "DejaVu Sans" if sys.platform != "win32" else "Arial"
         else:
             self.font_name = font_name
-        self.font_size = font_size
 
     @staticmethod
     def _format_time(seconds: float) -> str:
@@ -29,11 +36,9 @@ class SubtitleEngine:
         scenes: List[Dict],
         output_ass_path: str,
         theme_key: str = DEFAULT_SUBTITLE_THEME,
-        format_key: str = DEFAULT_FORMAT
+        format_key: str = DEFAULT_FORMAT,
+        size_key: str = DEFAULT_SUBTITLE_SIZE
     ) -> str:
-        """
-        Barcha kadrlar so'zlarini tanlangan format va rang sxemasi bilan ASS formatiga yozadi.
-        """
         watermark_font = "DejaVu Sans" if sys.platform != "win32" else "Segoe UI"
         
         fmt = FORMATS.get(format_key, FORMATS[DEFAULT_FORMAT])
@@ -46,8 +51,8 @@ class SubtitleEngine:
         base_bgr = theme_data["base_color"]
         outline_bgr = theme_data["outline_color"]
 
-        # 16:9 uchun shrift o'lchamini biroz moslash
-        actual_font_size = self.font_size if format_key != "16:9" else int(self.font_size * 0.82)
+        base_size = SUBTITLE_SIZES.get(size_key, SUBTITLE_SIZES[DEFAULT_SUBTITLE_SIZE])["size"]
+        actual_font_size = base_size if format_key != "16:9" else int(base_size * 0.82)
 
         ass_header = f"""[Script Info]
 ScriptType: v4.00+
@@ -69,12 +74,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         start_str_full = self._format_time(0.0)
         end_str_full = self._format_time(total_duration)
 
-        # 1. Doimiy nafis mualliflik muhri (Dasturchi: MuzaffarZed)
         events.append(f"Dialogue: 1,{start_str_full},{end_str_full},Watermark,,0,0,0,,{WATERMARK_TEXT}")
 
         emojis = ["🔥", "💡", "🧠", "✨", "🚀", "⚡", "🎯", "💎", "⏳", "👑"]
 
-        # 2. Hormozi 2-3 so'zli dinamik pop karaoke
         for sc_idx, sc in enumerate(scenes):
             words = sc.get("words", [])
             if not words:

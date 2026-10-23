@@ -1,6 +1,6 @@
 """
-MuzaffarZed AI Video Bot - Yagona Boshqaruv Konveyeri (Pipeline 4.0 Titanium)
-Barcha bosqichlarni (Ssenariy, Ovoz, Kadrlar, Musiqa, Subtitr, Format, Davomiylik, MP3) uyg'unlashtiradi.
+MuzaffarZed AI Video Bot - Yagona Boshqaruv Konveyeri (Pipeline 6.0 Zenith)
+Barcha bosqichlarni (Ssenariy, Ovoz, Kadrlar, Musiqa, Subtitr, Rang Filtri, SEO) uyg'unlashtiradi.
 Muallif: MuzaffarZed
 """
 import os
@@ -23,9 +23,11 @@ from config import (
     DEFAULT_VOICE_MODE,
     DEFAULT_VIDEO_STYLE,
     DEFAULT_SUBTITLE_THEME,
+    DEFAULT_SUBTITLE_SIZE,
     DEFAULT_MUSIC_GENRE,
     DEFAULT_DURATION,
     DEFAULT_FORMAT,
+    DEFAULT_VISUAL_FILTER,
     FORMATS
 )
 from script_generator import ScriptGenerator
@@ -52,11 +54,13 @@ class VideoPipeline:
         music_key: str = DEFAULT_MUSIC_GENRE,
         duration_key: str = DEFAULT_DURATION,
         format_key: str = DEFAULT_FORMAT,
+        filter_key: str = DEFAULT_VISUAL_FILTER,
+        size_key: str = DEFAULT_SUBTITLE_SIZE,
         custom_image_path: Optional[str] = None,
         progress_callback: Optional[Callable[[int, int, str], None]] = None
     ) -> Dict:
         """
-        To'liq professional siklda video va MP3 tayyorlaydi (Titanium 4.0).
+        To'liq professional siklda video, MP3 va SEO paketini tayyorlaydi (Zenith 6.0).
         """
         task_id = f"job_{int(time.time())}_{uuid.uuid4().hex[:6]}"
         total_steps = 5
@@ -73,31 +77,31 @@ class VideoPipeline:
                 except Exception as e:
                     print(f"[Callback Error] {e}")
 
-        # 1-Bosqich: Ssenariy
-        await notify(1, "🧠 1/5: AI ssenariy va kadrlar taqsimoti tuzilmoqda...")
+        # 1-Bosqich: Ssenariy va SEO paket
+        await notify(1, "🧠 1/5: AI ssenariy va viral kadrlar tuzilmoqda...")
         lang = VOICES.get(voice_key, {}).get("lang", "uz")
         scenes = await asyncio.to_thread(self.script_gen.generate, topic, lang, style_key, duration_key)
+        seo_data = await asyncio.to_thread(self.script_gen.generate_viral_seo_package, topic, lang)
 
         # 2-Bosqich: Ovozlashtirish & Studiya DSP
         await notify(2, "🎙 2/5: Studiya DSP ovozi (EBU R128 + Warmth) yozilmoqda...")
         tts = TTSEngine(voice_key=voice_key, mode_key=voice_mode)
         processed_scenes = await tts.process_all_scenes(scenes, task_id=task_id)
 
-        # 3-Bosqich: Mavzuga mos vizual kadrlar & vinyetka
-        await notify(3, "🎨 3/5: Tanlangan formatga mos 4K kadrlar va vinyetka tanlanmoqda...")
+        # 3-Bosqich: 8K AI tasvirlar (Pollinations AI + 4K Unsplash)
+        await notify(3, "🎨 3/5: Real-Time AI kadrlar chizilmoqda va vinyetka berilmoqda...")
         category = visual_eng.detect_category(topic)
 
         for sc in processed_scenes:
             img_path = str(TEMP_DIR / f"{task_id}_img_{sc['scene_num']}.jpg")
             if custom_image_path and os.path.exists(custom_image_path) and sc["scene_num"] == 1:
-                # 1-kadr uchun foydalanuvchining o'z rasmi ishlatiladi
                 await asyncio.to_thread(visual_eng.process_custom_user_image, custom_image_path, img_path)
             else:
                 prompt = sc.get("visual_prompt") or topic
                 await asyncio.to_thread(visual_eng.get_scene_visual, prompt, img_path, None, sc["scene_num"])
             sc["image_path"] = img_path
 
-        # 4-Bosqich: Musiqa, Sidechain Ducking, Subtitr & Podkast MP3
+        # 4-Bosqich: Musiqa, Ducking, Subtitr & Podkast MP3
         await notify(4, "🎵 4/5: Fon musiqasi (Sidechain Ducking) va Karaoke tayyorlanmoqda...")
         voice_files = [sc["audio_path"] for sc in processed_scenes]
         master_audio = str(TEMP_DIR / f"{task_id}_master_audio.wav")
@@ -108,7 +112,7 @@ class VideoPipeline:
 
         await asyncio.to_thread(self.audio_mixer.mix, voice_files, master_audio, genre=final_music_genre)
 
-        # Alohida MP3 podkast fayli
+        # Alohida MP3 podkast
         output_mp3 = str(OUTPUT_DIR / f"{task_id}_podcast.mp3")
         await asyncio.to_thread(self.audio_mixer.export_mp3_podcast, master_audio, output_mp3)
 
@@ -118,11 +122,12 @@ class VideoPipeline:
             processed_scenes,
             ass_path,
             theme_key=theme_key,
-            format_key=format_key
+            format_key=format_key,
+            size_key=size_key
         )
 
-        # 5-Bosqich: Kliplarni render qilish va Final montaj
-        await notify(5, "🎬 5/5: Dynamic Zoom & Pan va oltin progress-bar montaj qilinmoqda...")
+        # 5-Bosqich: Kinematografik LUT render va Final montaj
+        await notify(5, "🎬 5/5: Kinematografik rang grading va montaj yakunlanmoqda...")
         scene_clips = []
         for sc in processed_scenes:
             clip_path = str(TEMP_DIR / f"{task_id}_clip_{sc['scene_num']}.mp4")
@@ -132,7 +137,8 @@ class VideoPipeline:
                 sc["duration"],
                 clip_path,
                 sc["scene_num"],
-                format_key
+                format_key,
+                filter_key
             )
             scene_clips.append(clip_path)
 
@@ -156,17 +162,18 @@ class VideoPipeline:
             "video_path": output_final,
             "mp3_path": output_mp3,
             "script_text": full_script_text,
+            "seo_package": seo_data,
             "duration": total_duration,
             "scenes": processed_scenes,
             "task_id": task_id,
             "category": category,
             "music_genre": final_music_genre,
-            "format_key": format_key
+            "format_key": format_key,
+            "filter_key": filter_key
         }
 
     @staticmethod
     def cleanup_task_files(task_id: str):
-        """Vaqtincha render fayllarini diskdan tozalash."""
         try:
             for item in TEMP_DIR.glob(f"{task_id}_*"):
                 try: item.unlink(missing_ok=True)

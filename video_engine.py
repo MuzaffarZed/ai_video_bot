@@ -1,12 +1,25 @@
 """
-MuzaffarZed AI Video Bot - Kengaytirilgan Video Montaj Dvigateli (Version 5.0 Infinity)
-Ko'p formatli (9:16, 16:9, 1:1), Dynamic Zoom & Pan, Oltin progress-bar va Branded Outro.
+MuzaffarZed AI Video Bot - Kengaytirilgan Video Montaj Dvigateli (Version 6.0 Zenith Visual Filters)
+Ko'p formatli (9:16, 16:9, 1:1), Kinematografik LUT filtrlar (Teal & Orange, Cyberpunk, Golden) va Outro.
 Muallif: MuzaffarZed
 """
 import os
 import subprocess
 from typing import List, Dict
-from config import BASE_DIR, TEMP_DIR, OUTPUT_DIR, FPS, FORMATS, DEFAULT_FORMAT, SUBTITLE_THEMES, DEFAULT_SUBTITLE_THEME, BRAND_NAME, WATERMARK_TEXT
+from config import (
+    BASE_DIR,
+    TEMP_DIR,
+    OUTPUT_DIR,
+    FPS,
+    FORMATS,
+    DEFAULT_FORMAT,
+    SUBTITLE_THEMES,
+    DEFAULT_SUBTITLE_THEME,
+    VISUAL_FILTERS,
+    DEFAULT_VISUAL_FILTER,
+    BRAND_NAME,
+    WATERMARK_TEXT
+)
 
 class VideoEngine:
     def __init__(self, fps: int = FPS):
@@ -18,11 +31,12 @@ class VideoEngine:
         duration: float,
         output_clip_path: str,
         scene_idx: int = 1,
-        format_key: str = DEFAULT_FORMAT
+        format_key: str = DEFAULT_FORMAT,
+        filter_key: str = DEFAULT_VISUAL_FILTER
     ) -> str:
         """
         Bitta rasmdan kinematografik suzuvchi kamera harakati (Dynamic Zoom & Pan)
-        va to'yingan ranglarga ega klip hosil qiladi (9:16, 16:9 yoki 1:1).
+        va tanlangan rang filtri (LUT) bilan Full HD klip hosil qiladi.
         """
         fmt = FORMATS.get(format_key, FORMATS[DEFAULT_FORMAT])
         target_w = fmt["width"]
@@ -41,10 +55,13 @@ class VideoEngine:
             drift_x = f"(in_w-out_w)/2 - sin(t*1.1)*{int(target_w * 0.035)}"
             drift_y = f"(in_h-out_h)/2 - (t/10)*{int(target_h * 0.012)}"
 
+        filter_data = VISUAL_FILTERS.get(filter_key, VISUAL_FILTERS[DEFAULT_VISUAL_FILTER])
+        color_filter = filter_data.get("filter", "eq=contrast=1.06:saturation=1.14")
+
         vf_filter = (
             f"scale={scaled_w}:{scaled_h}:force_original_aspect_ratio=increase,crop={scaled_w}:{scaled_h},"
             f"crop={target_w}:{target_h}:x='{drift_x}':y='{drift_y}',"
-            f"eq=contrast=1.06:saturation=1.14,"
+            f"{color_filter},"
             f"setsar=1"
         )
 
@@ -87,7 +104,7 @@ class VideoEngine:
 
         rel_concat = os.path.abspath(str(concat_txt)).replace("\\", "/")
         rel_audio = os.path.abspath(master_audio_path).replace("\\", "/")
-        rel_ass = os.path.relpath(ass_subtitle_path, BASE_DIR).replace("\\", "/")
+        rel_ass = os.path.relpath(ass_subtitle_path, BASE_DIR).replace("\\", "/") if ass_subtitle_path else ""
         rel_final = os.path.abspath(output_final_path).replace("\\", "/")
 
         bar_colors = {
@@ -102,14 +119,17 @@ class VideoEngine:
         active_bar = f"drawbox=x=0:y=ih-14:w='iw*(t/{max(1.0, total_duration):.3f})':h=14:color={active_color}:t=fill"
         progress_filter = f"{dark_rail},{active_bar}"
 
-        # 1-Urinish: Progress-bar + ASS karaoke subtitrlar
-        full_vf_with_sub = f"{progress_filter},ass={rel_ass}"
-        cmd_with_subtitles = [
+        if rel_ass and os.path.exists(ass_subtitle_path):
+            full_vf = f"{progress_filter},ass={rel_ass}"
+        else:
+            full_vf = progress_filter
+
+        cmd = [
             "ffmpeg", "-nostdin", "-y",
             "-f", "concat", "-safe", "0",
             "-i", rel_concat,
             "-i", rel_audio,
-            "-vf", full_vf_with_sub,
+            "-vf", full_vf,
             "-c:v", "libx264",
             "-preset", "veryfast",
             "-threads", "2",
@@ -123,15 +143,15 @@ class VideoEngine:
         ]
 
         try:
-            res = subprocess.run(cmd_with_subtitles, cwd=str(BASE_DIR), capture_output=True, text=True, timeout=120)
+            res = subprocess.run(cmd, cwd=str(BASE_DIR), capture_output=True, text=True, timeout=120)
             if res.returncode == 0 and os.path.exists(output_final_path) and os.path.getsize(output_final_path) > 1000:
                 return output_final_path
-            print(f"[VideoEngine Notice] ASS subtitr render xatosi: {res.stderr[:200]}")
+            print(f"[VideoEngine Notice] Render xatosi: {res.stderr[:200]}")
         except Exception as e:
-            print(f"[VideoEngine Notice] ASS render sinovi: {e}")
+            print(f"[VideoEngine Notice] Render sinovi: {e}")
 
-        # 2-Urinish (Zero-Defect Fallback): Progress-bar bilan montaj
-        cmd_fallback = [
+        # Fallback
+        cmd_fb = [
             "ffmpeg", "-nostdin", "-y",
             "-f", "concat", "-safe", "0",
             "-i", rel_concat,
@@ -148,5 +168,5 @@ class VideoEngine:
             "-movflags", "+faststart",
             rel_final
         ]
-        subprocess.run(cmd_fallback, cwd=str(BASE_DIR), capture_output=True, check=True, timeout=120)
+        subprocess.run(cmd_fb, cwd=str(BASE_DIR), capture_output=True, check=True, timeout=120)
         return output_final_path
