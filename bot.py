@@ -5,6 +5,8 @@ Muallif: MuzaffarZed
 """
 import os
 import sys
+import re
+import urllib.request
 import time
 import json
 import asyncio
@@ -66,12 +68,30 @@ from config import (
     BRAND_NAME
 )
 from pipeline import VideoPipeline
+from tts_engine import TTSEngine
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 USER_DB_FILE = BASE_DIR / "user_db.json"
 STATS_FILE = BASE_DIR / "bot_stats.json"
+
+def extract_title_from_url(url: str) -> str:
+    """Web havola (maqola, yangilik) manzilidan sarlavhani avtomatik ajratib olish."""
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            html_text = response.read()[:12000].decode("utf-8", errors="ignore")
+            m = re.search(r"<title[^>]*>(.*?)</title>", html_text, re.IGNORECASE | re.DOTALL)
+            if m:
+                clean = re.sub(r"\s+", " ", m.group(1)).strip()
+                clean = clean.split(" - ")[0].split(" | ")[0].strip()
+                if len(clean) >= 3:
+                    return clean[:80]
+    except Exception:
+        pass
+    slug = url.split("?")[0].rstrip("/").split("/")[-1].replace("-", " ").replace("_", " ").strip()
+    return slug[:70] if slug else "Maqola Sharhi"
 
 def load_json(file_path: Path, default_data: dict) -> dict:
     if file_path.exists():
@@ -198,6 +218,7 @@ def get_voice_keyboard(current: str) -> InlineKeyboardMarkup:
     for key, v in VOICES.items():
         check = "✅ " if key == current else ""
         builder.row(InlineKeyboardButton(text=f"{check}{v['name']}", callback_data=f"set_voice:{key}"))
+    builder.row(InlineKeyboardButton(text="🎧 Tanlangan ovoz namunasini tinglash", callback_data=f"listen_voice:{current}"))
     builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
     return builder.as_markup()
 
@@ -454,6 +475,32 @@ async def cb_profile(callback: types.CallbackQuery):
     builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
     await callback.message.edit_text(prof_text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
+@dp.message(Command("remix"))
+async def cmd_remix(message: types.Message):
+    if not job_cache:
+        await message.answer("⚠️ Hali yaratilgan videolar mavjud emas. Avval biror video mavzusini yozing.")
+        return
+    last_job = list(job_cache.values())[-1]
+    top = last_job.get("topic", "Mavzu")
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="🔥 Top Faktlar (Viral)", callback_data=f"apply_preset:tiktok_hook"),
+        InlineKeyboardButton(text="🎙 Podkast Dialog", callback_data=f"apply_preset:podcast_dual")
+    )
+    builder.row(
+        InlineKeyboardButton(text="🌌 Koinot Doku", callback_data=f"apply_preset:space_doku"),
+        InlineKeyboardButton(text="🖥 YouTube Keng", callback_data=f"apply_preset:youtube_wide")
+    )
+    builder.row(InlineKeyboardButton(text="🎬 Shu mavzuda qayta yaratish", callback_data=f"quick_gen:{top}"))
+    await message.answer(
+        f"🎛 <b>Videoni qayta remiks qilish:</b>\n\n"
+        f"Oxirgi mavzu: <b>{html.escape(top)}</b>\n\n"
+        f"Qaysi yangi uslubda qayta chiqarishni xohlaysiz?\n\n"
+        f"<i>{WATERMARK_TEXT}</i>",
+        reply_markup=builder.as_markup(),
+        parse_mode="HTML"
+    )
+
 @dp.message(Command("health", "ping"))
 async def cmd_health(message: types.Message):
     uptime_sec = int(time.time() - START_TIME)
@@ -622,6 +669,24 @@ async def cb_set_voice(callback: types.CallbackQuery):
     v_name = VOICES[key]["name"]
     await callback.answer(f"Ovoz: {v_name}")
     await callback.message.edit_text(f"✅ Ovoz o'rnatildi: <b>{v_name}</b>", reply_markup=get_voice_keyboard(key), parse_mode="HTML")
+
+# --- Ovoz namunasini tinglash (Voice Demo Preview) ---
+@dp.callback_query(F.data.startswith("listen_voice:"))
+async def cb_listen_voice(callback: types.CallbackQuery):
+    voice_key = callback.data.split(":")[1]
+    v_data = VOICES.get(voice_key, VOICES[DEFAULT_VOICE])
+    await callback.answer(f"🎙 {v_data['name']} namunasi yuklanmoqda...")
+    demo_path = str(TEMP_DIR / f"voice_demo_{voice_key}.mp3")
+    await TTSEngine.generate_voice_demo(voice_key, demo_path)
+    if os.path.exists(demo_path):
+        voice_file = FSInputFile(demo_path)
+        await callback.message.answer_voice(
+            voice=voice_file,
+            caption=f"🎙 <b>{v_data['name']}</b> diktorlik ovozi namunasi.\n\n<i>{WATERMARK_TEXT}</i>",
+            parse_mode="HTML"
+        )
+    else:
+        await callback.answer("⚠️ Ovoz namunasini tayyorlashda xatolik yuz berdi.", show_alert=True)
 
 # --- Tezlik menyusi ---
 @dp.callback_query(F.data == "menu_modes")
@@ -1176,6 +1241,26 @@ async def msg_handle_text(message: types.Message):
 
     user_id = message.from_user.id
     record_user(user_id)
+
+    if topic.startswith("http://") or topic.startswith("https://"):
+        status_msg = await message.answer("🌐 <b>Maqola havolasi tahlil qilinmoqda...</b>", parse_mode="HTML")
+        page_title = await asyncio.to_thread(extract_title_from_url, topic)
+        try: await status_msg.delete()
+        except Exception: pass
+
+        if page_title and len(page_title) >= 3:
+            builder = InlineKeyboardBuilder()
+            builder.row(InlineKeyboardButton(text="🎬 Maqoladan video yaratish", callback_data=f"quick_gen:{page_title[:60]}"))
+            builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
+            await message.answer(
+                f"🌐 <b>Maqola aniqlandi:</b>\n\n"
+                f"📌 <b>Mavzu:</b> <i>{html.escape(page_title)}</i>\n\n"
+                f"Ushbu maqola asosida video montaj qilinsinmi?\n\n"
+                f"<i>{WATERMARK_TEXT}</i>",
+                reply_markup=builder.as_markup(),
+                parse_mode="HTML"
+            )
+            return
 
     if len(topic) < 3 or topic.lower() in ["salom", "qalesan", "qalaysiz", "hi", "hello"]:
         await message.answer(

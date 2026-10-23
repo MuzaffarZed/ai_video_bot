@@ -1,5 +1,5 @@
 """
-MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Singularity 14.0 Infinite Apex)
+MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Singularity 15.0 Supreme Omnipresence)
 Muallif: MuzaffarZed
 """
 import os

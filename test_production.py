@@ -16,6 +16,7 @@ from subtitle_engine import SubtitleEngine
 from audio_mixer import AudioMixer
 from video_engine import VideoEngine
 from pipeline import VideoPipeline
+from bot import extract_title_from_url
 
 class TestSingularity10(unittest.TestCase):
     def test_config_integrity(self):
@@ -178,6 +179,13 @@ class TestSingularity10(unittest.TestCase):
         self.assertTrue(SubtitleEngine._is_power_word("million"))
         self.assertTrue(SubtitleEngine._is_power_word("koinot!"))
         self.assertFalse(SubtitleEngine._is_power_word("va"))
+
+    def test_url_title_extraction(self):
+        slug = extract_title_from_url("https://example.com/deep-space-exploration")
+        self.assertIn("deep space", slug.lower())
+
+    def test_tts_voice_demo(self):
+        self.assertTrue(hasattr(TTSEngine, "generate_voice_demo"))
 
     def test_pipeline_attributes(self):
         pipeline = VideoPipeline()

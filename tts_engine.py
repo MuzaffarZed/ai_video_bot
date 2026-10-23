@@ -12,6 +12,15 @@ import edge_tts
 from config import TEMP_DIR, VOICES, DEFAULT_VOICE, VOICE_MODES, DEFAULT_VOICE_MODE
 from script_generator import transliterate_uzbek
 
+VOICE_DEMO_TEXTS = {
+    "uz_sardor": "Assalomu alaykum! Men Sardor — sizning videolaringiz uchun rasmiy va salobatli ovozman.",
+    "uz_madina": "Assalomu alaykum! Men Madina — ilhomlantiruvchi, mayin va jozibador ovozman.",
+    "ru_dmitry": "Здравствуйте! Я Дмитрий — ваш уверенный и профессиональный дикторский голос.",
+    "ru_svetlana": "Привет! Я Светлана — вдохновляющий и выразительный женский голос.",
+    "en_christopher": "Hello! I am Christopher — your dynamic and cinematic English narrator.",
+    "en_aria": "Hi there! I am Aria — your warm, engaging, and expressive voice."
+}
+
 class TTSEngine:
     def __init__(self, voice_key: str = DEFAULT_VOICE, mode_key: str = DEFAULT_VOICE_MODE):
         if voice_key not in VOICES:
@@ -22,6 +31,48 @@ class TTSEngine:
         mode_data = VOICE_MODES.get(mode_key, VOICE_MODES[DEFAULT_VOICE_MODE])
         self.rate = mode_data.get("rate", "+12%")
         self.pitch = mode_data.get("pitch", "-1Hz")
+
+    @classmethod
+    async def generate_voice_demo(cls, voice_key: str, output_path: str) -> str:
+        """Tanlangan diktor uchun 2.5 soniyalik audio namuna yaratish yoki keshdan olish."""
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
+            return output_path
+
+        voice_data = VOICES.get(voice_key, VOICES[DEFAULT_VOICE])
+        voice_id = voice_data["id"]
+        demo_text = VOICE_DEMO_TEXTS.get(voice_key, "Salom! Bu ovoz namunasi.")
+
+        clean_text = transliterate_uzbek(demo_text) if voice_data.get("lang") == "uz" else demo_text
+        temp_raw = output_path + ".demo.raw.mp3"
+        comm = edge_tts.Communicate(clean_text, voice_id, rate="+8%", pitch="0Hz")
+        await comm.save(temp_raw)
+
+        dsp_filter = (
+            "highpass=f=80,"
+            "equalizer=f=220:t=q:w=1.2:g=2.5,"
+            "equalizer=f=3600:t=q:w=1.0:g=3.0,"
+            "compand=attacks=0.02:decays=0.1:points=-80/-80|-25/-15|-10/-5|0/0:soft-knee=6,"
+            "loudnorm=I=-16:TP=-1.5:LRA=11"
+        )
+        cmd = [
+            "ffmpeg", "-nostdin", "-y",
+            "-i", temp_raw,
+            "-af", dsp_filter,
+            "-c:a", "libmp3lame",
+            "-b:a", "128k",
+            output_path
+        ]
+        try:
+            subprocess.run(cmd, capture_output=True, check=True, timeout=20)
+        except Exception:
+            cmd_fb = ["ffmpeg", "-nostdin", "-y", "-i", temp_raw, "-c:a", "libmp3lame", "-b:a", "128k", output_path]
+            subprocess.run(cmd_fb, capture_output=True, check=True, timeout=20)
+        finally:
+            if os.path.exists(temp_raw):
+                try: os.remove(temp_raw)
+                except Exception: pass
+
+        return output_path
 
     async def generate_scene_audio(
         self,
