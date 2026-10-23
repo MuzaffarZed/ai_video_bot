@@ -1,5 +1,5 @@
 """
-MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Zenith 6.0 Apex Studio)
+MuzaffarZed AI Video Bot - Konfiguratsiya va Sozlamalar (Singularity 8.0 Infinity Grandmaster)
 Muallif: MuzaffarZed
 """
 import os
@@ -210,9 +210,36 @@ MUSIC_GENRES = {
     "ambient_chill": "🌌 Koinot / Tinch Ambient",
     "cosmic_deep": "🪐 Chuqur Sirli / Kosmik Bas",
     "epic_inspiration": "🔥 Epik Motivatsiya / Ilhom",
-    "tech_modern": "🤖 Zamonaviy Kiber / Lo-Fi"
+    "tech_modern": "🤖 Zamonaviy Kiber / Lo-Fi",
+    "suspense_drama": "🕵️‍♂️ Kutilmagan Sir / Dramatik",
+    "lofi_vibes": "☕️ Xotirjam Lo-Fi / Fokus"
 }
 DEFAULT_MUSIC_GENRE = "auto"
+
+# 10. AI Rasm Uslublari (Art Styles)
+ART_STYLES = {
+    "photoreal": {
+        "name": "📸 Fotorealistik 8K (Haqiqiy kamera)",
+        "prompt_suffix": ", 8k resolution, cinematic lighting, photorealistic, dramatic vertical shot, 35mm lens, award-winning cinematography",
+        "model": "flux-realism"
+    },
+    "cinematic_3d": {
+        "name": "🎬 3D Kinematik (Unreal Engine 5)",
+        "prompt_suffix": ", 3d digital render, octane render, unreal engine 5, volumetric lighting, raytracing, highly detailed, vertical shot",
+        "model": "flux"
+    },
+    "cyberpunk": {
+        "name": "🌆 Kiberpank Neon (Futuristik)",
+        "prompt_suffix": ", cyberpunk neon aesthetic, futuristic, glowing reflections, synthwave colors, 8k vertical shot",
+        "model": "flux"
+    },
+    "anime": {
+        "name": "✨ Anime / Makoto Shinkai Uslubi",
+        "prompt_suffix": ", anime art style, makoto shinkai aesthetic, vibrant colors, detailed scenery, vertical shot",
+        "model": "flux-anime"
+    }
+}
+DEFAULT_ART_STYLE = "photoreal"
 
 WATERMARK_TEXT = "Dasturchi: MuzaffarZed"
 BRAND_NAME = "MuzaffarZed AI Studios"

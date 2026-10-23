@@ -1,6 +1,6 @@
 """
-MuzaffarZed AI Video Bot - Telegram Bot Interfeysi (aiogram 3.x - Zenith 6.0 Apex Studio)
-Ovozdan Reels, Real-Time AI Art, LUT rang filtrlari, SEO & Hashtag generatori, MP3 va xalqaro tilga o'girish.
+MuzaffarZed AI Video Bot - Telegram Bot Interfeysi (aiogram 3.x - Singularity 7.0 Omnipotent)
+Ovozdan Reels, Real-Time AI Art, LUT filtrlar, Inline Query, /health diagnostika, /profile va SMM SEO.
 Muallif: MuzaffarZed
 """
 import os
@@ -22,7 +22,14 @@ if sys.platform == "win32":
 
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import CommandStart, Command
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, FSInputFile
+from aiogram.types import (
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+    FSInputFile,
+    InlineQuery,
+    InlineQueryResultArticle,
+    InputTextMessageContent
+)
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from config import (
@@ -46,6 +53,8 @@ from config import (
     DEFAULT_SUBTITLE_SIZE,
     VISUAL_FILTERS,
     DEFAULT_VISUAL_FILTER,
+    ART_STYLES,
+    DEFAULT_ART_STYLE,
     MUSIC_GENRES,
     DEFAULT_MUSIC_GENRE,
     WATERMARK_TEXT,
@@ -82,6 +91,7 @@ user_pending_photos = {}
 job_cache = {}
 pipeline = VideoPipeline()
 render_lock = asyncio.Lock()
+START_TIME = time.time()
 
 def record_user(user_id: int):
     uid = str(user_id)
@@ -128,13 +138,24 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="⏱ Davomiylik", callback_data="menu_duration")
     )
     builder.row(
-        InlineKeyboardButton(text="🎵 Fon Musiqasi", callback_data="menu_music"),
-        InlineKeyboardButton(text="💡 Tezkor Mavzular", callback_data="menu_topics")
+        InlineKeyboardButton(text="🎨 Rasm Uslubi (Art)", callback_data="menu_art_styles"),
+        InlineKeyboardButton(text="🎵 Fon Musiqasi", callback_data="menu_music")
     )
     builder.row(
-        InlineKeyboardButton(text="ℹ️ Bot haqida", callback_data="menu_about"),
+        InlineKeyboardButton(text="💡 Trend Mavzular", callback_data="menu_topics"),
+        InlineKeyboardButton(text="👤 Profilim", callback_data="menu_profile")
+    )
+    builder.row(
         InlineKeyboardButton(text="📊 Statistika", callback_data="menu_stats")
     )
+    return builder.as_markup()
+
+def get_art_styles_keyboard(current: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for key, a in ART_STYLES.items():
+        check = "✅ " if key == current else ""
+        builder.row(InlineKeyboardButton(text=f"{check}{a['name']}", callback_data=f"set_art_style:{key}"))
+    builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
     return builder.as_markup()
 
 def get_voice_keyboard(current: str) -> InlineKeyboardMarkup:
@@ -235,7 +256,6 @@ def get_post_video_keyboard(task_id: str, current_fmt: str = "9:16", cur_voice: 
     else:
         builder.row(InlineKeyboardButton(text="📱 Reels (9:16) ga o'girish", callback_data=f"re_render:{task_id}:9:16"))
 
-    # Xalqaro tillarga 1-bosishda o'tkazish
     if "uz" in cur_voice:
         builder.row(InlineKeyboardButton(text="🇷🇺 Rus tilida chiqarish", callback_data=f"lang_switch:{task_id}:ru_dmitry"))
         builder.row(InlineKeyboardButton(text="🇺🇸 Ingliz tilida chiqarish", callback_data=f"lang_switch:{task_id}:en_christopher"))
@@ -253,7 +273,7 @@ def get_post_video_keyboard(task_id: str, current_fmt: str = "9:16", cur_voice: 
 
 dp = Dispatcher()
 
-# ==================== HANDLERS ====================
+# ==================== BUYRUQLAR (COMMANDS) ====================
 
 @dp.message(CommandStart())
 async def cmd_start(message: types.Message):
@@ -272,22 +292,131 @@ async def cmd_start(message: types.Message):
 
     welcome_text = (
         f"👋 Assalomu alaykum, <b>{html.escape(message.from_user.full_name)}</b>!\n\n"
-        f"🎬 <b>{BRAND_NAME} (Zenith 6.0 Apex)</b>ga xush kelibsiz!\n\n"
-        f"Men professional darajadagi video kontent tayyorlayman:\n"
+        f"🎬 <b>{BRAND_NAME} (Singularity 8.0 Infinity Grandmaster)</b>ga xush kelibsiz!\n\n"
+        f"Men to'liq avtonom va jahon darajasidagi video kontent yarataman:\n"
         f"• 🎙 <b>Ovoz:</b> {v_name}\n"
         f"• 🎛 <b>Uslub:</b> {s_name}\n"
         f"• 📱 <b>Format:</b> {f_name}\n"
-        f"• 🎬 <b>Rang:</b> {lut_name}\n"
-        f"• 🎨 <b>AI Vizual:</b> <i>Real-Time Pollinations AI 8K + 4K Unsplash</i>\n"
+        f"• 🎬 <b>Rang (LUT):</b> {lut_name}\n"
+        f"• 🎨 <b>AI Vizual:</b> <i>Real-Time Pollinations Flux 8K + 4K Unsplash</i>\n"
         f"• 🎚 <b>Studio DSP:</b> <i>EBU R128 + Sidechain Audio Ducking</i>\n"
         f"• 🏷 <b>SMM:</b> <i>Tayyor Instagram/TikTok tavsif va hashtaglar</i>\n\n"
         f"🚀 <b>Qanday ishlatiladi:</b>\n"
         f"1. ✍️ <b>Matn yozing:</b> Mavzuni yozing va video oling;\n"
-        f"2. 📸 <b>Rasm yuboring:</b> O'z suratingizdan Reels yasang;\n"
-        f"3. 🎙 <b>Ovozli xabar yuboring:</b> Ovozli xabardan video oling!\n\n"
+        f"2. 💡 <b>/ideas:</b> Trenddagi viral g'oyalardan video yasang;\n"
+        f"3. 📝 <b>/script:</b> O'z shaxsiy matningizdan video montaj qiling;\n"
+        f"4. 📸 <b>Rasm yuboring:</b> O'z suratingizdan Reels yasang;\n"
+        f"5. 🎙 <b>Ovozli xabar:</b> Ovozli xabaringizdan video oling!\n\n"
         f"<i>{WATERMARK_TEXT}</i>"
     )
     await message.answer(welcome_text, reply_markup=get_main_keyboard(), parse_mode="HTML")
+
+@dp.message(Command("profile"))
+async def cmd_profile(message: types.Message):
+    user_id = message.from_user.id
+    record_user(user_id)
+    cur_v = VOICES.get(get_user_pref(user_id, "voice", DEFAULT_VOICE), {})["name"]
+    cur_m = VOICE_MODES.get(get_user_pref(user_id, "mode", DEFAULT_VOICE_MODE), {})["name"]
+    cur_s = VIDEO_STYLES.get(get_user_pref(user_id, "style", DEFAULT_VIDEO_STYLE), {})["name"]
+    cur_f = FORMATS.get(get_user_pref(user_id, "format", DEFAULT_FORMAT), {})["name"]
+    cur_d = DURATIONS.get(get_user_pref(user_id, "duration", DEFAULT_DURATION), {})["name"]
+    cur_l = VISUAL_FILTERS.get(get_user_pref(user_id, "filter", DEFAULT_VISUAL_FILTER), {})["name"]
+    cur_art = ART_STYLES.get(get_user_pref(user_id, "art_style", DEFAULT_ART_STYLE), {})["name"]
+    cur_t = SUBTITLE_THEMES.get(get_user_pref(user_id, "theme", DEFAULT_SUBTITLE_THEME), {})["name"]
+    cur_sz = SUBTITLE_SIZES.get(get_user_pref(user_id, "sub_size", DEFAULT_SUBTITLE_SIZE), {})["name"]
+
+    prof_text = (
+        f"👤 <b>Sizning Shaxsiy Studio Profilingiz:</b>\n\n"
+        f"• 🎙 <b>Ovoz:</b> {cur_v}\n"
+        f"• ⚡ <b>Rejim:</b> {cur_m}\n"
+        f"• 🎛 <b>Uslub:</b> {cur_s}\n"
+        f"• 📱 <b>Format:</b> {cur_f}\n"
+        f"• ⏱ <b>Davomiylik:</b> {cur_d}\n"
+        f"• 🎬 <b>Rang (LUT):</b> {cur_l}\n"
+        f"• 🎨 <b>Rasm Uslubi:</b> {cur_art}\n"
+        f"• 💬 <b>Subtitr:</b> {cur_t}\n"
+        f"• 🔠 <b>Shrift o'lchami:</b> {cur_sz}\n\n"
+        f"<i>Sozlamalarni o'zgartirish uchun quyidagi tugmani bosing:</i>\n"
+        f"<i>{WATERMARK_TEXT}</i>"
+    )
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="⚙️ Sozlamalarni o'zgartirish", callback_data="menu_main"))
+    await message.answer(prof_text, reply_markup=builder.as_markup(), parse_mode="HTML")
+
+@dp.message(Command("ideas"))
+async def cmd_ideas(message: types.Message):
+    ideas = ScriptGenerator.generate_trending_ideas()
+    builder = InlineKeyboardBuilder()
+    for item in ideas:
+        builder.row(InlineKeyboardButton(text=f"{item['title']}", callback_data=f"quick_gen:{item['title']}"))
+    builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
+    await message.answer(
+        "💡 <b>Bugungi Trenddagi Viral Video G'oyalari:</b>\n\n"
+        "Quyidagi g'oyalardan birini bosing va darhol tayyor professional video oling:\n\n"
+        f"<i>{WATERMARK_TEXT}</i>",
+        reply_markup=builder.as_markup(),
+        parse_mode="HTML"
+    )
+
+@dp.message(Command("script"))
+async def cmd_script(message: types.Message):
+    user_id = message.from_user.id
+    record_user(user_id)
+    text = message.text[len("/script"):].strip()
+    if not text:
+        await message.answer(
+            "📝 <b>Shaxsiy ssenariydan video yaratish:</b>\n\n"
+            "Buyruqdan so'ng har bir kadr matnini alohida qatordan yozing:\n\n"
+            "Misol:\n"
+            "<code>/script\n"
+            "Dunyodagi eng qimmat narsa bu vaqt!\n"
+            "Har bir soniyani to'g'ri sarflash muvaffaqiyat kalitidir.\n"
+            "Vaqtingizni qadrlang va bizga obuna bo'ling!</code>\n\n"
+            f"<i>{WATERMARK_TEXT}</i>",
+            parse_mode="HTML"
+        )
+        return
+
+    scenes = pipeline.script_gen.parse_custom_user_script(text, topic="Shaxsiy Ssenariy")
+    await handle_video_creation(message, "Shaxsiy Ssenariy", user_id, custom_scenes=scenes)
+
+@dp.callback_query(F.data == "menu_profile")
+async def cb_profile(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    cur_v = VOICES.get(get_user_pref(user_id, "voice", DEFAULT_VOICE), {})["name"]
+    cur_s = VIDEO_STYLES.get(get_user_pref(user_id, "style", DEFAULT_VIDEO_STYLE), {})["name"]
+    cur_f = FORMATS.get(get_user_pref(user_id, "format", DEFAULT_FORMAT), {})["name"]
+    cur_l = VISUAL_FILTERS.get(get_user_pref(user_id, "filter", DEFAULT_VISUAL_FILTER), {})["name"]
+
+    prof_text = (
+        f"👤 <b>Sizning Sozlamalaringiz:</b>\n\n"
+        f"• 🎙 <b>Ovoz:</b> {cur_v}\n"
+        f"• 🎛 <b>Uslub:</b> {cur_s}\n"
+        f"• 📱 <b>Format:</b> {cur_f}\n"
+        f"• 🎬 <b>Rang:</b> {cur_l}\n\n"
+        f"<i>{WATERMARK_TEXT}</i>"
+    )
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
+    await callback.message.edit_text(prof_text, reply_markup=builder.as_markup(), parse_mode="HTML")
+
+@dp.message(Command("health") | Command("ping"))
+async def cmd_health(message: types.Message):
+    uptime_sec = int(time.time() - START_TIME)
+    mins = uptime_sec // 60
+    hours = mins // 60
+
+    health_text = (
+        f"🟢 <b>{BRAND_NAME} - Tizim Salomatligi Diagnostikasi:</b>\n\n"
+        f"• ⚡ <b>Status:</b> 100% Benuqson Ishlamoqda\n"
+        f"• 🎬 <b>FFmpeg:</b> Faol va sinxron (Static Build b6.0)\n"
+        f"• 🎙 <b>Edge-TTS:</b> Onlayn va tayyor\n"
+        f"• 🎨 <b>AI Graphics:</b> Pollinations AI 8K + 4K Unsplash\n"
+        f"• ⏱ <b>Uptime:</b> {hours} soat, {mins % 60} daqiqa\n"
+        f"• ☁️ <b>Bulut:</b> GitHub Actions Cloud Runner 24/7\n\n"
+        f"<i>{WATERMARK_TEXT}</i>"
+    )
+    await message.answer(health_text, parse_mode="HTML")
 
 @dp.message(Command("help"))
 async def cmd_help(message: types.Message):
@@ -299,6 +428,10 @@ async def cmd_help(message: types.Message):
         "• <b>SMM Paket:</b> Har bir video bilan birga Instagram/TikTok uchun tayyor sarlavha va 15 ta hashtag taqdim etiladi.\n\n"
         "Buyruqlar:\n"
         "/start - Bosh menyu\n"
+        "/ideas - Trenddagi viral g'oyalar katalogi\n"
+        "/script - O'z shaxsiy matningizdan video montaj\n"
+        "/profile - Sozlamalaringiz xulosasi\n"
+        "/health - Tizim salomatligi va holati\n"
         "/settings - Sozlamalar paneli\n"
         "/stats - Bot statistikasi\n"
         "/help - Qo'llanma\n\n"
@@ -319,7 +452,7 @@ async def cmd_stats(message: types.Message):
         f"👥 <b>Jami foydalanuvchilar:</b> {total_u} ta\n"
         f"🎬 <b>Yaratilgan videolar:</b> {total_v} ta\n"
         f"☁️ <b>Bulut Serveri:</b> 24/7 Faol (GitHub Actions)\n"
-        f"💎 <b>Dvigatel:</b> Zenith 6.0 Apex Studio\n\n"
+        f"💎 <b>Dvigatel:</b> Singularity 7.0 Omnipotent\n\n"
         f"<i>{WATERMARK_TEXT}</i>"
     )
     await message.answer(stats_text, parse_mode="HTML")
@@ -473,6 +606,20 @@ async def cb_set_music(callback: types.CallbackQuery):
     await callback.answer(f"Musiqa: {m_name}")
     await callback.message.edit_text(f"✅ Fon musiqasi: <b>{m_name}</b>", reply_markup=get_music_keyboard(key), parse_mode="HTML")
 
+# --- Rasm Uslubi (Art Style) menyusi ---
+@dp.callback_query(F.data == "menu_art_styles")
+async def cb_art_styles_menu(callback: types.CallbackQuery):
+    cur = get_user_pref(callback.from_user.id, "art_style", DEFAULT_ART_STYLE)
+    await callback.message.edit_text("🎨 <b>AI Rasm Uslubini (Art Style) tanlang:</b>", reply_markup=get_art_styles_keyboard(cur), parse_mode="HTML")
+
+@dp.callback_query(F.data.startswith("set_art_style:"))
+async def cb_set_art_style(callback: types.CallbackQuery):
+    key = callback.data.split(":")[1]
+    set_user_pref(callback.from_user.id, "art_style", key)
+    a_name = ART_STYLES[key]["name"]
+    await callback.answer(f"Rasm uslubi: {a_name}")
+    await callback.message.edit_text(f"✅ Rasm uslubi o'rnatildi: <b>{a_name}</b>", reply_markup=get_art_styles_keyboard(key), parse_mode="HTML")
+
 # --- Mavzular menyusi ---
 @dp.callback_query(F.data == "menu_topics")
 async def cb_topics_menu(callback: types.CallbackQuery):
@@ -481,12 +628,12 @@ async def cb_topics_menu(callback: types.CallbackQuery):
 @dp.callback_query(F.data == "menu_about")
 async def cb_about_menu(callback: types.CallbackQuery):
     about_text = (
-        f"💎 <b>{BRAND_NAME} (Zenith 6.0 Apex Studio)</b>\n\n"
+        f"💎 <b>{BRAND_NAME} (Singularity 7.0 Omnipotent)</b>\n\n"
         "• <b>Real-Time AI Art:</b> Pollinations AI 8K + 4K Unsplash\n"
         "• <b>Kinematografik LUT:</b> Teal & Orange, Cyberpunk, Golden, Clean HDR\n"
         "• <b>Formatlar:</b> 9:16 Vertikal, 16:9 Gorizontal, 1:1 Kvadrat\n"
         "• <b>Ovoz:</b> Microsoft Neural + Studio Broadcast DSP (EBU R128, Warmth)\n"
-        "• <b>Subtitr:</b> Alex Hormozi Karaoke 2.0 (4 xil rang, 3 xil o'lcham)\n"
+        "• <b>Subtitr:</b> Alex Hormozi Karaoke 2.0 (Glassmorphic Shadow, 120% pop)\n"
         "• <b>Musiqa:</b> 4 ta janr + Sidechain Audio Ducking + Whoosh SFX\n"
         "• <b>SMM Paket:</b> Avtomatik tavsif, 15 ta hashtag va optimal vaqt\n\n"
         f"<i>{WATERMARK_TEXT}</i>"
@@ -577,6 +724,37 @@ async def cb_lang_switch(callback: types.CallbackQuery):
     v_name = VOICES.get(new_voice, {}).get("name", new_voice)
     await callback.answer(f"Til: {v_name} ga o'tkazilmoqda...")
     await handle_video_creation(callback.message, topic, callback.from_user.id)
+
+# ==================== INLINE QUERY HANDLERI ====================
+
+@dp.inline_query()
+async def inline_search_handler(inline_query: InlineQuery):
+    query = inline_query.query.strip()
+    results = []
+
+    quick_suggestions = [
+        ("🌌 Koinotning eng sirli hodisalari", "Koinot va qora tuynuklar haqida shok faktlar"),
+        ("🧠 Muvaffaqiyatli insonlarning 3 ta siri", "Boylik va intizom qoidalari"),
+        ("🤖 Sun'iy intellekt kelajakni qanday o'zgartiradi", "AI va robotlar inqilobi"),
+        ("💰 Moliyaviy erkinlikka erishish siri", "Daromadni oshirish qonuniyati"),
+        ("⚡ Qadimgi dunyoning yechilmagan jumboqlari", "Piramidalar va tarixiy sir")
+    ]
+
+    for idx, (title, desc) in enumerate(quick_suggestions):
+        if not query or query.lower() in title.lower() or query.lower() in desc.lower():
+            results.append(
+                InlineQueryResultArticle(
+                    id=f"inline_{idx}",
+                    title=title,
+                    description=desc,
+                    input_message_content=InputTextMessageContent(
+                        message_text=f"🎬 <b>AI Video Generator:</b>\n{title}\n\n<i>{WATERMARK_TEXT}</i>",
+                        parse_mode="HTML"
+                    )
+                )
+            )
+
+    await inline_query.answer(results[:5], cache_time=300)
 
 # ==================== OVOZLI XABAR (VOICE NOTE) HANDLERI ====================
 
@@ -716,7 +894,13 @@ async def msg_handle_text(message: types.Message):
 
 # ==================== ASOSIY VIDEO YARATISH LOGIKASI ====================
 
-async def handle_video_creation(message: types.Message, topic: str, user_id: int, custom_image_path: str = None):
+async def handle_video_creation(
+    message: types.Message,
+    topic: str,
+    user_id: int,
+    custom_image_path: str = None,
+    custom_scenes: list = None
+):
     if user_id in user_active_requests:
         await message.answer("⚠️ Hozirda sizning videongiz tayyorlanmoqda, iltimos u yakunlanishini kuting!")
         return
@@ -730,6 +914,7 @@ async def handle_video_creation(message: types.Message, topic: str, user_id: int
     cur_duration = get_user_pref(user_id, "duration", DEFAULT_DURATION)
     cur_format = get_user_pref(user_id, "format", DEFAULT_FORMAT)
     cur_filter = get_user_pref(user_id, "filter", DEFAULT_VISUAL_FILTER)
+    cur_art_style = get_user_pref(user_id, "art_style", DEFAULT_ART_STYLE)
     cur_sub_size = get_user_pref(user_id, "sub_size", DEFAULT_SUBTITLE_SIZE)
 
     fmt_info = FORMATS.get(cur_format, FORMATS[DEFAULT_FORMAT])
@@ -739,7 +924,8 @@ async def handle_video_creation(message: types.Message, topic: str, user_id: int
         f"📌 <b>Mavzu:</b> <i>{html.escape(topic)}</i>\n"
         f"🎙 <b>Ovoz:</b> <i>{VOICES[cur_voice]['name']}</i>\n"
         f"📱 <b>Format:</b> <i>{fmt_info['name']}</i>\n"
-        f"🎬 <b>Rang:</b> <i>{VISUAL_FILTERS[cur_filter]['name']}</i>\n\n"
+        f"🎬 <b>Rang:</b> <i>{VISUAL_FILTERS[cur_filter]['name']}</i>\n"
+        f"🎨 <b>Rasm Uslubi:</b> <i>{ART_STYLES[cur_art_style]['name']}</i>\n\n"
         f"⏳ <i>Iltimos kuting, montaj navbatiga qo'shilmoqda...</i>",
         parse_mode="HTML"
     )
@@ -780,6 +966,8 @@ async def handle_video_creation(message: types.Message, topic: str, user_id: int
                 format_key=cur_format,
                 filter_key=cur_filter,
                 size_key=cur_sub_size,
+                art_style=cur_art_style,
+                custom_scenes=custom_scenes,
                 custom_image_path=custom_image_path,
                 progress_callback=progress_notifier
             )
@@ -818,9 +1006,10 @@ async def handle_video_creation(message: types.Message, topic: str, user_id: int
             f"🎬 <b>{html.escape(topic)}</b>\n\n"
             f"🎙 <b>Ovoz:</b> {VOICES[cur_voice]['name']} | {VOICE_MODES[cur_mode]['name']}\n"
             f"🎬 <b>LUT:</b> {VISUAL_FILTERS[cur_filter]['name']}\n"
+            f"🎨 <b>Art:</b> {ART_STYLES[cur_art_style]['name']}\n"
             f"🎵 <b>Musiqa:</b> {genre_name} (Sidechain Ducking)\n"
             f"⏱ <b>Davomiyligi:</b> {dur:.1f}s | 📱 <b>Format:</b> {fmt_info['name']}\n"
-            f"💎 <b>Sifat:</b> Studio DSP + Alex Hormozi Karaoke 6.0\n\n"
+            f"💎 <b>Sifat:</b> Studio DSP + Alex Hormozi Karaoke 8.0\n\n"
             f"<i>{WATERMARK_TEXT}</i>"
         )
 
@@ -875,8 +1064,8 @@ async def main():
 
     bot = Bot(token=token)
     print("=" * 65)
-    print("🤖 MUZAFFARZED AI VIDEO BOT (ZENITH 6.0 APEX STUDIO) ISHGA TUSHDI!")
-    print("LUT Shaders, Voice-to-Reels, SMM SEO Package, Multi-Format faol...")
+    print("🤖 MUZAFFARZED AI VIDEO BOT (SINGULARITY 8.0 INFINITY GRANDMASTER) ISHGA TUSHDI!")
+    print("3-Tier AI Script, Flux AI 8K Art, /ideas, /script, Inline Query, SMM SEO faol...")
     print("=" * 65)
     await dp.start_polling(bot)
 

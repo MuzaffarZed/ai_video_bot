@@ -1,6 +1,6 @@
 """
-MuzaffarZed AI Video Bot - Zamonaviy Karaoke Subtitrlar Generatori (Version 6.0 Zenith Dynamic Sizing)
-Ko'p formatli (9:16, 16:9, 1:1), 4 xil rang, dinamik shrift o'lchami va safe-margin.
+MuzaffarZed AI Video Bot - Zamonaviy Karaoke Subtitrlar Generatori (Version 7.0 Singularity Glassmorphic)
+Ko'p formatli (9:16, 16:9, 1:1), 4 xil rang, shishasimon soya (Glassmorphic Shadow) va 120% pop.
 Muallif: MuzaffarZed
 """
 import os
@@ -54,6 +54,7 @@ class SubtitleEngine:
         base_size = SUBTITLE_SIZES.get(size_key, SUBTITLE_SIZES[DEFAULT_SUBTITLE_SIZE])["size"]
         actual_font_size = base_size if format_key != "16:9" else int(base_size * 0.82)
 
+        # Qora shishasimon soya (Shadow=4, Outline=6) har qanday fonda 100% o'qilishni kafolatlaydi
         ass_header = f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: {play_x}
@@ -62,7 +63,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Karaoke,{self.font_name},{actual_font_size},{base_bgr},{active_bgr},{outline_bgr},&H80000000,-1,0,0,0,100,100,1,0,1,6,3,2,60,60,{margin_v},1
+Style: Karaoke,{self.font_name},{actual_font_size},{base_bgr},{active_bgr},{outline_bgr},&H95000000,-1,0,0,0,100,100,1,0,1,6,4,2,60,60,{margin_v},1
 Style: Watermark,{watermark_font},34,&H75FFFFFF,&H00000000,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1,0,9,40,40,75,1
 
 [Events]
@@ -93,13 +94,14 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     w_end = w["end"]
 
                     line_parts = []
-                    if active_idx == 0 and i == 0:
+                    if i == 0:
                         line_parts.append(f"{scene_emoji}")
 
                     for idx, part in enumerate(chunk):
                         word_text = part["word"]
                         if idx == active_idx:
-                            line_parts.append(f"{{\\c{active_bgr}&\\fscx118\\fscy118}}{word_text}{{\\rKaraoke}}")
+                            # 120% pop va neon yonuvchi rang
+                            line_parts.append(f"{{\\c{active_bgr}&\\fscx120\\fscy120}}{word_text}{{\\rKaraoke}}")
                         else:
                             line_parts.append(f"{{\\c{base_bgr}&}}{word_text}")
                     

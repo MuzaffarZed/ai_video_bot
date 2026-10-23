@@ -1,6 +1,6 @@
 """
-MuzaffarZed AI Video Bot - Kengaytirilgan Vizual Kadrlar Dvigateli (Visual Studio 5.0 Infinity)
-Haqiqiy Real-Time AI rasm generatsiyasi (Pollinations AI), 12 toifali 4K kutubxona va foydalanuvchi rasmlari.
+MuzaffarZed AI Video Bot - Kengaytirilgan Vizual Kadrlar Dvigateli (Visual Studio 8.0 Grandmaster)
+Haqiqiy Real-Time AI rasm generatsiyasi (Pollinations Flux AI), 12 toifali 4K kutubxona va fotorealistik filtr.
 Muallif: MuzaffarZed
 """
 import os
@@ -8,7 +8,7 @@ import random
 import urllib.request
 import urllib.parse
 from PIL import Image, ImageDraw, ImageFilter, ImageEnhance
-from config import TEMP_DIR, FORMATS, DEFAULT_FORMAT
+from config import TEMP_DIR, FORMATS, DEFAULT_FORMAT, ART_STYLES, DEFAULT_ART_STYLE
 
 class VisualEngine:
     CURATED_THEMES = {
@@ -150,9 +150,16 @@ class VisualEngine:
             print(f"[User Image Process Error] {e}")
             return input_image_path
 
-    def get_scene_visual(self, prompt: str, output_path: str, seed: int = None, scene_num: int = 1) -> str:
+    def get_scene_visual(
+        self,
+        prompt: str,
+        output_path: str,
+        seed: int = None,
+        scene_num: int = 1,
+        art_style: str = DEFAULT_ART_STYLE
+    ) -> str:
         """
-        1-Bosqich: Real-Time AI Generation (Pollinations AI)
+        1-Bosqich: Real-Time AI Generation (Pollinations AI Flux)
         2-Bosqich (Failover): Curated 4K Unsplash/Picsum kutubxonasi
         3-Bosqich (Failover): Oflayn kinoviy grafika
         """
@@ -160,13 +167,17 @@ class VisualEngine:
             seed = random.randint(10000, 999999)
 
         cat = self.detect_category(prompt)
+        style_info = ART_STYLES.get(art_style, ART_STYLES[DEFAULT_ART_STYLE])
+        prompt_suffix = style_info.get("prompt_suffix", ", 8k resolution, cinematic lighting, photorealistic, dramatic vertical shot")
+        model = style_info.get("model", "flux-realism")
 
         # 1-Urinish: Real-Time Pollinations AI Generator
         ai_success = False
         try:
-            encoded_prompt = urllib.parse.quote(f"{prompt}, 8k resolution, cinematic lighting, photorealistic, dramatic vertical shot")
-            pollinations_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={self.width}&height={self.height}&nologo=true&seed={seed}"
-            ai_success = self._download_image(pollinations_url, output_path, timeout=8)
+            full_prompt = f"{prompt}{prompt_suffix}"
+            encoded_prompt = urllib.parse.quote(full_prompt)
+            pollinations_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={self.width}&height={self.height}&nologo=true&seed={seed}&model={model}"
+            ai_success = self._download_image(pollinations_url, output_path, timeout=9)
         except Exception as e:
             ai_success = False
 

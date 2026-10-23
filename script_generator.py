@@ -1,12 +1,14 @@
 """
-MuzaffarZed AI Video Bot - Ssenariy Generatori (Version 6.0 Zenith SEO & SMM Engine)
-Mavzu bo'yicha viral kadrlar va Instagram/TikTok uchun tayyor SEO sarlavha va hashtaglar to'plami.
+MuzaffarZed AI Video Bot - Ssenariy Generatori (Version 8.0 Singularity AI Engine)
+Mavzu bo'yicha 3 bosqichli AI (Gemini 2.0 -> Pollinations AI Text -> Procedural) va SEO to'plami.
 Muallif: MuzaffarZed
 """
 import os
 import re
 import json
 import random
+import urllib.request
+import urllib.parse
 from typing import List, Dict
 from config import GEMINI_API_KEY, VIDEO_STYLES, DEFAULT_VIDEO_STYLE, DURATIONS, DEFAULT_DURATION
 
@@ -50,14 +52,58 @@ class ScriptGenerator:
         dur_info = DURATIONS.get(duration_key, DURATIONS[DEFAULT_DURATION])
         scene_count = dur_info.get("scene_count", 3)
 
+        # 1-Bosqich: Gemini 2.0 Flash (agar API kalit mavjud bo'lsa)
         if self.has_gemini:
             try:
                 return self._generate_with_gemini(topic, final_lang, style, scene_count)
             except Exception as e:
-                print(f"[Gemini Error] {e}. Procedural generatorga o'tilmoqda.")
-                return self._generate_procedural(topic, final_lang, style, scene_count)
-        else:
-            return self._generate_procedural(topic, final_lang, style, scene_count)
+                print(f"[Gemini Error] {e}. Pollinations AI ga o'tilmoqda.")
+
+        # 2-Bosqich: Pollinations AI Text (bepul, onlayn sun'iy intellekt)
+        try:
+            return self._generate_with_pollinations(topic, final_lang, style, scene_count)
+        except Exception as e:
+            print(f"[Pollinations Text Error] {e}. Procedural generatorga o'tilmoqda.")
+
+        # 3-Bosqich: Oflayn protsedural generator (100% ishonchli zaxira)
+        return self._generate_procedural(topic, final_lang, style, scene_count)
+
+    def _generate_with_pollinations(self, topic: str, lang: str, style: str, scene_count: int) -> List[Dict]:
+        """Pollinations bepul ochiq AI matn modeli orqali ssenariy yaratish."""
+        lang_instruction = {
+            "uz": "O'zbek tilida, nihoyatda hayajonli va viral Reels uslubida",
+            "ru": "На русском языке, мощно и динамично для TikTok/Reels",
+            "en": "In English, high-retention viral hook and engaging storytelling"
+        }.get(lang, "O'zbek tilida")
+
+        prompt = (
+            f"Siz professional video ssenaristisiz. Mavzu: '{topic}'. Til: {lang_instruction}. Uslub: {style}. "
+            f"AYNAN {scene_count} ta kadr yozing. 1-kadr: kuchli hook. O'rta: shok faktlar. Oxirgi: CTA. "
+            f"Javobni FAQAT quyidagi JSON massivida qaytaring (hech qanday markdown yoki tushuntirishsiz): "
+            f"[{{\"scene_num\": 1, \"text\": \"1-kadr matni\", \"visual_prompt\": \"cinematic vertical 8k visual prompt in english\"}}]"
+        )
+        url = "https://text.pollinations.ai/" + urllib.parse.quote(prompt)
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        )
+        with urllib.request.urlopen(req, timeout=14) as resp:
+            content = resp.read().decode("utf-8")
+
+        m = re.search(r'\[\s*\{.*\}\s*\]', content, re.DOTALL)
+        if m:
+            data = json.loads(m.group(0))
+            if isinstance(data, list) and len(data) >= 2:
+                result = []
+                for idx, sc in enumerate(data[:scene_count]):
+                    result.append({
+                        "scene_num": idx + 1,
+                        "text": str(sc.get("text", topic)),
+                        "visual_prompt": str(sc.get("visual_prompt", f"cinematic dramatic vertical 8k concept of {topic}, scene {idx+1}"))
+                    })
+                if len(result) == scene_count:
+                    return result
+        raise ValueError("Pollinations AI noto'g'ri JSON qaytardi")
 
     def _generate_with_gemini(self, topic: str, lang: str, style: str, scene_count: int) -> List[Dict]:
         lang_prompt = {
@@ -229,3 +275,55 @@ Javobni FAQAT quyidagi JSON massivida qaytaring, ortiqcha hech qanday matn qo'sh
             "hashtags": tags,
             "best_time": "18:30 - 21:30 (Eng yuqori faollik vaqti)"
         }
+
+    def parse_custom_user_script(self, custom_text: str, topic: str = "Shaxsiy Mavzu") -> List[Dict]:
+        """
+        Foydalanuvchi kiritgan shaxsiy matnni qatorlar bo'yicha tahlil qilib kadrlar massiviga aylantiradi.
+        """
+        lines = [line.strip() for line in custom_text.strip().split("\n") if len(line.strip()) >= 3]
+        if not lines:
+            lines = [custom_text.strip()]
+
+        lines = lines[:7]
+        scenes = []
+        for idx, line in enumerate(lines):
+            scenes.append({
+                "scene_num": idx + 1,
+                "text": line,
+                "visual_prompt": f"cinematic dramatic vertical 8k concept representing {topic}, scene {idx+1}, epic atmosphere"
+            })
+        return scenes
+
+    @staticmethod
+    def generate_trending_ideas(category: str = "all") -> List[Dict]:
+        """Trenddagi viral video mavzulari to'plami."""
+        catalog = {
+            "space": [
+                ("🌌 Jeyms Uebb kashf etgan sirli galaktikalar", "Koinot"),
+                ("🕳 Qora tuynukka tushib ketsak nima bo'ladi?", "Koinot"),
+                ("🪐 Marsda hayot mavjudligi haqida yangi faktlar", "Koinot")
+            ],
+            "business": [
+                ("💰 Millionerlar hech qachon qilmaydigan 5 xato", "Biznes"),
+                ("📈 2026-yilda eng daromadli sohalar", "Moliya"),
+                ("🧠 Ilon Maskning kunlik intizom qoidalari", "Biznes")
+            ],
+            "ai": [
+                ("🤖 Sun'iy intellekt 2027-yilgacha qaysi kasblarni yo'qotadi?", "AI"),
+                ("🔮 Kelajak robotlari va insoniyat taqdiri", "Texnologiya"),
+                ("⚡ Neyrotarmoqlar orqali kuniga daromad topish usuli", "AI")
+            ],
+            "motivation": [
+                ("🔥 Taslim bo'lishdan oldin bu so'zlarni tinglang", "Motivatsiya"),
+                ("⚡ 99% insonlarni orqada qoldiruvchi 1 ta odat", "Rivojlanish"),
+                ("🦁 O'ziga bo'lgan ishonchni 10 barobar oshirish siri", "Psixologiya")
+            ]
+        }
+        if category in catalog:
+            return [{"title": t, "tag": tag} for t, tag in catalog[category]]
+
+        all_ideas = []
+        for cat_list in catalog.values():
+            all_ideas.extend(cat_list)
+        random.shuffle(all_ideas)
+        return [{"title": t, "tag": tag} for t, tag in all_ideas[:6]]

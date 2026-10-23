@@ -14,7 +14,7 @@ current_dir = str(Path(__file__).resolve().parent)
 if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
 
-from typing import Callable, Optional, Dict
+from typing import Callable, Optional, Dict, List
 from config import (
     TEMP_DIR,
     OUTPUT_DIR,
@@ -28,6 +28,7 @@ from config import (
     DEFAULT_DURATION,
     DEFAULT_FORMAT,
     DEFAULT_VISUAL_FILTER,
+    DEFAULT_ART_STYLE,
     FORMATS
 )
 from script_generator import ScriptGenerator
@@ -43,6 +44,7 @@ class VideoPipeline:
         self.audio_mixer = AudioMixer()
         self.subtitle_eng = SubtitleEngine()
         self.video_eng = VideoEngine()
+        self.visual_eng = VisualEngine()
 
     async def create_video(
         self,
@@ -56,6 +58,8 @@ class VideoPipeline:
         format_key: str = DEFAULT_FORMAT,
         filter_key: str = DEFAULT_VISUAL_FILTER,
         size_key: str = DEFAULT_SUBTITLE_SIZE,
+        art_style: str = DEFAULT_ART_STYLE,
+        custom_scenes: Optional[List[Dict]] = None,
         custom_image_path: Optional[str] = None,
         progress_callback: Optional[Callable[[int, int, str], None]] = None
     ) -> Dict:
@@ -80,7 +84,10 @@ class VideoPipeline:
         # 1-Bosqich: Ssenariy va SEO paket
         await notify(1, "🧠 1/5: AI ssenariy va viral kadrlar tuzilmoqda...")
         lang = VOICES.get(voice_key, {}).get("lang", "uz")
-        scenes = await asyncio.to_thread(self.script_gen.generate, topic, lang, style_key, duration_key)
+        if custom_scenes:
+            scenes = custom_scenes
+        else:
+            scenes = await asyncio.to_thread(self.script_gen.generate, topic, lang, style_key, duration_key)
         seo_data = await asyncio.to_thread(self.script_gen.generate_viral_seo_package, topic, lang)
 
         # 2-Bosqich: Ovozlashtirish & Studiya DSP
@@ -98,7 +105,7 @@ class VideoPipeline:
                 await asyncio.to_thread(visual_eng.process_custom_user_image, custom_image_path, img_path)
             else:
                 prompt = sc.get("visual_prompt") or topic
-                await asyncio.to_thread(visual_eng.get_scene_visual, prompt, img_path, None, sc["scene_num"])
+                await asyncio.to_thread(visual_eng.get_scene_visual, prompt, img_path, None, sc["scene_num"], art_style)
             sc["image_path"] = img_path
 
         # 4-Bosqich: Musiqa, Ducking, Subtitr & Podkast MP3
