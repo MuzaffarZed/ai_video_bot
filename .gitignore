@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+
+# Vaqtincha va render qilingan fayllar
+temp/
+output/
+*.mp4
+*.wav
+*.mp3
+*.ass
+*.jpg
+*.png
+
+# IDE & OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
