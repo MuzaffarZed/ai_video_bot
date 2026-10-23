@@ -340,5 +340,49 @@ class TestSingularity10(unittest.TestCase):
         self.assertEqual(VOICES["en_christopher"]["lang"], "en")
         self.assertEqual(VOICES["uz_sardor"]["lang"], "uz")
 
+    def test_quick_topic_registration_safe_byte_size(self):
+        from bot import register_quick_topic, QUICK_TOPICS
+        long_cyrillic = "Кўп қаватли коинот сирлари ҳақида жуда узун ва батафсил мақола sarlavhasi " * 3
+        qid = register_quick_topic(long_cyrillic)
+        cb_data = f"qgen:{qid}"
+        # Telegram strict limit is 64 bytes
+        self.assertLessEqual(len(cb_data.encode("utf-8")), 64)
+        self.assertEqual(QUICK_TOPICS[qid], long_cyrillic)
+
+    def test_parse_custom_user_script_long_sentence_split(self):
+        sg = ScriptGenerator()
+        long_text = (
+            "Dunyodagi eng katta va chuqur sir bu inson tafakkurining cheksiz imkoniyatlaridir. "
+            "Har bir buyuk kashfiyot aynan oddiy savollarga javob izlashdan boshlangan va insoniyat tarixini butunlay o'zgartirib yuborgan. "
+            "Bugun ham siz o'z oldingizga katta maqsadlar qo'yib barchasini amalga oshirishingiz mumkin!"
+        )
+        scenes = sg.parse_custom_user_script(long_text)
+        self.assertGreaterEqual(len(scenes), 2)
+        for sc in scenes:
+            self.assertLessEqual(len(sc["text"]), 240)
+
+    def test_subtitle_engine_curly_brace_sanitization(self):
+        se = SubtitleEngine()
+        scenes = [{
+            "scene_num": 1,
+            "text": "Dasturlash {Python} siri \\ test",
+            "start_time": 0.0,
+            "end_time": 3.0,
+            "words": [
+                {"word": "{Python}", "start": 0.1, "end": 1.2},
+                {"word": "siri\\", "start": 1.3, "end": 2.8}
+            ]
+        }]
+        test_ass = str(TEMP_DIR / "test_brace.ass")
+        se.generate_ass(scenes, test_ass, topic_badge="Badge {Test}")
+        self.assertTrue(os.path.exists(test_ass))
+        with open(test_ass, "r", encoding="utf-8") as f:
+            content = f.read()
+            self.assertIn("(Python)", content)
+            self.assertIn("siri/", content)
+            self.assertIn("BADGE (TEST)", content)
+        try: os.remove(test_ass)
+        except Exception: pass
+
 if __name__ == "__main__":
     unittest.main()

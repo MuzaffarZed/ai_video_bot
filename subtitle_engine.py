@@ -93,7 +93,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
         events.append(f"Dialogue: 1,{start_str_full},{end_str_full},Watermark,,0,0,0,,{WATERMARK_TEXT}")
         if topic_badge:
-            clean_badge = f"【 {topic_badge[:28].upper()} 】"
+            sanitized_badge = topic_badge[:28].upper().replace("{", "(").replace("}", ")").replace("\\", "/")
+            clean_badge = f"【 {sanitized_badge} 】"
             events.append(f"Dialogue: 2,{start_str_full},{end_str_full},HeaderBadge,,0,0,0,,{clean_badge}")
 
         emojis = ["🔥", "💡", "🧠", "✨", "🚀", "⚡", "🎯", "💎", "⏳", "👑"]
@@ -133,7 +134,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                         line_parts.append(f"{speaker_badge}{scene_emoji}")
 
                     for idx, part in enumerate(chunk):
-                        word_text = part["word"]
+                        word_text = part["word"].replace("{", "(").replace("}", ")").replace("\\", "/")
                         is_power = self._is_power_word(word_text)
                         if idx == active_idx:
                             if is_power:

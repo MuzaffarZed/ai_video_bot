@@ -476,10 +476,19 @@ Javobni FAQAT quyidagi JSON massivida qaytaring, ortiqcha hech qanday matn qo'sh
     def parse_custom_user_script(self, custom_text: str, topic: str = "Shaxsiy Mavzu") -> List[Dict]:
         """
         Foydalanuvchi kiritgan shaxsiy matnni qatorlar bo'yicha tahlil qilib kadrlar massiviga aylantiradi.
+        O'ta uzun jumlalarni mantiqiy gaplarga ajratib, kadrlar balansini saqlaydi.
         """
-        lines = [line.strip() for line in custom_text.strip().split("\n") if len(line.strip()) >= 3]
-        if not lines:
-            lines = [custom_text.strip()]
+        raw_lines = [line.strip() for line in custom_text.strip().split("\n") if len(line.strip()) >= 3]
+        if not raw_lines:
+            raw_lines = [custom_text.strip()]
+
+        lines = []
+        for line in raw_lines:
+            if len(line) > 200 and any(p in line for p in [". ", "! ", "? "]):
+                parts = re.split(r'(?<=[.!?])\s+', line)
+                lines.extend([p.strip() for p in parts if len(p.strip()) >= 3])
+            else:
+                lines.append(line)
 
         lines = lines[:7]
         scenes = []

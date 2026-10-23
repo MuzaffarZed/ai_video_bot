@@ -236,14 +236,24 @@ class VideoEngine:
         clean_aud = os.path.relpath(audio_path, BASE_DIR).replace("\\", "/")
         clean_out = os.path.relpath(output_video_path, BASE_DIR).replace("\\", "/")
 
+        font_opt = ""
+        linux_font = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+        alt_linux_font = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+        if os.path.exists(linux_font):
+            font_opt = f":fontfile='{linux_font}'"
+        elif os.path.exists(alt_linux_font):
+            font_opt = f":fontfile='{alt_linux_font}'"
+        elif os.path.exists("C:/Windows/Fonts/arialbd.ttf"):
+            font_opt = ":fontfile='C\\:/Windows/Fonts/arialbd.ttf'"
+
         wave_filter = (
             f"[1:a]showwaves=s={wave_w}x{wave_h}:mode=line:colors=0x00FFFF@0.85|0x00FF7F@0.85[wave];"
             f"[0:v]scale={target_w}:{target_h}:force_original_aspect_ratio=increase,crop={target_w}:{target_h},"
             f"boxblur=luma_radius=10:luma_power=2,eq=contrast=1.08:brightness=-0.04[bg];"
             f"[bg][wave]overlay=(W-w)/2:{wave_y}[v1];"
             f"[v1]drawbox=x=0:y=ih-12:w=iw:h=12:color=0x00FFFF@0.8:t=fill,"
-            f"drawtext=text='{BRAND_NAME}':x=(w-text_w)/2:y={int(target_h*0.14)}:fontsize={int(target_w*0.045)}:fontcolor=white:shadowcolor=black@0.7:shadowx=2:shadowy=2,"
-            f"drawtext=text='{WATERMARK_TEXT}':x=(w-text_w)/2:y=h-{int(target_h*0.06)}:fontsize={int(target_w*0.032)}:fontcolor=white@0.7[vout]"
+            f"drawtext=text='{BRAND_NAME}'{font_opt}:x=(w-text_w)/2:y={int(target_h*0.14)}:fontsize={int(target_w*0.045)}:fontcolor=white:shadowcolor=black@0.7:shadowx=2:shadowy=2,"
+            f"drawtext=text='{WATERMARK_TEXT}'{font_opt}:x=(w-text_w)/2:y=h-{int(target_h*0.06)}:fontsize={int(target_w*0.032)}:fontcolor=white@0.7[vout]"
         )
 
         cmd = [

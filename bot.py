@@ -37,6 +37,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from config import (
     BASE_DIR,
     TEMP_DIR,
+    OUTPUT_DIR,
     TELEGRAM_BOT_TOKEN,
     USER_UPLOADS_DIR,
     VOICES,
@@ -71,6 +72,7 @@ from config import (
 )
 from pipeline import VideoPipeline
 from tts_engine import TTSEngine
+from script_generator import ScriptGenerator
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -120,6 +122,15 @@ user_pending_photos = {}
 pipeline = VideoPipeline()
 render_lock = asyncio.Lock()
 START_TIME = time.time()
+QUICK_TOPICS = {}
+
+def register_quick_topic(topic: str) -> str:
+    qid = f"q_{int(time.time()*1000) % 1000000}_{len(QUICK_TOPICS) % 500}"
+    QUICK_TOPICS[qid] = topic
+    if len(QUICK_TOPICS) > 250:
+        for k in list(QUICK_TOPICS.keys())[:50]:
+            QUICK_TOPICS.pop(k, None)
+    return qid
 
 def save_job_cache_item(task_id: str, data: dict):
     job_cache[task_id] = data
@@ -317,7 +328,7 @@ def get_topics_keyboard() -> InlineKeyboardMarkup:
         "🏃 Sog'lom hayot va intizom kuchi"
     ]
     for top in topics:
-        builder.row(InlineKeyboardButton(text=top, callback_data=f"quick_gen:{top}"))
+        builder.row(InlineKeyboardButton(text=top, callback_data=f"qgen:{register_quick_topic(top)}"))
     builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
     return builder.as_markup()
 
@@ -456,7 +467,7 @@ async def cmd_ideas(message: types.Message):
     ideas = ScriptGenerator.generate_trending_ideas()
     builder = InlineKeyboardBuilder()
     for item in ideas:
-        builder.row(InlineKeyboardButton(text=f"{item['title']}", callback_data=f"quick_gen:{item['title']}"))
+        builder.row(InlineKeyboardButton(text=f"{item['title']}", callback_data=f"qgen:{register_quick_topic(item['title'])}"))
     builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
     await message.answer(
         "💡 <b>Bugungi Trenddagi Viral Video G'oyalari:</b>\n\n"
@@ -528,7 +539,7 @@ async def cmd_remix(message: types.Message):
         InlineKeyboardButton(text="🌌 Koinot Doku", callback_data=f"apply_preset:space_doku"),
         InlineKeyboardButton(text="🖥 YouTube Keng", callback_data=f"apply_preset:youtube_wide")
     )
-    builder.row(InlineKeyboardButton(text="🎬 Shu mavzuda qayta yaratish", callback_data=f"quick_gen:{top}"))
+    builder.row(InlineKeyboardButton(text="🎬 Shu mavzuda qayta yaratish", callback_data=f"qgen:{register_quick_topic(top)}"))
     await message.answer(
         f"🎛 <b>Videoni qayta remiks qilish:</b>\n\n"
         f"Oxirgi mavzu: <b>{html.escape(top)}</b>\n\n"
@@ -555,7 +566,7 @@ async def cmd_series(message: types.Message):
     series_plan = pipeline.script_gen.generate_series_plan(args, lang="uz")
     builder = InlineKeyboardBuilder()
     for item in series_plan:
-        builder.row(InlineKeyboardButton(text=item["title"], callback_data=f"quick_gen:{item['title']}"))
+        builder.row(InlineKeyboardButton(text=item["title"], callback_data=f"qgen:{register_quick_topic(item['title'])}"))
     builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
 
     resp = (
@@ -925,9 +936,13 @@ async def cb_about_menu(callback: types.CallbackQuery):
     builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
     await callback.message.edit_text(about_text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
-@dp.callback_query(F.data.startswith("quick_gen:"))
+@dp.callback_query(F.data.startswith("quick_gen:") | F.data.startswith("qgen:"))
 async def cb_quick_generate(callback: types.CallbackQuery):
-    topic = callback.data[len("quick_gen:"):]
+    if callback.data.startswith("qgen:"):
+        key = callback.data[len("qgen:"):]
+        topic = QUICK_TOPICS.get(key, key)
+    else:
+        topic = callback.data[len("quick_gen:"):]
     await callback.answer(f"Tanlandi: {topic[:25]}...")
     await handle_video_creation(callback.message, topic, callback.from_user.id)
 
@@ -1409,35 +1424,36 @@ async def msg_handle_voice(message: types.Message, bot: Bot):
         cur_format = get_user_pref(user_id, "format", DEFAULT_FORMAT)
         fmt_info = FORMATS.get(cur_format, FORMATS[DEFAULT_FORMAT])
 
-        master_audio = str(TEMP_DIR / f"{task_id}_master.wav")
-        await asyncio.to_thread(pipeline.audio_mixer.mix, [str(clean_wav)], master_audio, genre="ambient_chill")
+        async with render_lock:
+            master_audio = str(TEMP_DIR / f"{task_id}_master.wav")
+            await asyncio.to_thread(pipeline.audio_mixer.mix, [str(clean_wav)], master_audio, genre="ambient_chill")
 
-        img_path = str(TEMP_DIR / f"{task_id}_img.jpg")
-        await asyncio.to_thread(pipeline.visual_eng.get_scene_visual, "voice podcast storytelling cinematic neon waveform", img_path)
+            img_path = str(TEMP_DIR / f"{task_id}_img.jpg")
+            await asyncio.to_thread(pipeline.visual_eng.get_scene_visual, "voice podcast storytelling cinematic neon waveform", img_path)
 
-        cur_filter = get_user_pref(user_id, "filter", DEFAULT_VISUAL_FILTER)
-        try:
-            await asyncio.to_thread(
-                pipeline.video_eng.render_voice_waveform_video,
-                img_path,
-                master_audio,
-                str(out_video),
-                cur_format
-            )
-        except Exception as e:
-            logger.warning(f"Waveform video fallback: {e}")
-            clip_path = str(TEMP_DIR / f"{task_id}_clip.mp4")
-            await asyncio.to_thread(pipeline.video_eng.render_scene_clip, img_path, total_dur, clip_path, 1, cur_format, cur_filter)
-            await asyncio.to_thread(
-                pipeline.video_eng.assemble_final_video,
-                [clip_path],
-                master_audio,
-                "",
-                str(out_video),
-                total_dur,
-                "gold",
-                cur_format
-            )
+            cur_filter = get_user_pref(user_id, "filter", DEFAULT_VISUAL_FILTER)
+            try:
+                await asyncio.to_thread(
+                    pipeline.video_eng.render_voice_waveform_video,
+                    img_path,
+                    master_audio,
+                    str(out_video),
+                    cur_format
+                )
+            except Exception as e:
+                logger.warning(f"Waveform video fallback: {e}")
+                clip_path = str(TEMP_DIR / f"{task_id}_clip.mp4")
+                await asyncio.to_thread(pipeline.video_eng.render_scene_clip, img_path, total_dur, clip_path, 1, cur_format, cur_filter)
+                await asyncio.to_thread(
+                    pipeline.video_eng.assemble_final_video,
+                    [clip_path],
+                    master_audio,
+                    "",
+                    str(out_video),
+                    total_dur,
+                    "gold",
+                    cur_format
+                )
 
         record_video_generation()
         video_file = FSInputFile(str(out_video))
@@ -1511,7 +1527,7 @@ async def msg_handle_text(message: types.Message):
 
         if page_title and len(page_title) >= 3:
             builder = InlineKeyboardBuilder()
-            builder.row(InlineKeyboardButton(text="🎬 Maqoladan video yaratish", callback_data=f"quick_gen:{page_title[:60]}"))
+            builder.row(InlineKeyboardButton(text="🎬 Maqoladan video yaratish", callback_data=f"qgen:{register_quick_topic(page_title)}"))
             builder.row(InlineKeyboardButton(text="⬅️ Bosh menyu", callback_data="menu_main"))
             await message.answer(
                 f"🌐 <b>Maqola aniqlandi:</b>\n\n"
